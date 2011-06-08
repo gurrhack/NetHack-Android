@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	<item
+		android:id="@+id/change"
+		android:titleCondensed="Change..."
+		android:title="Change command..."/>
+	<item
+		android:id="@+id/add"
+		android:titleCondensed="New command..."
+		android:title="New command..."/>
+	<item
+		android:id="@+id/remove"
+		android:titleCondensed="Remove command"
+		android:title="Remove command"/>
+</menu>

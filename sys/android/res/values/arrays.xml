@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="tileNames">
+        <item>Absurd</item>
+        <item>Abigaba</item>
+        <item>Default</item>
+        <item>Geoduck</item>
+        <item>RLTiles</item>
+        <item>Kins</item>
+        <item>Lagged</item>
+    </string-array>
+    <string-array name="tileValues">
+        <item>absurd_32</item>
+        <item>chozo_32</item>
+        <item>default_32</item>
+        <item>geoduck_12x20</item>
+        <item>itakura_32</item>
+        <item>kins_32</item>
+        <item>lagged_12x20</item>
+    </string-array>
+
+    <string-array name="shortcutCmds">
+    	<item>...</item>
+    	<item>#</item>
+		<item>20s</item>
+		<item>.</item>
+		<item>:</item>
+		<item>;</item>
+		<item>,</item>
+		<item>e</item>
+		<item>d</item>
+		<item>r</item>
+		<item>z</item>
+		<item>Z</item>
+		<item>q</item>
+		<item>t</item>
+		<item>f</item>
+		<item>w</item>
+		<item>x</item>
+		<item>i</item>
+		<item>E</item>
+		<item>Q</item>
+		<item>P</item>
+		<item>R</item>
+		<item>W</item>
+		<item>T</item>
+		<item>o</item>
+		<item>^d</item>
+		<item>^p</item>
+		<item>a</item>
+		<item>A</item>
+		<item>^t</item>
+		<item>D</item>
+		<item>F</item>
+		<item>p</item>
+		<item>^x</item>
+		<item>^e</item>
+		<item>^f</item>
+		<item>^g</item>
+		<item>^i</item>
+		<item>^o</item>
+		<item>^v</item>
+		<item>^w</item>
+		<item>\?</item>
+    </string-array>
+    
+</resources>

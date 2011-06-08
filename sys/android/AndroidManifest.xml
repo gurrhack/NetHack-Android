@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	package="com.tbd.NetHack"
+	android:versionCode="1"
+	android:versionName="1.0">
+	<uses-sdk
+		android:minSdkVersion="8"/>
+	<uses-permission
+		android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+	<!-- android:theme="@android:style/Theme.NoTitleBar.Fullscreen"  --> 
+	<application
+		android:label="NetHack"
+		android:icon="@drawable/icon"
+		android:debuggable="false">
+		<activity
+			android:name=".NetHack"
+			android:label="NetHack"
+			android:launchMode="singleTask"
+			android:configChanges="mcc|mnc|locale|keyboard|keyboardHidden|orientation|screenLayout|fontScale|uiMode"> <!-- Prevent activity from restarting when configuration changes -->
+			<intent-filter>
+				<action
+					android:name="android.intent.action.MAIN"/>
+				<category
+					android:name="android.intent.category.LAUNCHER"/>
+			</intent-filter>
+		</activity>
+		<activity
+			android:name="Settings"
+			android:label="NetHackSettings">
+		</activity>
+	</application>
+</manifest> 

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	<PreferenceCategory
+		android:title="Settings">
+		<EditTextPreference
+			android:name="Who are you?"
+			android:persistent="true"
+			android:defaultValue="app34"
+			android:title="Who are you?"
+			android:key="username"/>
+		<ListPreference
+			android:title="Tileset"
+			android:persistent="true"
+			android:key="tileset"
+			android:defaultValue="default_32"
+			android:entries="@array/tileNames"
+			android:entryValues="@array/tileValues"/>
+		<CheckBoxPreference
+			android:title="Autopickup"
+			android:persistent="true"
+			android:defaultValue="true"
+			android:key="autoPickup"/>
+		<EditTextPreference
+			android:name="Pickup types"
+			android:persistent="true"
+			android:defaultValue="=!?+/$*&quot;"
+			android:title="Pickup types"
+			android:key="autoPickupTypes"/>
+		<CheckBoxPreference
+			android:name="Wizard mode"
+			android:title="Wizard mode"
+			android:persistent="true"
+			android:defaultValue="false"
+			android:key="wizard"/>
+		<CheckBoxPreference
+			android:title="Show command panel"
+			android:persistent="true"
+			android:defaultValue="true"
+			android:key="showCmdPanel"/>
+		<CheckBoxPreference
+			android:name="Reset command panel"
+			android:title="Reset command panel"
+			android:persistent="true"
+			android:defaultValue="false"
+			android:key="reset"/>
+	</PreferenceCategory>
+	<PreferenceCategory
+		android:title="About">
+		
+		<PreferenceScreen
+			android:name="license"
+			android:title="License"
+			android:summary="NETHACK GENERAL PUBLIC LICENSE">
+			
+			<com.tbd.NetHack.TextViewPreference
+				android:name="license"
+				android:title="License"
+				android:summary="NETHACK GENERAL PUBLIC LICENSE"/>
+		</PreferenceScreen>
+		
+		<PreferenceScreen
+			android:name="history"
+			android:title="History"
+			android:summary="The history of NetHack">
+			
+			<com.tbd.NetHack.TextViewPreference
+				android:name="history"
+				android:title="History"
+				android:summary="The history of NetHack"/>
+				
+		</PreferenceScreen>
+		
+		<PreferenceScreen
+			android:name="credits"
+			android:title="Credits"
+			android:summary="Contributors of this port">
+			
+			<com.tbd.NetHack.TextViewPreference
+				android:name="credits"
+				android:title="Credits"
+				android:summary="Contributors of this port"/>
+				
+		</PreferenceScreen>
+	</PreferenceCategory>
+</PreferenceScreen>

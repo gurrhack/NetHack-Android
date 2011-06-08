@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="fill_parent"
+	android:layout_height="?android:attr/listPreferredItemHeight"
+	android:paddingLeft="4dip"
+	android:paddingRight="4dip">
+
+	<TextView
+		android:id="@+id/item_acc"
+		android:layout_width="20dip"
+		android:layout_gravity="center_vertical"
+		android:layout_weight="0"
+		style="@style/ListItem1"
+		android:text="t"
+		android:layout_height="match_parent"
+		android:gravity="center_vertical"/>
+
+	<ImageView
+		android:id="@+id/item_tile"
+		android:layout_weight="0"
+		android:layout_width="wrap_content"
+		android:layout_height="match_parent"
+		android:layout_gravity="center_vertical"
+		android:layout_marginRight="6dip"/>
+
+	<LinearLayout
+		android:orientation="vertical"
+		android:layout_weight="1"
+		android:layout_gravity="center_vertical"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content">
+
+		<TextView
+			android:id="@+id/item_text"
+			style="@style/ListItem1"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center_vertical"
+			android:text="item_text"/>
+
+		<TextView
+			android:id="@+id/item_sub"
+			style="@style/ListItem2"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center_vertical"
+			android:text="item_sub"/>
+
+	</LinearLayout>
+
+	<CheckBox
+		android:id="@+id/item_check"
+		android:layout_width="wrap_content"
+		android:layout_height="match_parent"
+		android:layout_weight="0"
+		android:focusable="false"
+		android:clickable="false"/>
+
+</LinearLayout>
