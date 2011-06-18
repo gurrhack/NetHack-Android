@@ -1035,7 +1035,7 @@ boolean at_stairs, falling, portal;
 	if (Punished) unplacebc();
 	u.utrap = 0;				/* needed in level_tele */
 	fill_pit(u.ux, u.uy);
-	u.ustuck = 0;				/* idem */
+	setustuck(0);				/* idem */
 	u.uinwater = 0;
 	u.uundetected = 0;	/* not hidden, even if means are available */
 	keepdogs(FALSE);

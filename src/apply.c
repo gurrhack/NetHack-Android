@@ -1239,7 +1239,7 @@ int magic; /* 0=Physical, otherwise skill level */
 	} else if (u.ustuck) {
 		if (u.ustuck->mtame && !Conflict && !u.ustuck->mconf) {
 		    You("pull free from %s.", mon_nam(u.ustuck));
-		    u.ustuck = 0;
+		    setustuck(0);
 		    return 1;
 		}
 		if (magic) {

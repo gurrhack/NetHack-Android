@@ -2340,7 +2340,7 @@ long hmask, emask;     /* might cancel timeout */
 			else
 				pline("Startled, %s can no longer hold you!",
 					mon_nam(u.ustuck));
-			u.ustuck = 0;
+			setustuck(0);
 		}
 		/* kludge alert:
 		 * drown() and lava_effects() print various messages almost

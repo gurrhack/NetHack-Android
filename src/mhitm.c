@@ -135,7 +135,7 @@ fightm(mtmp)		/* have monsters fight each other */
 		    if(!u.uswallow && (mtmp == u.ustuck)) {
 			if(!rn2(4)) {
 			    pline("%s releases you!", Monnam(mtmp));
-			    u.ustuck = 0;
+			    setustuck(0);
 			} else
 			    break;
 		    }

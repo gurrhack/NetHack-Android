@@ -859,7 +859,7 @@ char *hittee;			/* target's name: "you" or mon_nam(mdef) */
 		nomul(-3);
 		nomovemsg = "";
 		if (magr && magr == u.ustuck && sticks(youmonst.data)) {
-		    u.ustuck = (struct monst *)0;
+		    setustuck((struct monst *)0);
 		    You("release %s!", mon_nam(magr));
 		}
 	    }

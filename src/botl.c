@@ -25,11 +25,12 @@ STATIC_DCL void NDECL(bot2);
  *
  * longest practical second status line at the moment is
  *	Astral Plane $:12345 HP:700(700) Pw:111(111) AC:-127 Xp:30/123456789
- *	T:123456 Satiated Conf FoodPois Ill Blind Stun Hallu Overloaded
- * -- or somewhat over 130 characters
+ *	T:123456 Satiated Conf FoodPois Ill Blind Stun Hallu Slime 
+ *  Held Overloaded
+ * -- or somewhat over 140 characters
  */
-#if COLNO <= 140
-#define MAXCO 160
+#if COLNO <= 150
+#define MAXCO 170
 #else
 #define MAXCO (COLNO+20)
 #endif
@@ -290,6 +291,7 @@ bot2()
 	if(Stunned)	   Sprintf(nb = eos(nb), " Stun");
 	if(Hallucination)  Sprintf(nb = eos(nb), " Hallu");
 	if(Slimed)         Sprintf(nb = eos(nb), " Slime");
+	if(u.ustuck && !u.uswallow) Sprintf(nb = eos(nb), " Held");                    
 	if(cap > UNENCUMBERED)
 		Sprintf(nb = eos(nb), " %s", enc_stat[cap]);
 	curs(WIN_STATUS, 1, 1);

@@ -988,13 +988,13 @@ domove()
 		if (u.ustuck && (x != u.ustuck->mx || y != u.ustuck->my)) {
 		    if (distu(u.ustuck->mx, u.ustuck->my) > 2) {
 			/* perhaps it fled (or was teleported or ... ) */
-			u.ustuck = 0;
+			setustuck(0);
 		    } else if (sticks(youmonst.data)) {
 			/* When polymorphed into a sticking monster,
 			 * u.ustuck means it's stuck to you, not you to it.
 			 */
 			You("release %s.", mon_nam(u.ustuck));
-			u.ustuck = 0;
+			setustuck(0);
 		    } else {
 			/* If holder is asleep or paralyzed:
 			 *	37.5% chance of getting away,
@@ -1009,7 +1009,7 @@ domove()
 			case 0: case 1: case 2:
 			pull_free:
 			    You("pull free from %s.", mon_nam(u.ustuck));
-			    u.ustuck = 0;
+			    setustuck(0);
 			    break;
 			case 3:
 			    if (!u.ustuck->mcanmove) {

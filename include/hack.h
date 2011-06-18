@@ -287,7 +287,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define makeknown(x)	discover_object((x),TRUE,TRUE)
 #define distu(xx,yy)	dist2((int)(xx),(int)(yy),(int)u.ux,(int)u.uy)
 #define onlineu(xx,yy)	online2((int)(xx),(int)(yy),(int)u.ux,(int)u.uy)
-
+#define setustuck(v)	(flags.botl = 1, u.ustuck = (v))
 #define rn1(x,y)	(rn2(x)+(y))
 
 /* negative armor class is randomly weakened to prevent invulnerability */

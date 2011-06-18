@@ -464,7 +464,7 @@ unsigned int stuckid, steedid;	/* STEED */
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			if (mtmp->m_id == stuckid) break;
 		if (!mtmp) panic("Cannot find the monster ustuck.");
-		u.ustuck = mtmp;
+		setustuck(mtmp);
 	}
 #ifdef STEED
 	if (steedid) {
@@ -575,7 +575,7 @@ register int fd;
 	 * afterwards, and in the meantime at least u.usteed may mislead
 	 * place_monster() on other levels
 	 */
-	u.ustuck = (struct monst *)0;
+	setustuck((struct monst *)0);
 #ifdef STEED
 	u.usteed = (struct monst *)0;
 #endif

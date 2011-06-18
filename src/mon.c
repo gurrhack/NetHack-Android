@@ -1302,7 +1302,7 @@ register struct monst *mtmp, *mtmp2;
     }
     mtmp2->nmon = fmon;
     fmon = mtmp2;
-    if (u.ustuck == mtmp) u.ustuck = mtmp2;
+    if (u.ustuck == mtmp) setustuck(mtmp2);
 #ifdef STEED
     if (u.usteed == mtmp) u.usteed = mtmp2;
 #endif
@@ -1722,7 +1722,7 @@ register struct monst *mtmp;
 			vision_full_recalc = 1;
 			docrt();
 		}
-		u.ustuck = 0;
+		setustuck(0);
 	}
 }
 

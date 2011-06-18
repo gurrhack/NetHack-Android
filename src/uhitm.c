@@ -140,7 +140,7 @@ struct obj *wep;	/* uwep for attack(), null for kick_monster() */
 		 */
 		if(mtmp->m_ap_type && !Protection_from_shape_changers) {
 		    if(!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data,AD_STCK))
-			u.ustuck = mtmp;
+			setustuck(mtmp);
 		}
 		wakeup(mtmp); /* always necessary; also un-mimics mimics */
 		return TRUE;
@@ -450,7 +450,7 @@ struct attack *uattk;
 		    } else monflee(mon, 0, FALSE, TRUE);
 
 		    if(u.ustuck == mon && !u.uswallow && !sticks(youmonst.data))
-			u.ustuck = 0;
+				setustuck(0);
 		}
 		/* Vorpal Blade hit converted to miss */
 		/* could be headless monster or worm tail */
@@ -1561,7 +1561,7 @@ register struct attack *mattk;
 		break;
 	    case AD_STCK:
 		if (!negated && !sticks(mdef->data))
-		    u.ustuck = mdef; /* it's now stuck to you */
+		    setustuck(mdef); /* it's now stuck to you */
 		break;
 	    case AD_WRAP:
 		if (!sticks(mdef->data)) {
@@ -1571,7 +1571,7 @@ register struct attack *mattk;
 			} else {
 			    You("swing yourself around %s!",
 				  mon_nam(mdef));
-			    u.ustuck = mdef;
+			    setustuck(mdef);
 			}
 		    } else if(u.ustuck == mdef) {
 			/* Monsters don't wear amulets of magical breathing */
@@ -2050,7 +2050,7 @@ use_weapon:
 				sum[i] = damageum(mon, mattk);
 			    } else if(i >= 2 && sum[i-1] && sum[i-2]) {
 				You("grab %s!", mon_nam(mon));
-				u.ustuck = mon;
+				setustuck(mon);
 				sum[i] = damageum(mon, mattk);
 			    }
 			}
@@ -2406,7 +2406,7 @@ struct monst *mtmp;
 		   *what = 0;
 
 	if(!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data,AD_STCK))
-	    u.ustuck = mtmp;
+	    setustuck(mtmp);
 
 	if (Blind) {
 	    if (!Blind_telepat)

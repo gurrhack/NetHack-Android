@@ -477,7 +477,7 @@ int	mntmp;
 	}
 	newsym(u.ux,u.uy);		/* Change symbol */
 
-	if (!sticky && !u.uswallow && u.ustuck && sticks(youmonst.data)) u.ustuck = 0;
+	if (!sticky && !u.uswallow && u.ustuck && sticks(youmonst.data)) setustuck(0);
 	else if (sticky && !sticks(youmonst.data)) uunstick();
 #ifdef STEED
 	if (u.usteed) {
@@ -1109,7 +1109,7 @@ STATIC_OVL void
 uunstick()
 {
 	pline("%s is no longer in your clutches.", Monnam(u.ustuck));
-	u.ustuck = 0;
+	setustuck(0);
 }
 
 void
