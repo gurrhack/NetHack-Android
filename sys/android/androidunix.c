@@ -14,22 +14,14 @@
 
 static struct stat buf;
 
-/* see whether we should throw away this xlock file */
-static int
-veryold(fd)
-int fd;
+void
+regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
+char *s;
 {
-	time_t date;
+	register char *lp;
 
-	if(fstat(fd, &buf)) return(0);			/* cannot get status */
-#ifndef INSURANCE
-	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
-#endif
-	(void) time(&date);
-	if(date - buf.st_mtime < 100L*24L*60L*60L)
-		return(0);
-	(void) close(fd);
-	return(1);
+	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
+		*lp = '_';
 }
 
 static int
@@ -53,22 +45,11 @@ eraseoldlocks()
 }
 
 void
-regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
-char *s;
-{
-	register char *lp;
-
-	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
-		*lp = '_';
-}
-
-void
 getlock()
 {
 	register int i = 0, fd, c;
 	const char *fq_lock;
 
-	/* we ignore QUIT and INT at this point */
 	if (!lock_file(HLOCK, LOCKPREFIX, 10))
 	{
 		wait_synch();
@@ -87,43 +68,21 @@ getlock()
 		unlock_file(HLOCK);
 		error("Cannot open %s", fq_lock);
 	}
-
-	if(veryold(fd) /* closes fd if true */ && eraseoldlocks())
-	{
-		debuglog("lock is too old: %s", fq_lock);
-		goto gotlock;
-	}
 	(void) close(fd);
 
-# ifdef SELF_RECOVER
 	c = yn("There are files from a game in progress under your name. Recover?");
-# else
-	c = yn("There is already a game in progress under your name.  Destroy old game?");
-# endif
-
 	if(c == 'y' || c == 'Y')
 	{
-# ifdef SELF_RECOVER
 		if(!recover_savefile())
 		{
+			(void) eraseoldlocks();
 			unlock_file(HLOCK);
 			error("Couldn't recover old game.");
 		}
-# else
-		if(!eraseoldlocks())
-		{
-			unlock_file(HLOCK);
-			error("Couldn't destroy old game.");
-		}
-# endif
-	}
-	else
-	{
-		unlock_file(HLOCK);
-		error("%s", "");
 	}
 
 gotlock:
+	(void) eraseoldlocks();
 	fd = creat(fq_lock, FCMASK);
 	unlock_file(HLOCK);
 	if(fd == -1)
@@ -144,4 +103,3 @@ gotlock:
 		}
 	}
 }
-

@@ -49,14 +49,12 @@ int explcolors[] = {
 #endif
 
 #ifdef ROGUE_COLOR
-# if defined(USE_TILES) && defined(MSDOS)
-#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && !iflags.grmode && \
-	Is_rogue_level(&u.uz))
-# elif defined(ANDROID)
-#define HAS_ROGUE_IBM_GRAPHICS TRUE
-# else
-#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && Is_rogue_level(&u.uz))
-# endif
+	# if defined(USE_TILES) && defined(MSDOS)
+		#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && !iflags.grmode && \
+			Is_rogue_level(&u.uz))
+	# else
+		#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && Is_rogue_level(&u.uz))
+	# endif
 #endif
 
 /*ARGSUSED*/
@@ -204,13 +202,7 @@ unsigned *ospecial;
 		/* actually player should be yellow-on-gray if in a corridor */
 		color = CLR_YELLOW;
 	    else
-#ifdef ANDROID
-	    mon_color(glyph);
-	    if(color == CLR_GRAY)
-	    	color = CLR_WHITE; /* distinguish from floor */
-#else
 		color = NO_COLOR;
-#endif
 	} else
 #endif
 	{

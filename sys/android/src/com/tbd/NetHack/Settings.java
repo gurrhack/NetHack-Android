@@ -7,22 +7,27 @@ import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
+import android.view.Window;
 import android.widget.Toast;
 
 public class Settings extends PreferenceActivity
 {
-	private Toast m_toast;
+	private Toast mToast;
 
 	// ____________________________________________________________________________________
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
+		// turn off the window's title bar
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+
 		super.onCreate(savedInstanceState);
+		
 		addPreferencesFromResource(R.xml.preferences);
 		
-		m_toast = Toast.makeText(Settings.this, "This will take effect the next time you start NetHack", 1000);
+		mToast = Toast.makeText(Settings.this, "This will take effect the next time you start NetHack", 1000);
 		
-		this.findPreference("wizard").setOnPreferenceChangeListener(requiresRestart);
+		//this.findPreference("wizard").setOnPreferenceChangeListener(requiresRestart);
 		this.findPreference("username").setOnPreferenceChangeListener(requiresRestart);
 	}
 	
@@ -31,7 +36,7 @@ public class Settings extends PreferenceActivity
 	{
 		public boolean onPreferenceChange(Preference preference, Object newValue)
 		{
-			m_toast.show();
+			mToast.show();
 			return true;
 		}
 	};

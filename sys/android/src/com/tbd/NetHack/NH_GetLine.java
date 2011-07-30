@@ -1,7 +1,6 @@
 package com.tbd.NetHack;
 
-import android.app.AlertDialog;
-import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
@@ -12,99 +11,128 @@ import android.view.View.OnKeyListener;
 import android.view.ViewGroup;
 import android.widget.EditText;
 
-public class NH_GetLine implements Runnable
+public class NH_GetLine
 {
-	private NetHackIO m_io;
-	private final String m_title;
-	private Dialog m_dialog;
-	private final int m_nMaxChars;
-	private EditText m_input;
+	private UI mUI;
+	private NetHackIO mIO;
+	private String mTitle;
+	private int mMaxChars;
 
 	// ____________________________________________________________________________________
-	public NH_GetLine(NetHackIO io, final String title, final int nMaxChars)
+	public NH_GetLine(NetHackIO io)
 	{
-		m_io = io;
-		m_title = title;
-		m_nMaxChars = nMaxChars;
+		mIO = io;
 	}
 
 	// ____________________________________________________________________________________
-	public void run()
+	public void show(Context context, final String title, final int nMaxChars)
 	{
-		ViewGroup v = (ViewGroup)Util.Inflate(R.layout.dialog_getline);
-		m_input = (EditText)v.findViewById(R.id.input);
-//		v.removeView(m_input);
+		mTitle = title;
+		mMaxChars = nMaxChars;
+		mUI = new UI(context);
+	}
 
-		m_input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(m_nMaxChars) });
-		m_input.setOnKeyListener(new OnKeyListener()
+	// ____________________________________________________________________________________
+	public void setContext(Context context)
+	{
+		if(mUI != null)
+			mUI = new UI(context);
+	}
+
+	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// 																						//
+	// ____________________________________________________________________________________ //
+	private class UI
+	{
+		private Context mContext;
+		private EditText mInput;
+		private NH_Dialog mDialog;
+
+		// ____________________________________________________________________________________
+		public UI(Context context)
 		{
-			public boolean onKey(View v, int keyCode, KeyEvent event)
+			mContext = context;
+
+			ViewGroup v = (ViewGroup)Util.inflate(context, R.layout.dialog_getline);
+			mInput = (EditText)v.findViewById(R.id.input);
+			mInput.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(mMaxChars) });
+			mInput.setOnKeyListener(new OnKeyListener()
 			{
-				if(event.getAction() != KeyEvent.ACTION_DOWN)
+				public boolean onKey(View v, int keyCode, KeyEvent event)
+				{
+					if(event.getAction() != KeyEvent.ACTION_DOWN)
+						return false;
+
+					if(keyCode == KeyEvent.KEYCODE_ENTER)
+						ok();
+					else if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == 111/*KeyEvent.KEYCODE_ESCAPE*/)
+						cancel();
 					return false;
+				}
+			});
 
-				if(keyCode == KeyEvent.KEYCODE_ENTER)
-					Ok();
-				else if(keyCode == KeyEvent.KEYCODE_BACK)
-					Cancel();
-				return false;
-			}
-		});
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(NetHack.get());
-		builder.setTitle(m_title);
-		builder.setView(v);
-		builder.setCancelable(true);
-		builder.setOnCancelListener(new OnCancelListener()
-		{
-			public void onCancel(DialogInterface dialog)
+			mDialog = new NH_Dialog(context);
+			mDialog.setTitle(mTitle);
+			mDialog.setView(v);
+			mDialog.setCancelable(true);
+			mDialog.setPositiveButton("Ok", new OnClickListener()
 			{
-				Cancel();
-			}
-		});
-		builder.setPositiveButton("Ok", new OnClickListener()
-		{
-			public void onClick(DialogInterface arg0, int arg1)
+				public void onClick(DialogInterface dialog, int which)
+				{
+					ok();
+				}
+			});
+			mDialog.setNegativeButton("Cancel", new OnClickListener()
 			{
-				Ok();
-			}
-		});
-		builder.setNegativeButton("Cancel", new OnClickListener()
-		{
-			public void onClick(DialogInterface dialog, int which)
+				public void onClick(DialogInterface dialog, int which)
+				{
+					cancel();
+				}
+			});
+			mDialog.setOnCancelListener(new OnCancelListener()
 			{
-				Cancel();
-			}
-		});
-	
-		m_dialog = builder.create();
-		m_dialog.show();
+				public void onCancel(DialogInterface dialog)
+				{
+					cancel();
+				}
+			});
+			
+			mDialog.show();
 
-		Util.ShowKeyboard(m_input);
-	}
-
-	// ____________________________________________________________________________________
-	private void Ok()
-	{
-		if(m_dialog != null)
-		{
-			String text = m_input.getText().toString().trim();
-			m_io.SendLineCmd(text);
-			Util.HideKeyboard(m_input);
-			m_dialog.dismiss();
-			m_dialog = null;
+			Util.showKeyboard(context, mInput);
 		}
-	}
 
-	// ____________________________________________________________________________________
-	private void Cancel()
-	{
-		if(m_dialog != null)
+		// ____________________________________________________________________________________
+		public void dismiss()
 		{
-			m_io.SendLineCmd("\033");
-			Util.HideKeyboard(m_input);
-			m_dialog.dismiss();
-			m_dialog = null;
+			Util.hideKeyboard(mContext, mInput);
+			if(mDialog != null)
+			{
+				mDialog.dismiss();
+				mDialog = null;
+			}
+			mUI = null;
+		}
+
+		// ____________________________________________________________________________________
+		private void ok()
+		{
+			if(mDialog != null)
+			{
+				String text = mInput.getText().toString().trim();
+				mIO.sendLineCmd(text);
+				dismiss();
+			}
+		}
+
+		// ____________________________________________________________________________________
+		private void cancel()
+		{
+			if(mDialog != null)
+			{
+				mIO.sendLineCmd("\033");
+				dismiss();
+			}
 		}
 	}
 }

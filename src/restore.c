@@ -1083,6 +1083,14 @@ register unsigned int len;
 		if(restoring) {
 			(void) close(fd);
 			(void) delete_savefile();
+#ifdef ANDROID
+			/* also delete level files to prevent a recover/restore loop */
+			for(fd = 0; fd < 256; fd++)
+			{
+				set_levelfile_name(lock, fd);
+				(void) unlink(fqname(lock, LEVELPREFIX, 0));
+			}
+#endif
 			error("Error restoring old game.");
 		}
 		panic("Error reading level file.");

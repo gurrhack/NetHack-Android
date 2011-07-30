@@ -5,82 +5,147 @@
 		android:title="Settings">
 		<EditTextPreference
 			android:name="Who are you?"
+			android:summary="The name of your character"
 			android:persistent="true"
 			android:defaultValue="app34"
+			android:singleLine="true"
 			android:title="Who are you?"
 			android:key="username"/>
+
 		<ListPreference
 			android:title="Tileset"
+			android:summary="The visual style of the game world"
 			android:persistent="true"
 			android:key="tileset"
 			android:defaultValue="default_32"
 			android:entries="@array/tileNames"
 			android:entryValues="@array/tileValues"/>
+			
 		<CheckBoxPreference
 			android:title="Autopickup"
+			android:summary="Automatically pick up items from the floor when you step on them"
 			android:persistent="true"
 			android:defaultValue="true"
 			android:key="autoPickup"/>
+			
 		<EditTextPreference
 			android:name="Pickup types"
+			android:title="Pickup types"
+			android:summary="The item types that are picked up if Autopickup is enabled"
 			android:persistent="true"
 			android:defaultValue="=!?+/$*&quot;"
-			android:title="Pickup types"
+			android:singleLine="true"
 			android:key="autoPickupTypes"/>
+			
 		<CheckBoxPreference
 			android:name="Wizard mode"
 			android:title="Wizard mode"
+			android:summary="Makes you invincible and enables cheat commands"
 			android:persistent="true"
 			android:defaultValue="false"
 			android:key="wizard"/>
+
 		<CheckBoxPreference
+			android:name="Show command panel"
 			android:title="Show command panel"
+			android:summary="Show the row of shortcut commands at the bottom of the screen"
 			android:persistent="true"
 			android:defaultValue="true"
 			android:key="showCmdPanel"/>
+
 		<CheckBoxPreference
 			android:name="Reset command panel"
 			android:title="Reset command panel"
+			android:summary="Restore the command panel to its original layout"
 			android:persistent="true"
 			android:defaultValue="false"
 			android:key="reset"/>
+
+		<CheckBoxPreference
+			android:name="Automenu"
+			android:title="Automenu"
+			android:summary="Aid touch screen interaction by automatically opening menus and dialogs when possible"
+			android:persistent="true"
+			android:defaultValue="true"
+			android:key="automenu"/>
+
+		<CheckBoxPreference
+			android:name="Fullscreen"
+			android:title="Fullscreen"
+			android:summary="Enable fullscreen mode"
+			android:persistent="true"
+			android:defaultValue="false"
+			android:key="fullscreen"/>
+
+		<ListPreference
+			android:title="Volume Up Action"
+			android:name="Volume Up Action"
+			android:summary="The action performed when pressing the volume up key"
+			android:persistent="true"
+			android:key="volup"
+			android:defaultValue="-1"
+			android:entries="@array/actionNames"
+			android:entryValues="@array/actionValues"/>
+			
+		<ListPreference
+			android:title="Volume Down Action"
+			android:name="Volume Down Action"
+			android:summary="The action performed when pressing the volume down key"
+			android:persistent="true"
+			android:key="voldown"
+			android:defaultValue="-2"
+			android:entries="@array/actionNames"
+			android:entryValues="@array/actionValues"/>
 	</PreferenceCategory>
+
 	<PreferenceCategory
 		android:title="About">
-		
+
+		<PreferenceScreen
+			android:name="instructions"
+			android:title="Instructions"
+			android:summary="How to play">
+
+			<com.tbd.NetHack.TextViewPreference
+				android:name="instructions"
+				android:title="Instructions"
+				android:summary="How to play"/>
+
+		</PreferenceScreen>
+
 		<PreferenceScreen
 			android:name="license"
 			android:title="License"
 			android:summary="NETHACK GENERAL PUBLIC LICENSE">
-			
+
 			<com.tbd.NetHack.TextViewPreference
 				android:name="license"
 				android:title="License"
 				android:summary="NETHACK GENERAL PUBLIC LICENSE"/>
 		</PreferenceScreen>
-		
+
 		<PreferenceScreen
 			android:name="history"
 			android:title="History"
 			android:summary="The history of NetHack">
-			
+
 			<com.tbd.NetHack.TextViewPreference
 				android:name="history"
 				android:title="History"
 				android:summary="The history of NetHack"/>
-				
+
 		</PreferenceScreen>
-		
+
 		<PreferenceScreen
 			android:name="credits"
 			android:title="Credits"
 			android:summary="Contributors of this port">
-			
+
 			<com.tbd.NetHack.TextViewPreference
 				android:name="credits"
 				android:title="Credits"
 				android:summary="Contributors of this port"/>
-				
+
 		</PreferenceScreen>
 	</PreferenceCategory>
 </PreferenceScreen>

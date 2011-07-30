@@ -2404,6 +2404,14 @@ recover_savefile()
 			(void) unlink(fq_lock);
 		}
 	}
+	
+#ifdef ANDROID
+	/* if the new savefile isn't compressed 
+	 * it will be overwritten when the old 
+	 * savefile is restored in restore_saved_game() */
+	compress(fqname(SAVEF, SAVEPREFIX, 0));
+#endif
+	
 	return TRUE;
 }
 

@@ -179,7 +179,7 @@
  *	compression.
  */
 
-#ifdef UNIX
+#if defined(UNIX) && !defined(ANDROID)
 /* path and file name extension for compression program */
 #ifdef ANDROID
 # define COMPRESS "/system/bin/gzip"

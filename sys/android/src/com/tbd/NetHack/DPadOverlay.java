@@ -8,108 +8,74 @@ import android.widget.Button;
 
 public class DPadOverlay
 {
-	private NetHackIO m_io;
-	private View m_dpad;
+	private CmdPanel mCmdPanel;
+	private boolean mIsVisible;
+	private UI mUI;
 
 	// ____________________________________________________________________________________
-	public DPadOverlay(NetHackIO io)
+	public DPadOverlay(CmdPanel cmdPanel)
 	{
-		m_io = io;
-
-		m_dpad = NetHack.get().findViewById(R.id.dpad);
-
-		m_dpad.findViewById(R.id.dpad0).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad1).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad2).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad3).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad4).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad5).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad6).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad7).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad8).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad9).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad10).setOnClickListener(OnDPad);
-		m_dpad.findViewById(R.id.dpad_esc).setOnClickListener(OnDPad);
-
-		m_dpad.setVisibility(View.GONE);
+		mCmdPanel = cmdPanel;
 	}
 
 	// ____________________________________________________________________________________
-	public void Show()
+	public void setContext(Activity context)
 	{
-		m_dpad.setVisibility(View.VISIBLE);
+		mUI = new UI(context);
+		setVisible(mIsVisible);
 	}
 
 	// ____________________________________________________________________________________
-	public void Hide()
+	public void setVisible(boolean bVisible)
 	{
-		m_dpad.setVisibility(View.GONE);
+		mIsVisible = bVisible;
+		mUI.setVisible(bVisible);
 	}
 
-	// ____________________________________________________________________________________
-	public boolean HandleKeyDown(int keyCode, KeyEvent event)
+	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// 																						//
+	// ____________________________________________________________________________________ //
+	private class UI
 	{
-		if(m_dpad.getVisibility() != View.VISIBLE)
-			return false;
+		private View mDPad;
 
-		char ch = 0;
-		switch(keyCode)
+		public UI(Activity context)
 		{
-		case KeyEvent.KEYCODE_BACK:
-		case KeyEvent.KEYCODE_SPACE:
-			ch = '\033';
-		break;
-		case KeyEvent.KEYCODE_DPAD_LEFT:
-			ch = 'h';
-		break;
-		case KeyEvent.KEYCODE_DPAD_RIGHT:
-			ch = 'l';
-		break;
-		case KeyEvent.KEYCODE_DPAD_UP:
-			ch = 'k';
-		break;
-		case KeyEvent.KEYCODE_DPAD_DOWN:
-			ch = 'j';
-		break;
-		case KeyEvent.KEYCODE_DPAD_CENTER:
-			ch = '.';
-		break;
-		default:
-			ch = Character.toLowerCase((char)event.getUnicodeChar());
+			mDPad = context.findViewById(R.id.dpad);
+
+			mDPad.findViewById(R.id.dpad0).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad1).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad2).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad3).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad4).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad5).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad6).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad7).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad8).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad9).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad10).setOnClickListener(onDPad);
+			mDPad.findViewById(R.id.dpad_esc).setOnClickListener(onDPad);
 		}
 
-		switch(ch)
+		// ____________________________________________________________________________________
+		public void setVisible(boolean bVisible)
 		{
-		case '\033':
-		case '.':
-		case 'k':
-		case 'y':
-		case 'u':
-		case 'h':
-		case 'l':
-		case 'b':
-		case 'j':
-		case 'n':
-		case '<':
-		case '>':
-			m_io.SendKeyCmd(ch);
+			mDPad.setVisibility(bVisible ? View.VISIBLE : View.GONE);
 		}
-		return true;
-	}
 
-	// ____________________________________________________________________________________
-	private OnClickListener OnDPad = new OnClickListener()
-	{
-		public void onClick(View v)
+		// ____________________________________________________________________________________
+		private OnClickListener onDPad = new OnClickListener()
 		{
-			if(m_dpad.getVisibility() == View.VISIBLE)
+			public void onClick(View v)
 			{
-				if(v.getId() == R.id.dpad_esc)
-					m_io.SendKeyCmd('\033');
-				else
-					m_io.SendKeyCmd(((Button)v).getText().charAt(0));
+				if(mIsVisible)
+				{
+					if(v.getId() == R.id.dpad_esc)
+						mCmdPanel.sendKeyCmd('\033');
+					else
+						mCmdPanel.sendKeyCmd(((Button)v).getText().charAt(0));
+				}
 			}
-		}
-	};
-
+		};
+	}
 }

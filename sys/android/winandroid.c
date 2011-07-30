@@ -1,4 +1,5 @@
 #include <string.h>
+#include <errno.h>
 #include <jni.h>
 
 #include "hack.h"
@@ -59,7 +60,8 @@ struct window_procs and_procs = {
 	and_start_screen,
 	and_end_screen,
 	genl_outrip,
-	and_preference_update};
+	and_preference_update
+};
 
 //____________________________________________________________________________________
 // Java objects. Make sure they are not garbage collected!
@@ -83,24 +85,28 @@ static jmethodID jStartMenu;
 static jmethodID jAddMenu;
 static jmethodID jEndMenu;
 static jmethodID jSelectMenu;
-static jmethodID jUpdateInventory;
 static jmethodID jCliparound;
-static jmethodID jUpdatePositionbar;
-static jmethodID jBell;
-static jmethodID jDoPrevMessage;
-static jmethodID jGetExtCmd;
 static jmethodID jDelayOutput;
 static jmethodID jShowDPad;
 static jmethodID jShowPrevMessage;
 static jmethodID jShowLog;
 
+static boolean quit_if_possible;
+
 //____________________________________________________________________________________
 //
 // Helpers
 //____________________________________________________________________________________
-jstring create_jstring(const char* str)
+jbyteArray create_bytearray(const char* str)
 {
-	return (*jEnv)->NewStringUTF(jEnv, str);
+	int len = str ? strlen(str) : 0;
+	jbyteArray a = (*jEnv)->NewByteArray(jEnv, len);
+	jbyte* e = (*jEnv)->GetByteArrayElements(jEnv, a, 0);
+	while(len--)
+		*e++ = *str++;
+	(*jEnv)->ReleaseByteArrayElements(jEnv, a, e, 0);
+	return a;
+	// return (*jEnv)->NewStringUTF(jEnv, str);
 }
 
 //____________________________________________________________________________________
@@ -126,36 +132,43 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jEnv = env;
 	jAppInstance = thiz;
 	jApp = (*jEnv)->GetObjectClass(jEnv, jAppInstance);
-	jDebugLog = (*jEnv)->GetMethodID(jEnv, jApp, "DebugLog", "(Ljava/lang/String;)V");
-	jReceiveKey = (*jEnv)->GetMethodID(jEnv, jApp, "ReceiveKeyCmd", "()I");
-	jReceivePosKey = (*jEnv)->GetMethodID(jEnv, jApp, "ReceivePosKeyCmd", "(I[I)I");
-	jCreateWindow = (*jEnv)->GetMethodID(jEnv, jApp, "CreateWindow", "(I)I");
-	jClearWindow = (*jEnv)->GetMethodID(jEnv, jApp, "ClearWindow", "(II)V");
-	jDisplayWindow = (*jEnv)->GetMethodID(jEnv, jApp, "DisplayWindow", "(II)V");
-	jDestroyWindow = (*jEnv)->GetMethodID(jEnv, jApp, "DestroyWindow", "(I)V");
-	jPutString = (*jEnv)->GetMethodID(jEnv, jApp, "PutString", "(IILjava/lang/String;II)V");
-	jRawPrint = (*jEnv)->GetMethodID(jEnv, jApp, "RawPrint", "(ILjava/lang/String;)V");
-	jSetCursorPos = (*jEnv)->GetMethodID(jEnv, jApp, "SetCursorPos", "(III)V");
-	jPrintTile = (*jEnv)->GetMethodID(jEnv, jApp, "PrintTile", "(IIIIIII)V");
-	jYNFunction = (*jEnv)->GetMethodID(jEnv, jApp, "YNFunction", "(Ljava/lang/String;[BI)V");
-	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "GetLine", "(Ljava/lang/String;I)Ljava/lang/String;");
-	jStartMenu = (*jEnv)->GetMethodID(jEnv, jApp, "StartMenu", "(I)V");
-	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "AddMenu", "(IIIIIILjava/lang/String;I)V");
-	jEndMenu = (*jEnv)->GetMethodID(jEnv, jApp, "EndMenu", "(ILjava/lang/String;)V");
-	jSelectMenu = (*jEnv)->GetMethodID(jEnv, jApp, "SelectMenu", "(II)[I");
-	jUpdateInventory = (*jEnv)->GetMethodID(jEnv, jApp, "UpdateInventory", "()V");
-	jCliparound = (*jEnv)->GetMethodID(jEnv, jApp, "Cliparound", "(IIII)V");
-	jUpdatePositionbar = (*jEnv)->GetMethodID(jEnv, jApp, "UpdatePositionbar", "([B)V");
-	jBell = (*jEnv)->GetMethodID(jEnv, jApp, "Bell", "()V");
-	jDoPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "DoPrevMessage", "()I");
-	jGetExtCmd = (*jEnv)->GetMethodID(jEnv, jApp, "GetExtCmd", "()I");
-	jDelayOutput = (*jEnv)->GetMethodID(jEnv, jApp, "DelayOutput", "()V");
-	jShowDPad = (*jEnv)->GetMethodID(jEnv, jApp, "AskDirection", "()V");
-	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "ShowPrevMessage", "()V");
-	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "ShowLog", "()V");
+	jDebugLog = (*jEnv)->GetMethodID(jEnv, jApp, "debugLog", "([B)V");
+	jReceiveKey = (*jEnv)->GetMethodID(jEnv, jApp, "receiveKeyCmd", "()I");
+	jReceivePosKey = (*jEnv)->GetMethodID(jEnv, jApp, "receivePosKeyCmd", "(I[I)I");
+	jCreateWindow = (*jEnv)->GetMethodID(jEnv, jApp, "createWindow", "(I)I");
+	jClearWindow = (*jEnv)->GetMethodID(jEnv, jApp, "clearWindow", "(II)V");
+	jDisplayWindow = (*jEnv)->GetMethodID(jEnv, jApp, "displayWindow", "(II)V");
+	jDestroyWindow = (*jEnv)->GetMethodID(jEnv, jApp, "destroyWindow", "(I)V");
+	jPutString = (*jEnv)->GetMethodID(jEnv, jApp, "putString", "(II[BIII)V");
+	jRawPrint = (*jEnv)->GetMethodID(jEnv, jApp, "rawPrint", "(I[B)V");
+	jSetCursorPos = (*jEnv)->GetMethodID(jEnv, jApp, "setCursorPos", "(III)V");
+	jPrintTile = (*jEnv)->GetMethodID(jEnv, jApp, "printTile", "(IIIIIII)V");
+	jYNFunction = (*jEnv)->GetMethodID(jEnv, jApp, "ynFunction", "([B[BI)V");
+	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BI)Ljava/lang/String;");
+	jStartMenu = (*jEnv)->GetMethodID(jEnv, jApp, "startMenu", "(I)V");
+	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "addMenu", "(IIIIII[BI)V");
+	jEndMenu = (*jEnv)->GetMethodID(jEnv, jApp, "endMenu", "(I[B)V");
+	jSelectMenu = (*jEnv)->GetMethodID(jEnv, jApp, "selectMenu", "(II)[I");
+	jCliparound = (*jEnv)->GetMethodID(jEnv, jApp, "cliparound", "(IIII)V");
+	jDelayOutput = (*jEnv)->GetMethodID(jEnv, jApp, "delayOutput", "()V");
+	jShowDPad = (*jEnv)->GetMethodID(jEnv, jApp, "askDirection", "()V");
+	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "showPrevMessage", "()V");
+	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "()V");
+
+
+	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
+			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
+			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
+			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog))
+	{
+		debuglog("baaaaad");
+		return;
+	}
+
 
 	pChars = (*jEnv)->GetStringUTFChars(jEnv, path, 0);
-	chdir(pChars);
+	if(chdir(pChars) != 0)
+		debuglog("chdir failed %d", errno);
 	(*jEnv)->ReleaseStringUTFChars(jEnv, path, pChars);
 
 	params[0] = "nethack";
@@ -163,7 +176,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 
 	if(bWizard)
 	{
-		debuglog("Wizard mode");
+	//	debuglog("Wizard mode");
 		params[nParams++] = "-D";
 		params[nParams++] = "-u";
 		params[nParams++] = "wizard";
@@ -172,7 +185,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	{
 		pChars = (*jEnv)->GetStringUTFChars(jEnv, username, 0);
 
-		debuglog("username: %s", pChars);
+		//debuglog("username: %s", pChars);
 
 		params[nParams++] = "-u";
 		params[nParams++] = (char*)pChars;
@@ -183,17 +196,19 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 }
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_SetAutoPickup(JNIEnv* env, jobject thiz, int bOn, jstring pickupTypes)
+void Java_com_tbd_NetHack_NetHackIO_SetFlags(JNIEnv* env, jobject thiz, int autoPickup, jstring pickupTypes, int autoMenu)
 {
 	int n, i, j, oc_sym;
 	const char* pChars;
 
-	flags.pickup = bOn ? TRUE : FALSE;
+	iflags.automenu = autoMenu ? TRUE : FALSE;
+
+	flags.pickup = autoPickup ? TRUE : FALSE;
 
 	n = (*jEnv)->GetStringUTFLength(jEnv, pickupTypes);
 	pChars = (*jEnv)->GetStringUTFChars(jEnv, pickupTypes, 0);
 
-	debuglog("set auto pickup %s (%s)", bOn ? "ON" : "OFF", bOn ? pChars : "-");
+	//debuglog("set auto pickup %s (%s)", autoPickup ? "ON" : "OFF", autoPickup ? pChars : "-");
 
 	flags.pickup_types[0] = '\0';
 	for(i = 0, j = 0; i < n && j < MAXOCLASSES - 1; i++)
@@ -207,11 +222,10 @@ void Java_com_tbd_NetHack_NetHackIO_SetAutoPickup(JNIEnv* env, jobject thiz, int
 	}
 
 	(*jEnv)->ReleaseStringUTFChars(jEnv, pickupTypes, pChars);
-	destroy_jobject(pickupTypes);
 }
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_SaveNetHackAndExit(JNIEnv* env, jobject thiz)
+boolean SaveAndExit()
 {
 	if(!program_state.gameover && program_state.something_worth_saving)
 	{
@@ -227,7 +241,9 @@ void Java_com_tbd_NetHack_NetHackIO_SaveNetHackAndExit(JNIEnv* env, jobject thiz
 			exit_nhwindows("Be seeing you...");
 			terminate(EXIT_SUCCESS);
 		}
+		return FALSE;
 	}
+	return TRUE;
 }
 
 //____________________________________________________________________________________
@@ -235,6 +251,20 @@ void Java_com_tbd_NetHack_NetHackIO_SaveNetHackState(JNIEnv* env, jobject thiz)
 {
 	if(!program_state.gameover && program_state.something_worth_saving)
 		save_currentstate();
+}
+
+//____________________________________________________________________________________
+void quit_possible()
+{
+	if(quit_if_possible)
+	{
+		quit_if_possible = FALSE;
+		if(!SaveAndExit())
+		{
+			if(and_yn_function("Error saving game. Quit anyway?", ynchars, 'n') == 'y')
+				terminate(EXIT_SUCCESS);
+		}
+	}
 }
 
 //____________________________________________________________________________________
@@ -254,7 +284,7 @@ void debuglog(const char *fmt, ...)
 		strcpy(buf, "(null)");
 	}
 
-	jstring jstr = create_jstring(buf);
+	jbyteArray jstr = create_bytearray(buf);
 	JNICallV(jDebugLog, jstr);
 	destroy_jobject(jstr);
 }
@@ -276,15 +306,15 @@ void and_init_nhwindows(int* argcp, char** argv)
 {
 	debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
-	iflags.runmode = RUN_STEP;
-	flags.askkick = TRUE;
-	iflags.num_pad = 0;
+
 	flags.time = TRUE;
 	flags.toptenwin = TRUE;
+	iflags.runmode = RUN_STEP;
+	iflags.num_pad = 0;
 	iflags.use_color = TRUE;
-
-	//iflags.wc_ascii_map = TRUE;		/* show map using traditional ascii    */
-	//boolean wc_tiled_map;		/* show map using tiles                */
+	flags.showexp = TRUE;
+    iflags.IBMgraphics = TRUE;
+	switch_graphics(IBM_GRAPHICS);
 }
 
 //____________________________________________________________________________________
@@ -304,7 +334,7 @@ void and_player_selection()
 	anything any;
 	menu_item *selected = 0;
 
-	debuglog("and_player_selection()");
+	//debuglog("and_player_selection()");
 
 	/* prevent an unnecessary prompt */
 	rigid_role_checks();
@@ -458,7 +488,8 @@ void and_player_selection()
 //askname()	-- Ask the user for a player name.
 void and_askname()
 {
-	//and_n_getline("Who are you?", plname, PL_NSIZ);
+	//debuglog("ask name");
+	and_n_getline("Who are you?", plname, PL_NSIZ);
 }
 
 //____________________________________________________________________________________
@@ -475,7 +506,7 @@ void and_get_nh_event()
 //		   if possible.
 void and_exit_nhwindows(const char *str)
 {
-	debuglog("exit_nhwindows");
+	//debuglog("exit_nhwindows");
 	iflags.window_inited = FALSE;
 }
 
@@ -506,6 +537,7 @@ winid and_create_nhwindow(int type)
 //		-- Clear the given window, when appropriate.
 void and_clear_nhwindow(winid wid)
 {
+	//debuglog("and_clear_nhwindow(%d)", wid);
 	JNICallV(jClearWindow, wid, Is_rogue_level(&u.uz));
 }
 
@@ -522,6 +554,8 @@ void and_clear_nhwindow(winid wid)
 void and_display_nhwindow(winid wid, BOOLEAN_P blocking)
 {
 	//debuglog("display_nhwindow(%d)", wid);
+	if(wid != WIN_MESSAGE && wid != WIN_STATUS && wid != WIN_MAP)
+		blocking = TRUE;
 	JNICallV(jDisplayWindow, wid, blocking);
 }
 
@@ -574,18 +608,18 @@ void and_curs(winid wid, int x, int y)
 //		   are done consecutively the user will see the first and
 //		   then the second.  In the tty port, pline() achieves this
 //		   by calling more() or displaying both on the same line.
-void and_putstr(winid wid, int attr, const char *str)
-{
-	jstring jstr = create_jstring(str);
-	// HACK. send some additional info here
-	JNICallV(jPutString, wid, attr, jstr, u.uhp, u.uhpmax);
-	destroy_jobject(jstr);
-}
-
 //____________________________________________________________________________________
 void and_putstr_ex(winid wid, int attr, const char *str, int append)
 {
-	and_putstr(wid, attr, str);
+	jbyteArray jstr = create_bytearray(str);
+	// HACK. send some additional info here
+	JNICallV(jPutString, wid, attr, jstr, append, u.uhp, u.uhpmax);
+	destroy_jobject(jstr);
+}
+
+void and_putstr(winid wid, int attr, const char *str)
+{
+	and_putstr_ex(wid, attr, str, 0);
 }
 
 //____________________________________________________________________________________
@@ -675,7 +709,7 @@ void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, 
 
 	int id = ident ? ident->a_int : 0;
 
-	jstring jstr = create_jstring(str);
+	jbyteArray jstr = create_bytearray(str);
 	JNICallV(jAddMenu, wid, tile, id, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected);
 	destroy_jobject(jstr);
 }
@@ -690,11 +724,11 @@ void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, 
 //		** it ever did).  That should be select_menu's job.  -dean
 void and_end_menu(winid wid, const char *prompt)
 {
-	jstring jstr;
+	jbyteArray jstr;
 	if(prompt)
-		jstr = create_jstring(prompt);
+		jstr = create_bytearray(prompt);
 	else
-		jstr = create_jstring("");
+		jstr = create_bytearray("");
 	JNICallV(jEndMenu, wid, jstr);
 	destroy_jobject(jstr);
 }
@@ -729,7 +763,7 @@ int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
 	jintArray a;
 	jint* p;
 
-	//	debuglog("and_select_menu");
+	//debuglog("and_select_menu");
 
 	a = (jintArray)JNICallO(jSelectMenu, wid, how);
 
@@ -768,7 +802,7 @@ int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
 //		   leave the window up, otherwise empty.
 void and_update_inventory()
 {
-	//	debuglog("and_update_inventory");
+//	debuglog("and_update_inventory");
 }
 
 //____________________________________________________________________________________
@@ -777,7 +811,7 @@ void and_update_inventory()
 //		   for the moment
 void and_mark_synch()
 {
-	//	debuglog("and_mark_synch");
+//	debuglog("and_mark_synch");
 }
 
 //____________________________________________________________________________________
@@ -787,7 +821,7 @@ void and_mark_synch()
 //		   display is OK when return from wait_synch().
 void and_wait_synch()
 {
-	//	debuglog("and_wait_synch");
+//	debuglog("and_wait_synch");
 }
 
 //____________________________________________________________________________________
@@ -797,7 +831,7 @@ void and_wait_synch()
 //		-- This function is only defined if CLIPPING is defined.
 void and_cliparound(int x, int y)
 {
-	//	debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
+//	debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
 	JNICallV(jCliparound, x, y, u.ux, u.uy);
 }
 
@@ -817,7 +851,7 @@ void and_cliparound(int x, int y)
 //		   location. A zero char marks the end of the list.
 void and_update_positionbar(char *features)
 {
-	//	debuglog("and_update_positionbar");
+	//debuglog("and_update_positionbar");
 }
 
 #endif
@@ -872,7 +906,7 @@ int nhcolor_to_RGB(int c)
 
 void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph)
 {
-	//	debuglog("and_print_glyph wid=%d %dx%d", wid, x, y);
+//	debuglog("and_print_glyph wid=%d %dx%d", wid, x, y);
 	int tile = glyph2tile[glyph];
 	int ch;
 	int col;
@@ -891,8 +925,7 @@ void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph)
 // 		   updating status for micros (i.e, "saving").
 void and_raw_print(const char* str)
 {
-	debuglog(str);
-	jstring jstr = create_jstring(str);
+	jbyteArray jstr = create_bytearray(str);
 	JNICallV(jRawPrint, ATR_NONE, jstr);
 	destroy_jobject(jstr);
 }
@@ -902,7 +935,7 @@ void and_raw_print(const char* str)
 // 		-- Like raw_print(), but prints in bold/standout (if possible).
 void and_raw_print_bold(const char* str)
 {
-	jstring jstr = create_jstring(str);
+	jbyteArray jstr = create_bytearray(str);
 	JNICallV(jRawPrint, ATR_BOLD, jstr);
 	destroy_jobject(jstr);
 }
@@ -915,8 +948,16 @@ void and_raw_print_bold(const char* str)
 //                   non meta-zero too (zero with the meta-bit set).
 int and_nhgetch()
 {
-	//	debuglog("and_nhgetch");
-	return JNICallI(jReceiveKey);
+	//debuglog("and_nhgetch");
+	int c = JNICallI(jReceiveKey);
+
+	quit_if_possible = FALSE;
+	if(c == 0x80)
+	{
+		c = '\033';
+		quit_if_possible = TRUE;
+	}
+	return c;
 }
 
 //____________________________________________________________________________________
@@ -943,7 +984,7 @@ void lock_mouse_cursor(boolean bLock)
 
 int and_nh_poskey(int *x, int *y, int *mod)
 {
-	//	debuglog("and_nh_poskey");
+//	debuglog("and_nh_poskey");
 	jintArray a = (*jEnv)->NewIntArray(jEnv, 2);
 	int c = JNICallI(jReceivePosKey, bMouseLock, a);
 	if(!c)
@@ -954,6 +995,12 @@ int and_nh_poskey(int *x, int *y, int *mod)
 		*mod = CLICK_1;
 		(*jEnv)->ReleaseIntArrayElements(jEnv, a, e, 0);
 	}
+	quit_if_possible = FALSE;
+	if(c == 0x80)
+	{
+		c = '\033';
+		quit_if_possible = TRUE;
+	}
 	destroy_jobject(a);
 	return c;
 }
@@ -963,7 +1010,7 @@ int and_nh_poskey(int *x, int *y, int *mod)
 //		   redone, since sounds aren't attributable to windows anyway.]
 void and_nhbell()
 {
-	//	debuglog("and_nhbell");
+//	debuglog("and_nhbell");
 }
 
 //____________________________________________________________________________________
@@ -972,7 +1019,7 @@ void and_nhbell()
 //		-- On the tty-port this scrolls WIN_MESSAGE back one line.
 int and_doprev_message()
 {
-	//	debuglog("and_doprev_message");
+	//debuglog("and_doprev_message");
 	JNICallV(jShowPrevMessage);
 	return 0;
 }
@@ -1023,16 +1070,16 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	}
 	allow_num = choices && index(choices, '#');
 
-	if(choices)
-		debuglog("yn '%s' [%s](%c)", question, choices, def);
-	else
-		debuglog("yn '%s'", question);
+	//if(choices)
+	//	debuglog("yn %s [%s](%c)", question, choices, def);
+	//else
+	//	debuglog("yn %s", question);
 
-	if(choices && nChoices <= 3 && esc < 0 && !allow_num)
+	if(iflags.automenu && choices && nChoices <= 4 && esc < 0 && !allow_num)
 	{
 		int i;
 		// pop up dialog
-		jstring jq = create_jstring(question);
+		jbyteArray jq = create_bytearray(question);
 		jbyteArray jb = (*jEnv)->NewByteArray(jEnv, nChoices);
 		jbyte* pTmp = (*jEnv)->GetByteArrayElements(jEnv, jb, 0);
 		memcpy(pTmp, choices, nChoices);
@@ -1041,14 +1088,6 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		destroy_jobject(jq);
 		destroy_jobject(jb);
 
-		ch = and_nhgetch();
-		return ch;
-	}
-
-	if(choices == sdir || strstr(question, "what direction"))
-	{
-		// directional choice
-		JNICallV(jShowDPad);
 		ch = and_nhgetch();
 		return ch;
 	}
@@ -1063,7 +1102,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 			/* anything beyond <esc> is hidden */
 			choicebuf[esc] = '\0';
 		}
-		sprintf(message, "%s [%s] ", question, choicebuf);
+		sprintf(message, "%s [%s]", question, choicebuf);
 		if(def)
 			sprintf(eos(message), "(%c) ", def);
 	}
@@ -1073,7 +1112,46 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		strcat(message, " ");
 	}
 
-	and_clear_nhwindow(WIN_MESSAGE);
+	if(choices == sdir || strstr(question, "what direction"))
+	{
+		// directional choice
+		and_clear_nhwindow(WIN_MESSAGE);
+		and_putstr(WIN_MESSAGE, ATR_BOLD, message);
+		if(iflags.automenu)
+		{
+			JNICallV(jShowDPad);
+			ch = and_nhgetch();
+			return ch;
+		}
+		else
+		{
+			int x = u.ux, y = u.uy, mod = 0;
+			int ch = and_nh_poskey(&x, &y, &mod);
+			if(!ch)
+			{
+				x -= u.ux;
+				y -= u.uy;
+		        if(x > 2*abs(y))
+		            x = 1, y = 0;
+		        else if(y > 2*abs(x))
+		            x = 0, y = 1;
+		        else if(x < -2*abs(y))
+		            x = -1, y = 0;
+		        else if(y < -2*abs(x))
+		            x = 0, y = -1;
+		        else
+		            x = sgn(x), y = sgn(y);
+
+		        if(x == 0 && y == 0)	/* map click on player to "rest" command */
+		        	ch = '.';
+		        else
+		        	ch = xytod(x, y);
+			}
+			return ch;
+		}
+	}
+
+	// and_clear_nhwindow(WIN_MESSAGE);
 	and_putstr(WIN_MESSAGE, ATR_BOLD, message);
 
 	ch = 0;
@@ -1141,7 +1219,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 						value = -1; /* abort */
 					z = '\n'; /* break */
 				}
-				else if(z == '\b')
+				else if(z == 0x7f)
 				{
 					if(n_len <= 1)
 					{
@@ -1151,7 +1229,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 					else
 					{
 						value /= 10;
-						and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -1);
+						and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -2);
 						n_len--;
 					}
 				}
@@ -1169,7 +1247,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 				ch = 'n'; /* 0 => "no" */
 			else
 			{ /* remove number from top line, then try again */
-				and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -n_len);
+				and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -n_len-1);
 				n_len = 0;
 				ch = (char)0;
 			}
@@ -1178,11 +1256,18 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	while(!ch);
 
 	/* display selection in the message window */
-	if(isprint(ch) && ch != '#')
+	if(choices)
 	{
-		res_ch[0] = ch;
-		res_ch[1] = '\x0';
-		and_putstr_ex(WIN_MESSAGE, ATR_BOLD, res_ch, 1);
+		if(isprint(ch) && ch != '#')
+		{
+			res_ch[0] = ch;
+			res_ch[1] = '\x0';
+			and_putstr_ex(WIN_MESSAGE, ATR_BOLD, res_ch, 1);
+		}
+	}
+	else
+	{
+		and_clear_nhwindow(WIN_MESSAGE);
 	}
 
 	return ch;
@@ -1193,9 +1278,10 @@ void and_n_getline(const char* question, char* buf, int nMax)
 {
 	int i, n;
 	const jchar* pChars;
-	jstring jstr, jq;
+	jstring jstr;
+	jbyteArray jq;
 
-	jq = create_jstring(question);
+	jq = create_bytearray(question);
 	jstr = (jstring)JNICallO(jGetLine, jq, nMax);
 	destroy_jobject(jq);
 
@@ -1241,7 +1327,7 @@ void and_n_getline(const char* question, char* buf, int nMax)
 //		   the nul character.
 void and_getlin(const char *question, char *input)
 {
-	//	debuglog("and_getlin '%s'", question);
+	//debuglog("and_getlin '%s'", question);
 	and_n_getline(question, input, BUFSZ);
 }
 
@@ -1250,9 +1336,9 @@ void and_getlin(const char *question, char *input)
 //		-- Get an extended command in a window-port specific way.
 //		   An index into extcmdlist[] is returned on a successful
 //		   selection, -1 otherwise.
-int and_get_ext_cmd()
+int do_ext_cmd_menu()
 {
-	debuglog("and_get_ext_cmd");
+	//debuglog("and_get_ext_cmd");
 
 	winid wid;
 	int i, count, what;
@@ -1285,12 +1371,121 @@ int and_get_ext_cmd()
 	return (what);
 }
 
+const char* complete_ext_cmd(const char* base)
+{
+	int i, icmd = -1;
+
+	for(i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
+	{
+		if(!strncmpi(base, extcmdlist[i].ef_txt, strlen(base)))
+		{
+			if(icmd == -1)	/* no matches yet */
+				icmd = i;
+			else			/* more than 1 match */
+			    return 0;
+		}
+	}
+
+	if(icmd >= 0)
+		return extcmdlist[icmd].ef_txt;
+
+	return 0;
+}
+
+void get_ext_cmd_auto(const char *query, register char *bufp)
+{
+	register int n = 0, nl = 0;
+	const char* complete = 0;
+	register int c;
+	const int maxc = COLNO >= BUFSZ ? BUFSZ-1 : COLNO;
+
+	pline("%s ", query);
+	bufp[n] = 0;
+	for(;;)
+	{
+		c = Getchar();
+		if(c == EOF || c == '\n')
+		{
+			bufp[n] = 0;
+			break;
+		}
+		if(c == '\033')
+		{
+			complete = 0;
+			bufp[0] = c;
+			bufp[1] = 0;
+			break;
+		}
+		if(c == 0x7f)
+		{
+			if(n > 0)
+				bufp[--n] = 0;
+		}
+		else if(' ' <= (unsigned char) c && n < maxc)
+		{
+			bufp[n] = c;
+			bufp[++n] = 0;
+		}
+		complete = complete_ext_cmd(bufp);
+		and_putstr_ex(WIN_MESSAGE, ATR_NONE, bufp, -nl-1);
+		if(complete)
+			and_putstr_ex(WIN_MESSAGE, ATR_INVERSE, complete + n, 1);
+		nl = complete ? strlen(complete) : n;
+	}
+	if(complete)
+		strcpy(bufp, complete);
+	clear_nhwindow(WIN_MESSAGE);	/* clean up after ourselves */
+}
+
+
+/*
+ * Read in an extended command, doing command line completion.  We
+ * stop when we have found enough characters to make a unique command.
+ */
+int do_ext_cmd_text()
+{
+	int i;
+	char buf[BUFSZ];
+
+	get_ext_cmd_auto("#", buf);
+
+	(void) mungspaces(buf);
+	if (buf[0] == 0 || buf[0] == '\033') return -1;
+
+	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
+		if (!strcmpi(buf, extcmdlist[i].ef_txt)) break;
+
+#ifdef REDO
+	if (!in_doagain) {
+	    int j;
+	    for (j = 0; buf[j]; j++)
+		savech(buf[j]);
+	    savech('\n');
+	}
+#endif
+
+	if (extcmdlist[i].ef_txt == (char *)0) {
+		pline("%s: unknown extended command.", buf);
+		i = -1;
+	}
+
+	return i;
+}
+
+
+int and_get_ext_cmd()
+{
+	if(iflags.automenu)
+		return do_ext_cmd_menu();
+	return do_ext_cmd_text();
+}
+
 //____________________________________________________________________________________
 //number_pad(state)
 //		-- Initialize the number pad to the given state.
 void and_number_pad(int state)
 {
-	//	debuglog("and_number_pad(%d)", state);
+//	debuglog("and_number_pad(%d)", state);
 }
 
 //____________________________________________________________________________________
@@ -1299,7 +1494,7 @@ void and_number_pad(int state)
 //		   by a nap(50ms), but allows asynchronous operation.
 void and_delay_output()
 {
-	//	debuglog("and_delay_output()");
+//	debuglog("and_delay_output()");
 	JNICallV(jDelayOutput);
 }
 
@@ -1307,13 +1502,13 @@ void and_delay_output()
 #ifdef CHANGE_COLOR
 void and_change_color(int a,long b,int c)
 {
-	//	debuglog("and_change_color(%d, %d, %d)", a, b, c);
+//	debuglog("and_change_color(%d, %d, %d)", a, b, c);
 }
 
 //____________________________________________________________________________________
 char* and_get_color_string()
 {
-	//	debuglog("and_get_color_string");
+//	debuglog("and_get_color_string");
 	return "";
 }
 #endif
@@ -1326,7 +1521,7 @@ char* and_get_color_string()
 //		   just declare an empty function.
 void and_start_screen()
 {
-	//	debuglog("and_start_screen");
+//	debuglog("and_start_screen");
 }
 
 //____________________________________________________________________________________
@@ -1334,7 +1529,7 @@ void and_start_screen()
 //		   completeness.  The complement of start_screen().
 void and_end_screen()
 {
-	//	debuglog("and_end_screen");
+//	debuglog("and_end_screen");
 }
 
 //____________________________________________________________________________________
@@ -1348,7 +1543,7 @@ void and_end_screen()
 //		   corresponding bit in the wincap mask.
 void and_preference_update(const char *pref)
 {
-	//	debuglog("and_preference_update %s", pref);
+//	debuglog("and_preference_update %s", pref);
 	//genl_preference_update(pref);
 }
 
@@ -1357,4 +1552,3 @@ int doshowlog()
 	JNICallV(jShowLog);
 	return 0;
 }
-

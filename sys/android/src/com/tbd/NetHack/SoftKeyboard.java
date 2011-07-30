@@ -1,191 +1,180 @@
 package com.tbd.NetHack;
 
-import android.content.res.Configuration;
+import java.util.EnumSet;
+
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.KeyboardView.OnKeyboardActionListener;
-import android.view.ViewGroup;
-import android.widget.TableLayout.LayoutParams;
+import android.os.SystemClock;
+import android.view.KeyEvent;
+
+import com.tbd.NetHack.Input.Modifier;
 
 public class SoftKeyboard implements OnKeyboardActionListener
 {
-	private KeyboardView m_inputView;
-	private Keyboard m_symbolsKeyboard;
-	private Keyboard m_qwertyKeyboard;
-	private NetHackIO m_io;
-	private CmdPanel m_cmdPanel;
-	private boolean m_bCtrl;
+	private static final int KEYCODE_CTRL = -7;
+	private static final int KEYCODE_ESC = -8;
+	private static final int KEYCODE_SYMBOLS = -9;
+	private static final int KEYCODE_META = -10;
+	private static final int KEYCODE_ABC = -11;
 
-	public SoftKeyboard(NetHackIO io, CmdPanel cmdPanel, KeyboardView keyboardView)
+	private NetHack mContext;
+	private KeyboardView mInputView;
+	private Keyboard mSymbolsKeyboard;
+	private Keyboard mQwertyKeyboard;
+	private Keyboard mMetaKeyboard;
+	private Keyboard mCtrlKeyboard;
+	private CmdPanel mCmdPanel;
+	private NH_State mState;
+	private boolean mIsShifted;
+	
+	// ____________________________________________________________________________________
+	public SoftKeyboard(NetHack context, NH_State state, CmdPanel cmdPanel, KeyboardView keyboardView)
 	{
-		m_io = io;
-		m_cmdPanel = cmdPanel;
+		mContext = context;
+		
+		mState = state;
+		mCmdPanel = cmdPanel;
 
-		m_qwertyKeyboard = new Keyboard(NetHack.get(), R.xml.qwerty);
-		m_symbolsKeyboard = new Keyboard(NetHack.get(), R.xml.symbols);
+		mQwertyKeyboard = new Keyboard(context, R.xml.qwerty);
+		mMetaKeyboard = new Keyboard(context, R.xml.meta);
+		mCtrlKeyboard = new Keyboard(context, R.xml.ctrl);
+		mSymbolsKeyboard = new Keyboard(context, R.xml.symbols);
 
-		m_inputView = keyboardView;
-		m_inputView.setOnKeyboardActionListener(this);
-		m_inputView.setKeyboard(m_qwertyKeyboard);
+		mInputView = keyboardView;
+		mInputView.setOnKeyboardActionListener(this);
+		mInputView.setKeyboard(mQwertyKeyboard);
 	}
 
+	// ____________________________________________________________________________________
+	public void setMetaKeyboard()
+	{
+		setKeyboard(mMetaKeyboard);
+	}
+	
+	// ____________________________________________________________________________________
+	public void setQwertyKeyboard()
+	{
+		setKeyboard(mQwertyKeyboard);
+	}
+
+	// ____________________________________________________________________________________
+	public void setCtrlKeyboard()
+	{
+		setKeyboard(mCtrlKeyboard);
+	}
+	
+	// ____________________________________________________________________________________
 	public void onPress(int primaryCode)
 	{
-		Log.print(primaryCode);
 	}
 
-	static final int KEYCODE_CTRL = -7;
-	static final int KEYCODE_ESC = -8;
-	static final int KEYCODE_TOGGLE = -9;
-
+	// ____________________________________________________________________________________
 	public void onRelease(int primaryCode)
 	{
-		Log.print(primaryCode);
-		//getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyEventCode));
-		//getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyEventCode));
 	}
 
+	// ____________________________________________________________________________________
 	public void onKey(int primaryCode, int[] keyCodes)
 	{
 		switch(primaryCode)
 		{
+		case KEYCODE_META:
+			setKeyboard(mMetaKeyboard);
+		break;
+
+		case KEYCODE_CTRL:
+			setKeyboard(mCtrlKeyboard);
+		break;
+		
+		case KEYCODE_ABC:
+			setKeyboard(mQwertyKeyboard);
+		break;
+		
+		case KEYCODE_SYMBOLS:
+			setKeyboard(mSymbolsKeyboard);
+		break;
+
 		case Keyboard.KEYCODE_SHIFT:
-			handleShift();
+			mInputView.setKeyboard(mQwertyKeyboard);
+			mIsShifted = !mIsShifted;
+			mInputView.setShifted(mIsShifted);
 		break;
 
 		case Keyboard.KEYCODE_CANCEL:			
 			handleClose();
 		break;
 
-		case KEYCODE_CTRL:
-			handleCtrl();
-		break;
-
 		case KEYCODE_ESC:
-			m_io.SendKeyCmd('\033');
-		break;
-
-		case KEYCODE_TOGGLE:
-			if(m_inputView.getKeyboard() == m_qwertyKeyboard)
-				m_inputView.setKeyboard(m_symbolsKeyboard);
-			else
-				m_inputView.setKeyboard(m_qwertyKeyboard);
+			mState.handleKeyDown('\033', '\033', 111 /*KeyEvent.KEYCODE_ESC*/, Input.modifiers(), 0, true);
 		break;
 
 		case Keyboard.KEYCODE_DELETE:
-			m_io.SendKeyCmd('\007');
+			mState.handleKeyDown((char)0x7f, 0x7f, KeyEvent.KEYCODE_DEL, Input.modifiers(), 0, true);
 		break;
 
 		default:
-			if(m_bCtrl && primaryCode >= 'a' && primaryCode <= 'z')
+			EnumSet<Modifier> mod = Input.modifiers();
+			if(mInputView.getKeyboard() == mQwertyKeyboard && mIsShifted)
 			{
-				handleCtrl();
-				primaryCode = 0x1f & primaryCode;
-			}
-			else if(m_inputView.isShifted())
-			{
-				shiftOff();
+				// shiftOff(); only on shift release if key is pressed while shift is down
+				mod.add(Input.Modifier.Shift);
 				primaryCode = Character.toUpperCase(primaryCode);
 			}
-			m_io.SendKeyCmd((char)primaryCode);
-			//getCurrentInputConnection().commitText(String.valueOf((char)primaryCode), 1);
+			mState.handleKeyDown((char)primaryCode, primaryCode, Input.toKeyCode((char)primaryCode), mod, 0, true);
 		}
 	}
 
-	private void handleCtrl()
+	// ____________________________________________________________________________________
+	private void setKeyboard(Keyboard keyboard)
 	{
-		m_bCtrl = !m_bCtrl;
-		if(m_inputView.getKeyboard() == m_qwertyKeyboard)
+		setShift(keyboard, mIsShifted);
+		mInputView.setKeyboard(keyboard);
+	}
+	
+	// ____________________________________________________________________________________
+	private void setShift(Keyboard keyboard, boolean on)
+	{
+		for(Keyboard.Key k : keyboard.getKeys())
 		{
-			for(Keyboard.Key k : m_qwertyKeyboard.getKeys())
+			if(k.codes[0] == Keyboard.KEYCODE_SHIFT)
 			{
-				int primaryCode = k.codes[0];
-
-				if(primaryCode == KEYCODE_CTRL)
-					k.on = m_bCtrl;
-				else if(primaryCode >= 'a' && primaryCode <= 'z')
-				{
-					k.label = Character.toString((char)primaryCode);
-					if(m_bCtrl)
-						k.label = "^" + k.label;
-				}
+				k.on = on;
+				break;
 			}
-			m_inputView.invalidateAllKeys();
 		}
+	//	mInputView.invalidateAllKeys();
 	}
 
-	private void shiftOff()
-	{
-		m_inputView.setShifted(false);
-		if(m_inputView.getKeyboard() == m_qwertyKeyboard)
-		{
-			for(Keyboard.Key k : m_qwertyKeyboard.getKeys())
-			{
-				if(k.codes[0] == Keyboard.KEYCODE_SHIFT)
-				{
-					k.on = false;
-					break;
-				}
-			}
-			m_inputView.invalidateAllKeys();
-		}
-	}
-
-	private void handleShift()
-	{
-		if(m_inputView.getKeyboard() == m_qwertyKeyboard)
-		{
-			m_inputView.setShifted(!m_inputView.isShifted());
-		}
-	}
-
+	// ____________________________________________________________________________________
 	private void handleClose()
 	{
-		if(m_cmdPanel.IsKeyboardShowing())
-			m_cmdPanel.ToggleKeyboard();
+		mCmdPanel.hideKeyboard();
 	}
 
+	// ____________________________________________________________________________________
 	public void swipeLeft()
 	{
 	}
 
+	// ____________________________________________________________________________________
 	public void swipeDown()
 	{
 		handleClose();
 	}
 
+	// ____________________________________________________________________________________
 	public void swipeRight()
 	{
 	}
 
+	// ____________________________________________________________________________________
 	public void swipeUp()
 	{
 	}
 
+	// ____________________________________________________________________________________
 	public void onText(CharSequence text)
 	{
-	}
-
-	public void onConfigurationChanged(Configuration newConfig)
-	{
-		/*
-		final ViewGroup parent = (ViewGroup)m_inputView.getParent();		
-		Log.print("WTF?? None of this works");
-		m_inputView.post(new Runnable()
-		{
-			public void run()
-			{
-				m_inputView.setWillNotCacheDrawing(true);
-				m_inputView.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT));
-				m_inputView.invalidate();
-				m_inputView.requestLayout();
-				m_inputView.refreshDrawableState();
-				m_inputView.forceLayout();
-				parent.invalidate();
-				parent.requestLayout();
-				parent.refreshDrawableState();
-				parent.forceLayout();
-			}
-		});*/
 	}
 }

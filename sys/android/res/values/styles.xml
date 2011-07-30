@@ -5,6 +5,11 @@
 		<item name="android:textSize">11sp</item>
 		<item name="android:textColor">#ffffffff</item>
     </style>
+    <style name="MonospaceTextL" parent="@android:style/TextAppearance.Medium">
+		<item name="android:typeface">monospace</item>
+		<item name="android:textSize">13sp</item>
+		<item name="android:textColor">#ffffffff</item>
+    </style>
     <style name="DialogText" parent="@android:style/TextAppearance.Medium">
 		<item name="android:typeface">sans</item>
 		<item name="android:textSize">13sp</item>

@@ -1,132 +1,127 @@
 package com.tbd.NetHack;
 
-import android.app.Activity;
-import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
-import android.preference.PreferenceManager;
 
 public class Tileset
 {
-	private OnChangedListener m_changedListener;
-	private Bitmap m_bitmap;
-	private Bitmap m_overlay;
-	private int m_tileW;
-	private int m_tileH;
-	private String m_tilesetName;
+	private Bitmap mBitmap;
+	private Bitmap mOverlay;
+	private int mTileW;
+	private int mTileH;
+	private String mTilesetName;
+	private int mnCols;
 
-	// ____________________________________________________________________________________
-	public interface OnChangedListener
-	{
-		void OnChanged();
-	};
-		
 	// ____________________________________________________________________________________
 	public Tileset()
 	{
-		PreferencesUpdated();
 	}
 	
 	// ____________________________________________________________________________________
-	public void SetOnChangedListener(OnChangedListener listener)
+	public boolean updateTileset(String tilesetName, Resources r)
 	{
-		m_changedListener = listener;
-	}
-	
-	// ____________________________________________________________________________________
-	public void PreferencesUpdated()
-	{
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(NetHack.get());
-		String tilesetName = prefs.getString("tileset", "default_32");
+		if(tilesetName.compareTo("TTY") == 0)
+		{
+			if(mTilesetName == tilesetName)
+				return false;
+			Log.print("Switching to TTY mode");
+			mTilesetName = tilesetName;
+			mBitmap = null;
+			mTileW = 0;
+			mTileH = 0;
+			mnCols = 0;
+			return true;
+		}
 		
-		Log.print("Changing tileset");
-		
-		int id = NetHack.get().getResources().getIdentifier(tilesetName, "drawable", "com.tbd.NetHack");
+		int id = r.getIdentifier(tilesetName, "drawable", "com.tbd.NetHack");
 		if(id == 0)
 		{
 			tilesetName = "default_32";
-			id = NetHack.get().getResources().getIdentifier(tilesetName, "drawable", "com.tbd.NetHack");
+			id = r.getIdentifier(tilesetName, "drawable", "com.tbd.NetHack");
 		}
 				
-		if(m_tilesetName == tilesetName)
-			return;
-		m_tilesetName = tilesetName;
+		if(mTilesetName == tilesetName)
+			return false;
+		Log.print("Changing tileset");
+		mTilesetName = tilesetName;
 		
 		if(id > 0)
 		{
-			BitmapDrawable bmpDrawable = (BitmapDrawable)NetHack.get().getResources().getDrawable(id);
-			m_bitmap = bmpDrawable.getBitmap();
-			bmpDrawable = (BitmapDrawable)NetHack.get().getResources().getDrawable(R.drawable.overlays);
-			m_overlay = bmpDrawable.getBitmap();
+			BitmapDrawable bmpDrawable = (BitmapDrawable)r.getDrawable(id);
+			mBitmap = bmpDrawable.getBitmap();
+			bmpDrawable = (BitmapDrawable)r.getDrawable(R.drawable.overlays);
+			mOverlay = bmpDrawable.getBitmap();
 			if(tilesetName.endsWith("32"))
 			{
-				m_tileW = 32;
-				m_tileH = 32;
+				mTileW = 32;
+				mTileH = 32;
 			}
 			else
 			{
-				m_tileW = 12;
-				m_tileH = 20;
+				mTileW = 12;
+				mTileH = 20;
 			}
 		}
 		else
 		{
-			m_bitmap = null;
-			m_tileW = 0;
-			m_tileH = 0;
+			mBitmap = null;
+			mTileW = 0;
+			mTileH = 0;
 		}
+		
+		if(mBitmap != null)
+			mnCols = mBitmap.getWidth() / mTileW;
 
-		if(m_changedListener != null)
-			m_changedListener.OnChanged();
+		return true;
 	}
 
 	// ____________________________________________________________________________________
-	public int GetTileBitmapOffset(int iTile)
+	public int getTileBitmapOffset(int iTile)
 	{
-		if(m_bitmap == null)
+		if(mBitmap == null)
 			return 0;
 		
-		int nCols = m_bitmap.getWidth() / m_tileW;
-		int iRow = iTile / nCols;
-		int iCol = iTile - iRow * nCols;
+		int iRow = iTile / mnCols;
+		int iCol = iTile - iRow * mnCols;
 
-		int x = iCol * m_tileW;
-		int y = iRow * m_tileH;
+		int x = iCol * mTileW;
+		int y = iRow * mTileH;
 		
 		return (x << 16) | y;
 	}
 	
 	// ____________________________________________________________________________________
-	public Bitmap GetTile(int iTile)
+	public Bitmap getTile(int iTile)
 	{
-		if(m_bitmap == null)
+		if(mBitmap == null)
 			return null;
 		
-		int ofs = GetTileBitmapOffset(iTile);
+		int ofs = getTileBitmapOffset(iTile);
 		
 		int x = ofs >> 16;
 		int y = ofs & 0xffff;		
 		
-		return Bitmap.createBitmap(m_bitmap, x, y, m_tileW, m_tileH);
+		return Bitmap.createBitmap(mBitmap, x, y, mTileW, mTileH);
 	}
 
 	// ____________________________________________________________________________________
-	public int GetTileWidth()
+	public int getTileWidth()
 	{
-		return m_tileW;
+		return mTileW;
 	}
 	
 	// ____________________________________________________________________________________
-	public int GetTileHeight()
+	public int getTileHeight()
 	{
-		return m_tileH;
+		return mTileH;
 	}
 	
 	// ____________________________________________________________________________________
-	public Bitmap GetBitmap()
+	public Bitmap getBitmap()
 	{
-		return m_bitmap;
+		return mBitmap;
 	}
 
 	// ____________________________________________________________________________________
@@ -136,10 +131,16 @@ public class Tileset
 	}
 
 	// ____________________________________________________________________________________
-	public Bitmap GetTileOverlay(short overlay)
+	public Bitmap getTileOverlay(short overlay)
 	{
 		if(overlay == 8)
-			return m_overlay;
+			return mOverlay;
 		return null;
+	}
+
+	// ____________________________________________________________________________________
+	public boolean hasTiles()
+	{
+		return mBitmap != null;
 	}
 }

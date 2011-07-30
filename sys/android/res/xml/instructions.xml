@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android">
+	android:name="instructions"
+	android:title="Instructions"
+	android:summary="How to play">
+	
+	<com.tbd.NetHack.TextViewPreference
+		android:name="instructions"
+		android:title="Instructions"
+		android:summary="How to play"/>
+</PreferenceScreen>

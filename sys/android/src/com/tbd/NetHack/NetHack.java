@@ -16,12 +16,14 @@
 package com.tbd.NetHack;
 
 import java.io.File;
+import java.util.EnumSet;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.res.AssetManager;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
@@ -29,25 +31,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
+
+import com.tbd.NetHack.Input.Modifier;
 
 public class NetHack extends Activity
 {
-
-	private NetHackIO m_io;
-	private Tileset m_tileset;
-	private static NetHack m_instance;
-
-	// ____________________________________________________________________________________
-	public static AssetManager getAssetManager()
-	{
-		return m_instance.getResources().getAssets();
-	}
-
-	// ____________________________________________________________________________________
-	public static NetHack get()
-	{
-		return m_instance;
-	}
+	private static NH_State nhState;
+	private boolean mCtrlDown;
+	private boolean mMetaDown;
 
 	// ____________________________________________________________________________________
 	@Override
@@ -55,40 +47,63 @@ public class NetHack extends Activity
 	{
 		super.onCreate(savedInstanceState);
 
-		m_instance = this;
+		Log.print("onCreate");
 
 		// turn off the window's title bar
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		setDefaultKeyMode(DEFAULT_KEYS_DISABLE);
+		// takeKeyEvents(true);
 
-		new UpdateAssets().execute((Void[])null);
+
+		setContentView(R.layout.mainwindow);
+
+		if(nhState == null)
+		{
+			nhState = new NH_State(this);
+			new UpdateAssets(this).execute((Void[])null);
+		}
+		else
+		{
+			Log.print("restoring state");
+			nhState.setContext(this);
+		}
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public void onConfigurationChanged(Configuration newConfig)
 	{
-		if(m_io != null)
-			m_io.onConfigurationChanged(newConfig);
+		Log.print("onConfigurationChanged");
+		nhState.onConfigurationChanged(newConfig);
 		super.onConfigurationChanged(newConfig);
 	}
 	
 	// ____________________________________________________________________________________
-	public void Start(File path)
+	public void start(File path)
 	{
 		// Create save directory if it doesn't exist
 		File nhSaveDir = new File(path, "save");
 		if(!nhSaveDir.exists())
 			nhSaveDir.mkdir();
 
-		m_tileset = new Tileset();
-
-		m_io = new NetHackIO(m_tileset, path.getAbsolutePath());
+		nhState.startNetHack(path.getAbsolutePath());
+		
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		if(prefs.getBoolean("firsttime", true))
+		{
+			prefs.edit().putBoolean("firsttime", false).commit();
+			Intent prefsActivity = new Intent(getBaseContext(), Instructions.class);
+			startActivity(prefsActivity);
+		}
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	protected void onStart()
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print("onStart");
 		super.onStart();
 	}
@@ -97,6 +112,9 @@ public class NetHack extends Activity
 	@Override
 	protected void onResume()
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print("onResume");
 		super.onResume();
 	}
@@ -105,10 +123,12 @@ public class NetHack extends Activity
 	@Override
 	protected void onPause()
 	{
-		Log.print("onPause. cheat protected");
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		// prevent cheating
-		if(m_io != null)
-			m_io.SaveState();
+		// Log.print("onPause. cheat protected");
+		// nhState.SaveState();
 		super.onPause();
 	}
 
@@ -116,6 +136,9 @@ public class NetHack extends Activity
 	@Override
 	protected void onStop()
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print("onStop");
 		super.onStop();
 	}
@@ -124,14 +147,22 @@ public class NetHack extends Activity
 	@Override
 	protected void onDestroy()
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print("onDestroy");
-		super.onStop();
+		super.onDestroy();
+	//	System.exit(0);
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
+		Log.print("onCreateOptionsMenu");
 		menu.add(0, 1, 0, "Settings");
 
 		return super.onCreateOptionsMenu(menu);
@@ -141,6 +172,9 @@ public class NetHack extends Activity
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item)
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print(String.format("onOptionsItemSelected(item=%d)", item.getItemId()));
 		if(item.getItemId() == 1)
 		{
@@ -156,14 +190,21 @@ public class NetHack extends Activity
 	@Override
 	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		super.onCreateContextMenu(menu, v, menuInfo);
-		m_io.onCreateContextMenu(menu, v, menuInfo);
+		nhState.onCreateContextMenu(menu, v, menuInfo);
 	}
 
+	// ____________________________________________________________________________________
 	@Override
 	public boolean onContextItemSelected(MenuItem item)
 	{
-		m_io.onContextItemSelected(item);
+		mCtrlDown = false;
+		mMetaDown = false;
+
+		nhState.onContextItemSelected(item);
 		return super.onContextItemSelected(item);
 	}
 
@@ -171,11 +212,13 @@ public class NetHack extends Activity
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data)
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print(String.format("onActivityResult(requestCode=%d, resultCode=%d)", requestCode, resultCode));
-		if(requestCode == 42 && m_io != null)
+		if(requestCode == 42)
 		{
-			m_tileset.PreferencesUpdated();
-			m_io.PreferencesUpdated();
+			nhState.preferencesUpdated();
 		}
 		super.onActivityResult(requestCode, resultCode, data);
 	}
@@ -184,41 +227,87 @@ public class NetHack extends Activity
 	@Override
 	protected void onSaveInstanceState(Bundle outState)
 	{
+		mCtrlDown = false;
+		mMetaDown = false;
+
 		Log.print("onSaveInstanceState(Bundle outState)");
 		// m_io.SendKeyCmd('S');
-		// outState.putInt("apan", 42);
+		if(nhState != null)
+			nhState.saveState();
 	};
 
 	// ____________________________________________________________________________________
-	private void SaveAndExit()
+	@Override
+	public boolean dispatchKeyEvent(KeyEvent event)
 	{
-		Log.print("SaveAndExit");
-		m_io.SaveAndExit();
-		//finish();
-		// System.runFinalizersOnExit(true);
-		//System.exit(0);
+		if(event.getAction() == KeyEvent.ACTION_DOWN)
+		{
+			Log.print("dispatchKeyEvent: " + Integer.toString(event.getKeyCode()));
+			if(handleKeyDown(event))
+				return true;
+		}
+		return super.dispatchKeyEvent(event);
 	}
-
+	
 	// ____________________________________________________________________________________
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
 	{
-		if(m_io.HandleKeyDown(keyCode, event))
+		Log.print("onKeyDown: " + Integer.toString(keyCode));
+		return super.onKeyDown(keyCode, event);
+	}
+	
+	// ____________________________________________________________________________________
+	public boolean handleKeyDown(KeyEvent event)
+	{
+		int keyCode = event.getKeyCode();
+		
+		int fixedCode = Input.keyCodeToAction(keyCode, this);
+		
+		if(fixedCode == KeyAction.Control)
+			mCtrlDown = true;
+		else if(fixedCode == KeyAction.Meta)
+			mMetaDown = true;
+		
+		EnumSet<Modifier> modifiers = Input.modifiersFromKeyEvent(event);
+		if(mCtrlDown)
+			modifiers.add(Input.Modifier.Control);
+		else if(mMetaDown)
+			modifiers.add(Input.Modifier.Meta);
+		
+		char ch = (char)event.getUnicodeChar();
+		
+		int nhKey = Input.nhKeyFromKeyCode(fixedCode, ch, modifiers);
+		
+		if(nhState.handleKeyDown(ch, nhKey, fixedCode, modifiers, event.getRepeatCount(), false))
 			return true;
-		if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME)
+
+		if(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
 		{
-			SaveAndExit();
+			// Prevent default system sound from playing
 			return true;
 		}
-		return super.onKeyDown(keyCode, event);
+		return false;//super.onKeyDown(keyCode, event);
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public boolean onKeyUp(int keyCode, KeyEvent event)
 	{
-		if(m_io.HandleKeyUp(keyCode, event))
+		int fixedCode = Input.keyCodeToAction(keyCode, this);
+		
+		if(fixedCode == KeyAction.Control)
+			mCtrlDown = false;
+		else if(fixedCode == KeyAction.Meta)
+			mMetaDown = false;
+
+		if(nhState.handleKeyUp(Input.keyCodeToAction(keyCode, this)))
 			return true;
-		return super.onKeyDown(keyCode, event);
+		if(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+		{
+			// Prevent default system sound from playing
+			return true;
+		}
+		return super.onKeyUp(keyCode, event);
 	}
 }

@@ -24,10 +24,6 @@ struct flag {
 #endif
 	boolean  autodig;       /* MRKR: Automatically dig */
 	boolean  autoquiver;	/* Automatically fill quiver */
-#ifdef ANDROID
-	boolean  autoopen; /* Automatically open doors */
-	boolean  askkick; /* Ask to kick open door if locked */
-#endif
 	boolean  beginner;
 #ifdef MAIL
 	boolean  biff;		/* enable checking for mail */
@@ -283,6 +279,11 @@ struct instance_flags {
 #ifdef WIN32CON
 #define MAX_ALTKEYHANDLER 25
 	char	 altkeyhandler[MAX_ALTKEYHANDLER];
+#endif
+#ifdef ANDROID
+	boolean  automenu; /* Automatically show menues */
+	boolean  autoopen; /* Automatically open doors */
+	boolean  askkick; /* Ask to kick open door if locked */
 #endif
 };
 

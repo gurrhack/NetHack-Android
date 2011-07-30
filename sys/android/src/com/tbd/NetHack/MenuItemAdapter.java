@@ -17,19 +17,19 @@ import com.tbd.NetHack.NHW_Menu.SelectMode;
 
 public class MenuItemAdapter extends ArrayAdapter<MenuItem>
 {
-	private ArrayList<MenuItem> m_items;
-	private Context m_context;
-	Tileset m_tileset;
-	SelectMode m_how;
+	private ArrayList<MenuItem> mItems;
+	private Context mContext;
+	private Tileset mTileset;
+	private SelectMode mHow;
 
 	// ____________________________________________________________________________________
 	public MenuItemAdapter(Activity context, int textViewResourceId, ArrayList<MenuItem> items, Tileset tileset, SelectMode how)
 	{
 		super(context, textViewResourceId, items);
-		m_items = items;
-		m_context = context;
-		m_tileset = tileset;
-		m_how = how;
+		mItems = items;
+		mContext = context;
+		mTileset = tileset;
+		mHow = how;
 	}
 
 	// ____________________________________________________________________________________
@@ -39,13 +39,13 @@ public class MenuItemAdapter extends ArrayAdapter<MenuItem>
 		View v = convertView;
 		if(v == null)
 		{
-			LayoutInflater vi = (LayoutInflater)m_context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			LayoutInflater vi = (LayoutInflater)mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 			v = vi.inflate(R.layout.menu_item, null);
 		}
-		MenuItem item = m_items.get(position);
+		MenuItem item = mItems.get(position);
 		if(item != null)
 		{
-			if(item.IsHeader())
+			if(item.isHeader())
 			{
 				v.setBackgroundColor(Color.WHITE);
 				v.setMinimumHeight(0);
@@ -53,47 +53,49 @@ public class MenuItemAdapter extends ArrayAdapter<MenuItem>
 			else
 			{
 				v.setBackgroundColor(Color.TRANSPARENT);
-				final float density = m_context.getResources().getDisplayMetrics().density;
+				final float density = mContext.getResources().getDisplayMetrics().density;
 				int minH = (int)(35 * density + 0.5f);
 				v.setMinimumHeight(minH);
 			}
 
 			TextView tt = (TextView)v.findViewById(R.id.item_text);
-			tt.setText(item.GetText());
-			tt.setVisibility(View.VISIBLE);
+			tt.setText(item.getText());
 			
 			TextView at = (TextView)v.findViewById(R.id.item_acc);
-			at.setText(item.GetAccText());
+			at.setText(item.getAccText());
 			
 			TextView st = (TextView)v.findViewById(R.id.item_sub);
-			st.setText(item.GetSubText());
-			
-			if(item.HasSubText())
+			st.setText(item.getSubText());
+			if(item.hasSubText())
 				st.setVisibility(View.VISIBLE);
 			else
 				st.setVisibility(View.GONE);
 
+			TextView ic = (TextView)v.findViewById(R.id.item_count);
+			if(item.isSelected() && item.getCount() > 0 && item.getCount() < item.getMaxCount())
+				ic.setText(Integer.toString(item.getCount()));
+			else
+				ic.setText("");
+			
 			ImageView tile = (ImageView)v.findViewById(R.id.item_tile);
-			if(item.HasTile())
+			if(item.hasTile() && mTileset.hasTiles())
 			{
 				tile.setVisibility(View.VISIBLE);
-				tile.setImageDrawable(new TileDrawable(m_tileset, item.GetTile()));
+				tile.setImageDrawable(new TileDrawable(mTileset, item.getTile()));
 				v.findViewById(R.id.item_sub).setVisibility(View.VISIBLE);
 			}
 			else
 			{
-				if(item.IsHeader())
+				if(item.isHeader())
 					tile.setVisibility(View.GONE);
 				else
-				{
 					tile.setVisibility(View.INVISIBLE);
-				}
 			}
 			CheckBox cb = (CheckBox)v.findViewById(R.id.item_check);
-			if(m_how == SelectMode.PickMany && !item.IsHeader())
+			if(mHow == SelectMode.PickMany && !item.isHeader())
 			{
 				cb.setVisibility(View.VISIBLE);
-				cb.setChecked(item.IsSelected());
+				cb.setChecked(item.isSelected());
 			}
 			else
 				cb.setVisibility(View.GONE);

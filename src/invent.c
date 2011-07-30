@@ -957,7 +957,8 @@ register const char *let,*word;
 		    ilet = readchar();
 		else
 #endif
-#ifdef ANDROID /* force menu on ANDROID */
+#ifdef ANDROID /* automenu on ANDROID */
+		if(iflags.automenu) {
 		    ilet = *buf ? '?' : '*';
 			putstr(WIN_MESSAGE, 0, qbuf);
 		    ilet = display_pickinv_q(lets, TRUE, allowcnt ? &cnt : (long *)0, qbuf, allownone);
@@ -966,9 +967,11 @@ register const char *let,*word;
 		    	allowcnt = 2;
 		    }
 		    else cnt = 0;
-#else
-		    ilet = yn_function(qbuf, (char *)0, '\0');
+		}
+		else
 #endif
+		    ilet = yn_function(qbuf, (char *)0, '\0');
+
 		if(ilet == '0') prezero = TRUE;
 		while(digit(ilet) && allowcnt) {
 #ifdef REDO
@@ -1026,13 +1029,13 @@ register const char *let,*word;
 		if(ilet == '?' || ilet == '*') {
 		    char *allowed_choices = (ilet == '?') ? lets : (char *)0;
 		    long ctmp = 0;
-
+		    
 		    if (ilet == '?' && !*lets && *altlets)
 			allowed_choices = altlets;
 		    ilet = display_pickinv(allowed_choices, TRUE,
 					   allowcnt ? &ctmp : (long *)0);
 #ifdef ANDROID
-//		    if(ilet == '*')
+//		    if(iflags.automenu && ilet == '*')
 //			    ilet = display_pickinv(0, TRUE, allowcnt ? &ctmp : (long *)0);
 #endif
 		    if(!ilet) continue;
@@ -1764,7 +1767,9 @@ boolean allownone;
 	/* oxymoron? temporarily assign permanent inventory letters */
 	if (!flags.invlet_constant) reassign();
 
-#ifndef ANDROID /* always show menu on ANDROID. could add option for this */
+#ifdef ANDROID /* automenu on ANDROID */
+	if(!iflags.automenu) {
+#endif
 	if (lets && strlen(lets) == 1) {
 	    /* when only one item of interest, use pline instead of menus;
 	       we actually use a fake message-line menu in order to allow
@@ -1780,6 +1785,8 @@ boolean allownone;
 		}
 	    }
 	    return ret;
+	}
+#ifdef ANDROID
 	}
 #endif
 
@@ -1814,8 +1821,7 @@ nextclass:
 #endif
 	}
 #ifdef ANDROID
-	if(lets) {
-		debuglog("lets: %s", lets);
+	if(iflags.automenu && lets) {
 		any.a_void = 0;		/* zero */
 		add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Special", MENU_UNSELECTED);
 		if(allownone) {

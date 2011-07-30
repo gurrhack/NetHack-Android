@@ -99,6 +99,10 @@ extern int NDECL(dozap); /**/
 extern int NDECL(doorganize); /**/
 #endif /* DUMB */
 
+#ifdef ANDROID
+extern void NDECL(quit_possible);
+#endif
+
 #ifdef OVL1
 static int NDECL((*timed_occ_fn));
 #endif /* OVL1 */
@@ -1502,7 +1506,7 @@ struct ext_func_tab extcmdlist[] = {
 		doextversion, TRUE},
 	{"wipe", "wipe off your face", dowipe, FALSE},
 # ifdef ANDROID
-	{"Show log", "open log file in a test window", doshowlog, TRUE},
+	{"log", "show message log", doshowlog, TRUE},
 # endif
 	{"?", "get this list of extended commands", doextlist, TRUE},
 #if defined(WIZARD)
@@ -1816,6 +1820,9 @@ register char *cmd;
 		cmd = parse();
 	}
 	if (*cmd == '\033') {
+#ifdef ANDROID
+		quit_possible();
+#endif
 		flags.move = FALSE;
 		return;
 	}

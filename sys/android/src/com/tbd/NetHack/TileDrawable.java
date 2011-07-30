@@ -8,46 +8,46 @@ import android.graphics.drawable.Drawable;
 
 class TileDrawable extends Drawable
 {
-	private Tileset m_tileset;
-	private int m_iTile;
+	private Tileset mTileset;
+	private int mTile;
 
 	// ____________________________________________________________________________________
 	public TileDrawable(Tileset tileset, int iTile)
 	{
-		m_tileset = tileset;
-		m_iTile = iTile;
+		mTileset = tileset;
+		mTile = iTile;
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public int getIntrinsicWidth()
 	{
-		return m_tileset.GetTileWidth();
+		return mTileset.getTileWidth();
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public int getIntrinsicHeight()
 	{
-		return m_tileset.GetTileHeight();
+		return mTileset.getTileHeight();
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	public void draw(Canvas canvas)
 	{
-		int ofs = m_tileset.GetTileBitmapOffset(m_iTile);
+		int ofs = mTileset.getTileBitmapOffset(mTile);
 
 		Rect src = new Rect();
 		src.left = (ofs >> 16) & 0xffff;
 		src.top = ofs & 0xffff;
-		src.right = src.left + m_tileset.GetTileWidth();
-		src.bottom = src.top + m_tileset.GetTileHeight();
+		src.right = src.left + mTileset.getTileWidth();
+		src.bottom = src.top + mTileset.getTileHeight();
 
 		// Rect dst = new Rect(0, 0, src.width(), src.height());
 
 		// ?android:attr/listPreferredItemHeight
-		canvas.drawBitmap(m_tileset.GetBitmap(), src, getBounds(), null);
+		canvas.drawBitmap(mTileset.getBitmap(), src, getBounds(), null);
 	}
 
 	// ____________________________________________________________________________________

@@ -56,8 +56,10 @@ int NetHackMain(int argc, char** argv)
 	(void)umask(0777 & ~FCMASK);
 
 	// hack
+	// remove dangling locks
 	remove_lock_file(RECORD);
 	remove_lock_file(HLOCK);
+	// make sure RECORD exists
 	fp = fopen_datafile(RECORD, "a", SCOREPREFIX);
 	fclose(fp);
 
@@ -72,58 +74,32 @@ int NetHackMain(int argc, char** argv)
 	 */
 	u.uhp = 1; /* prevent RIP on early quits */
 
-	debuglog("process_options");
 	process_options(argc, argv); /* command line options */
 
 #ifdef DEF_PAGER
-	debuglog("DEF_PAGER");
 	if(!(catmore = nh_getenv("HACKPAGER")) && !(catmore = nh_getenv("PAGER")))
 	catmore = DEF_PAGER;
 #endif
 
 #ifdef MAIL
-	debuglog("getmailstatus();");
 	getmailstatus();
 #endif
 
 #ifdef WIZARD
 	if (wizard)
-	Strcpy(plname, "wizard");
-	else
+		Strcpy(plname, "wizard");
 #endif
-	// if(!*plname || !strncmp(plname, "player", 4) || !strncmp(plname, "games", 4))
-	{
-		askname();
-	}
-	//	else if(exact_username)
-	{
-		/* guard against user names with hyphens in them */
-		//		int len = strlen(plname);
-		/* append the current role, if any, so that last dash is ours */
-		//		if (++len < sizeof plname)
-		//			(void)strncat(strcat(plname, "-"),
-		//				      pl_character, sizeof plname - len - 1);
-	}
+
 	plnamesuffix(); /* strip suffix from name; calls askname() */
-	/* again if suffix was whole name */
-	/* accepts any suffix */
+					/* again if suffix was whole name */
+					/* accepts any suffix */
 #ifdef WIZARD
 	if(wizard)
-	{
-		Sprintf(lock, "%d%s", (int)getuid(), plname);
 		debuglog("i'm the wiz");
-		getlock();
-	}
-	else
 #endif
-	{
-		debuglog("not wiz");
-		(void)signal(SIGQUIT, SIG_IGN);
-		(void)signal(SIGINT, SIG_IGN);
-		if(!locknum)
-			Sprintf(lock, "%d%s", (int)getuid(), plname);
-		getlock();
-	}
+
+	Sprintf(lock, "%d%s", (int)getuid(), plname);
+	getlock();
 
 	/* Set up level 0 file to keep the game state.
 	 */
@@ -156,10 +132,8 @@ int NetHackMain(int argc, char** argv)
 	 *  Initialize the vision system.  This must be before mklev() on a
 	 *  new game or before a level restore on a saved game.
 	 */
-	debuglog("vision_init();");
 	vision_init();
 
-	debuglog("display_gamewindows();");
 	display_gamewindows();
 
 	if((fd = restore_saved_game()) >= 0)
@@ -172,7 +146,6 @@ int NetHackMain(int argc, char** argv)
 #endif
 		const char *fq_save = fqname(SAVEF, SAVEPREFIX, 1);
 
-		(void)chmod(fq_save, 0); /* disallow parallel restores */
 #ifdef NEWS
 		if(iflags.news)
 		{
@@ -199,7 +172,6 @@ int NetHackMain(int argc, char** argv)
 			}
 			else
 			{
-				(void)chmod(fq_save, FCMASK); /* back to readable */
 				compress(fq_save);
 			}
 		}

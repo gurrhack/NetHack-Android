@@ -18,25 +18,28 @@ import android.os.Environment;
 
 public class UpdateAssets extends AsyncTask<Void, Void, Void>
 {
-	private AssetManager m_am;
-	private SharedPreferences m_prefs;
+	private AssetManager mAM;
+	private SharedPreferences mPrefs;
 	//private ProgressDialog m_initDialog;
-	private boolean m_bInitiating;
-	private ProgressDialog m_progress;
-	private File m_dstPath;
-	private String m_error;
-	private long m_requiredSpace;
-	private long m_nTotalRead;
+	private boolean mIsInitiating;
+	private ProgressDialog mProgress;
+	private File mDstPath;
+	private String mError;
+	private boolean mWipeUserdata;
+	private long mRequiredSpace;
+	private long mTotalRead;
+	private NetHack mNetHack;
 
 	// ____________________________________________________________________________________
-	public UpdateAssets()
+	public UpdateAssets(NetHack nethack)
 	{
-		m_prefs = NetHack.get().getPreferences(Activity.MODE_PRIVATE);
-		m_am = NetHack.get().getResources().getAssets();
-		//m_initDialog = ProgressDialog.show(NetHack.get(), "", "Initiating. Please wait...", true);
-		m_bInitiating = true;
-		m_nTotalRead = 0;
-		m_requiredSpace = 0;
+		mNetHack = nethack;
+		mPrefs = mNetHack.getPreferences(Activity.MODE_PRIVATE);
+		mAM = mNetHack.getResources().getAssets();
+		//m_initDialog = ProgressDialog.show(m_nethack, "", "Initiating. Please wait...", true);
+		mIsInitiating = true;
+		mTotalRead = 0;
+		mRequiredSpace = 0;
 	}
 	
 	// ____________________________________________________________________________________
@@ -45,16 +48,16 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	{
 		//if(m_initDialog != null)
 		//	m_initDialog.dismiss();
-		if(m_progress != null)
-			m_progress.dismiss();
-		if(m_dstPath == null)
+		if(mProgress != null)
+			mProgress.dismiss();
+		if(mDstPath == null)
 		{
-			ShowError();
+			showError();
 		}
 		else
 		{
-			Log.print("Starting on: " + m_dstPath.getAbsolutePath());			
-			NetHack.get().Start(m_dstPath);
+			Log.print("Starting on: " + mDstPath.getAbsolutePath());			
+			mNetHack.start(mDstPath);
 		}
 	}
 
@@ -62,7 +65,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	@Override
 	protected Void doInBackground(Void... params)
 	{
-		m_dstPath = Load();
+		mDstPath = load();
 		return null;
 	}
 
@@ -70,36 +73,41 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	@Override
     protected void onProgressUpdate(Void... progress)
 	{
-		if(m_nTotalRead > 0 && m_bInitiating)// m_initDialog != null)
+		if(mTotalRead > 0 && mIsInitiating)// m_initDialog != null)
 		{
 			//m_initDialog.dismiss();
 			//m_initDialog = null;
-			m_bInitiating = false;
+			mIsInitiating = false;
 			
-			m_progress = new ProgressDialog(NetHack.get());
-			m_progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-			m_progress.setMax((int)m_requiredSpace);
-			m_progress.setMessage("Preparing content for first time use...");
-			m_progress.setCancelable(false);
-			m_progress.show();
+			mProgress = new ProgressDialog(mNetHack);
+			mProgress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+			mProgress.setMax((int)mRequiredSpace);
+			mProgress.setMessage("Preparing content for first time use...");
+			mProgress.setCancelable(false);
+			mProgress.show();
 		}
-		m_progress.setProgress((int)m_nTotalRead);
+		mProgress.setProgress((int)mTotalRead);
     }
 	
 	// ____________________________________________________________________________________
-	private File Load()
+	private File load()
 	{
 		try
 		{
-			File dstPath = new File(m_prefs.getString("datadir", ""));
-			if(!IsUpToDate(dstPath))
+			File dstPath = new File(mPrefs.getString("datadir", ""));
+			if(!isUpToDate(dstPath))
 			{
-				dstPath = FindDataPath();
+				dstPath = findDataPath();
 	
+				if(mWipeUserdata)
+				{
+					deleteDirContent(dstPath);					
+				}
+				
 				if(dstPath == null)
-					m_error = String.format("Not enough space. %.2fMb required", (float)(m_requiredSpace)/(1024.f*1024.f));
+					mError = String.format("Not enough space. %.2fMb required", (float)(mRequiredSpace)/(1024.f*1024.f));
 				else
-					UpdateFiles(dstPath);
+					updateFiles(dstPath);
 			}
 			
 			if(dstPath == null)
@@ -116,20 +124,20 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 		catch(IOException e)
 		{
 			e.printStackTrace();
-			m_error = "Unkown error while preparing content";
+			mError = "Unkown error while preparing content";
 			return null;
 		}
 	}
 
 	// ____________________________________________________________________________________
-	private void ShowError()
+	private void showError()
 	{
-		AlertDialog.Builder builder = new AlertDialog.Builder(NetHack.get());
-		builder.setMessage(m_error).setPositiveButton("Ok", new DialogInterface.OnClickListener()
+		AlertDialog.Builder builder = new AlertDialog.Builder(mNetHack);
+		builder.setMessage(mError).setPositiveButton("Ok", new DialogInterface.OnClickListener()
 		{
 			public void onClick(DialogInterface dialog, int id)
 			{
-				NetHack.get().finish();
+				mNetHack.finish();
 			}
 		});
 		AlertDialog alert = builder.create();
@@ -137,26 +145,36 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	}
 
 	// ____________________________________________________________________________________
-	private boolean IsUpToDate(File dstPath) throws IOException
+	private boolean isUpToDate(File dstPath) throws IOException
 	{
 		if(!dstPath.exists() || !dstPath.isDirectory())
+		{
+			Log.print("Update required. '" + dstPath + "' doesn't exist");
 			return false;
+		}
 
-		long verDat = m_prefs.getLong("verDat", 0);
-		long srcVer = m_prefs.getLong("srcVer", 0);
+		long verDat = mPrefs.getLong("verDat", 0);
+		long srcVer = mPrefs.getLong("srcVer", 0);
 
-		Scanner s = new Scanner(m_am.open("ver"));
+		Scanner s = new Scanner(mAM.open("ver"));
 		long curVer = s.nextLong();
 
 		if(verDat == 0 || srcVer != curVer)
+		{
+			Log.print("Update required. old version");
+			mWipeUserdata = true;
 			return false;
+		}
 
-		String[] files = m_am.list("nethackdir");
+		String[] files = mAM.list("nethackdir");
 		for(String file : files)
 		{
 			File dst = new File(dstPath, file);
 			if(!dst.exists())
+			{
+				Log.print("Update required. '" + file + "' doesn't exist");
 				return false;
+			}
 			
 			if(dst.lastModified() > verDat)
 			{
@@ -169,20 +187,20 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	}
 
 	// ____________________________________________________________________________________
-	private void UpdateFiles(File dstPath) throws IOException
+	private void updateFiles(File dstPath) throws IOException
 	{
 		Log.print("Updating files...");
 		if(!dstPath.exists())
 			dstPath.mkdirs();
 
 		byte[] buf = new byte[10240];
-		String[] files = m_am.list("nethackdir");
+		String[] files = mAM.list("nethackdir");
 
 		for(String file : files)
 		{
 			File dstFile = new File(dstPath, file);
 
-			InputStream is = m_am.open("nethackdir/" + file);
+			InputStream is = mAM.open("nethackdir/" + file);
 			OutputStream os = new FileOutputStream(dstFile, false);
 
 			while(true)
@@ -192,7 +210,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 					os.write(buf, 0, nRead);
 				else
 					break;
-				m_nTotalRead += nRead;
+				mTotalRead += nRead;
 				publishProgress((Void[])null);
 			}
 
@@ -200,9 +218,9 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 		}
 
 		// update version and date
-		SharedPreferences.Editor edit = m_prefs.edit();
+		SharedPreferences.Editor edit = mPrefs.edit();
 
-		Scanner s = new Scanner(m_am.open("ver"));
+		Scanner s = new Scanner(mAM.open("ver"));
 		edit.putLong("srcVer", s.nextLong());
 
 		// add a few seconds just in case
@@ -215,10 +233,10 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	}
 
 	// ____________________________________________________________________________________
-	private File FindDataPath() throws IOException
+	private File findDataPath() throws IOException
 	{
-		File external = GetExternalDataPath();
-		File internal = GetInternalDataPath();
+		File external = getExternalDataPath();
+		File internal = getInternalDataPath();
 
 		// File.getFreeSpace is not supported in API level 8. Assume there's enough
 		// available, and use sdcard if it's mounted
@@ -227,7 +245,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 //		DeleteDirContent(external);
 //		DeleteDirContent(internal);
 
-		GetRequiredSpace();
+		getRequiredSpace();
 
 		// prefer external
 //		if(external.getFreeSpace() > m_requiredSpace)
@@ -248,7 +266,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	}
 
 	// ____________________________________________________________________________________
-	private File GetExternalDataPath()
+	private File getExternalDataPath()
 	{
 		File dataDir = null;
 		String state = Environment.getExternalStorageState();
@@ -258,33 +276,33 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	}
 
 	// ____________________________________________________________________________________
-	private File GetInternalDataPath()
+	private File getInternalDataPath()
 	{
-		return NetHack.get().getFilesDir();
+		return mNetHack.getFilesDir();
 	}
 
 	// ____________________________________________________________________________________
-	private void GetRequiredSpace() throws IOException
+	private void getRequiredSpace() throws IOException
 	{
-		m_requiredSpace = 0;
-		String[] files = m_am.list("nethackdir");
+		mRequiredSpace = 0;
+		String[] files = mAM.list("nethackdir");
 		for(String file : files)
 		{
-			InputStream is = m_am.open("nethackdir/" + file);
-			m_requiredSpace += is.skip(0x7fffffff);
+			InputStream is = mAM.open("nethackdir/" + file);
+			mRequiredSpace += is.skip(0x7fffffff);
 		}
 	}
 
 	// ____________________________________________________________________________________
-	void DeleteDirContent(File dir) throws IOException
+	void deleteDirContent(File dir)
 	{
 		if(dir.exists() && dir.isDirectory())
 		{
-			for(File file : dir.listFiles())
+			for(String n : dir.list())
 			{
-				DeleteDirContent(file);
-				if(!file.delete())
-					throw new IOException();
+				File file = new File(dir, n);
+				deleteDirContent(file);
+				file.delete();
 			}
 		}
 	}

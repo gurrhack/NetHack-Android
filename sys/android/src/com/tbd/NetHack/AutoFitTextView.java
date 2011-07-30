@@ -2,6 +2,8 @@ package com.tbd.NetHack;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.text.Layout.Alignment;
+import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -9,9 +11,10 @@ import android.widget.TextView;
 
 public class AutoFitTextView extends TextView
 {
-	private float m_textSize;
-	private float m_lsAdd;
-	private float m_lsMul;
+	private boolean mDoMeasureText;
+	private float mTextSize;
+	private float mAdd;
+	private float mMul;
 
 	// ____________________________________________________________________________________
 	public AutoFitTextView(Context context)
@@ -29,13 +32,30 @@ public class AutoFitTextView extends TextView
 	public AutoFitTextView(Context context, AttributeSet attrs, int defStyle)
 	{
 		super(context, attrs, defStyle);
-		m_textSize = getTextSize();
-		m_lsAdd = 0.f;
-		m_lsMul = 1.f;
+		mTextSize = getTextSize();
+		mAdd = 0.f;
+		mMul = 1.f;
 	}
 
 	// ____________________________________________________________________________________
-	public void MeasureText()
+	@Override
+	protected void onTextChanged(final CharSequence text, final int start, final int before, final int after)
+	{
+		if(!getText().equals(text))
+			mDoMeasureText = true;
+//		measureText();
+	}
+
+	// ____________________________________________________________________________________
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh)
+	{
+		if(w != oldw || h != oldh)
+			mDoMeasureText = true;
+	}
+
+	// ____________________________________________________________________________________
+	public void measureText()
 	{
 		int viewW = getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
 		int viewH = getMeasuredHeight() - getPaddingTop() - getPaddingBottom();
@@ -48,8 +68,8 @@ public class AutoFitTextView extends TextView
 			return;
 
 		TextPaint paint = super.getPaint();
-		paint.setTextSize(m_textSize);
-		float textSize = m_textSize;
+		paint.setTextSize(mTextSize);
+		float textSize = mTextSize;
 		float textW = paint.measureText(text, 0, text.length());
 		while(textSize > 10.f && textW > viewW)
 		{
@@ -58,16 +78,9 @@ public class AutoFitTextView extends TextView
 			textW = paint.measureText(text, 0, text.length());
 		}
 		super.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
-		super.setLineSpacing(m_lsAdd, m_lsMul);
-	}
-	
-	// ____________________________________________________________________________________
-	@Override
-	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
-	{
-		//super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-		MeasureText();
-		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		super.setLineSpacing(mAdd, mMul);
+
+		mDoMeasureText = false;
 	}
 
 	// ____________________________________________________________________________________
@@ -75,7 +88,7 @@ public class AutoFitTextView extends TextView
 	public void setTextSize(float size)
 	{
 		super.setTextSize(size);
-		m_textSize = size;
+		mTextSize = getTextSize();
 	}
 
 	// ____________________________________________________________________________________
@@ -83,7 +96,7 @@ public class AutoFitTextView extends TextView
 	public void setTextSize(int unit, float size)
 	{
 		super.setTextSize(unit, size);
-		m_textSize = getTextSize();
+		mTextSize = getTextSize();
 	}
 
 	// ____________________________________________________________________________________
@@ -91,7 +104,16 @@ public class AutoFitTextView extends TextView
 	public void setLineSpacing(float add, float mult)
 	{
 		super.setLineSpacing(add, mult);
-		m_lsAdd = add;
-		m_lsMul = mult;
+		mAdd = add;
+		mMul = mult;
+	}
+
+	// ____________________________________________________________________________________
+	@Override
+	protected void onDraw(Canvas canvas)
+	{
+		if(mDoMeasureText)
+			measureText();
+		super.onDraw(canvas);
 	}
 }

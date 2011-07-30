@@ -352,7 +352,6 @@ savestateinlock()
 		 */
 		fd = open_levelfile(0, whynot);
 		if (fd < 0) {
-			debuglog("savestateinlock failed");
 			pline("%s", whynot);
 		    pline("Probably someone removed it.");
 		    killer = whynot;

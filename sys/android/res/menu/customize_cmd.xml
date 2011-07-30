@@ -10,6 +10,10 @@
 		android:titleCondensed="New command..."
 		android:title="New command..."/>
 	<item
+		android:id="@+id/add_kbd"
+		android:titleCondensed="Change..."
+		android:title="Add keyboard command"/>
+	<item
 		android:id="@+id/remove"
 		android:titleCondensed="Remove command"
 		android:title="Remove command"/>

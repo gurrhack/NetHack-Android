@@ -1,12 +1,18 @@
 package com.tbd.NetHack;
 
+import java.util.Set;
+
+import android.app.Activity;
 import android.view.KeyEvent;
 
 public interface NH_Window
 {
-	public void Show(boolean bBlocking);
-	public void Hide();
-	public void Clear();
-	public void PrintString(TextAttr attr, String str);
-	public boolean HandleKeyDown(int keyCode, KeyEvent event);
+	public int id();
+	public void show(boolean bBlocking);
+	public void hide();
+	public void clear();
+	public void printString(TextAttr attr, String str, int append);
+	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput);
+	public void setContext(Activity context);
+	public boolean isBlocking();
 }

@@ -209,11 +209,11 @@ Mike Passaretti                                            &nbsp;&nbsp;&nbsp;&nb
 <p><h1>NetHack Android Port</h1><br/>
 Based on NetHack 3.4.3<br/>
 <a href="http://www.nethack.org">http://www.nethack.org</a></p>
-<p><small>Inspired by NetHack iPhone Port by <a href="http://code.google.com/p/inethack/">Dirk Zimmermann</a></small></p>
+<p><small>Inspired by NetHack iPhone Port by <a href="http://code.google.com/p/iNetHack/">Dirk Zimmermann</a></small></p>
 
-<p><br/><br/><h2>The Absurd Nethack Tileset</h2>
+<p><br/><br/><h2>The Absurd NetHack Tileset</h2>
 <i>by John Shaw</i><br/>
-<a href="www.thinktwicenews.com">www.thinktwicenews.com</a></p>
+<a href="http://www.thinktwicenews.com">www.thinktwicenews.com</a></p>
 
 <p><br/><br/><h2>Abigaba Tiles</h2>
 <i>by James Hogwood</i><br/>
@@ -231,16 +231,15 @@ domain roguelike tileset "RLTiles".</p>
 
 <p><br/><br/><h2>lagged\'s tileset</h2>
 <i>by Dan Anthony F. Alcantara</i><br/>
-<a href="http://lagged.deviantart.com/art/12x20-Nethack-tileset-1308112>http://lagged.deviantart.com/art/12x20-Nethack-tileset-1308112</a></p>
+<a href="http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112>http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112</a></p>
 
 <p><br/><small>&copy; 2011 Martin Gustafsson</small></p> 
-</body></html>
 ]]>
 	</string>
 	<string
 		name="license">
 <![CDATA[
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NETHACK GENERAL PUBLIC LICENSE<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NetHack GENERAL PUBLIC LICENSE<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Copyright 1989 M. Stephenson)<br/>
 <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Based on the BISON general public license,<br/>
@@ -335,6 +334,110 @@ in particular, your modified NetHack or program containing parts of NetHack<br/>
 must remain freely available as provided in this License Agreement.  In<br/>
 other words, go ahead and share NetHack, but don\'t try to stop anyone else<br/>
 from sharing it farther.
+]]>
+	</string>
+	<string
+		name="instructions">
+<![CDATA[
+<h1>The NetHack Android Port Manual</h1>
+
+<p><small>This manual is displayed automatically once. If you need it later it can be found in the settings.</small></p>
+
+<br/>
+<h3>The basics</h3> 
+<p>&nbsp;&nbsp;Simply tap the screen to move one step in the desired direction.
+Long-press to move until you run into something.
+ 
+</p>
+
+<p>&nbsp;&nbsp;Tap the character to interact with what\'s on the floor. Move up/down stairs, pick up objects, loot chests, etc.</p>
+
+<p>
+&nbsp;&nbsp;Pan and zoom works in the usual way with the drag and pinch gestures. If your phone is equipped with a d-pad
+or trackball you can pan by pressing a direction key or rotating the trackball, while holding down
+the center button. You can also zoom with the volume buttons.
+</p>
+	 
+<p>
+&nbsp;&nbsp;Pan the map and tap on a position to Travel to it (see the
+<font color="lime"><em>_</em></font> command in the NetHack
+help).<br/>
+</p>
+
+<p>&nbsp;&nbsp;Long-press an inventory item to specify an amount, when for instance dropping (<font color="lime"><em>d</em></font>) something.</p>
+
+<br/>
+<h3>The command panel</h3> 
+<p>
+&nbsp;&nbsp;The command panel is the scrollable row of buttons at the bottom of the screen.
+When you click a button the game will do whatever is written on it, as though you typed
+each character one after another: 
+</p>
+
+<p>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>i</em></font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;view inventory<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>20s</em></font>&nbsp;&nbsp;&nbsp;&nbsp;search 20 times
+</p>
+		  
+<p>
+&nbsp;&nbsp;The sequence <font color="lime"><em>...</em></font> is treated as a special command to open the soft
+keyboard.
+</p>
+
+<p>
+&nbsp;&nbsp;Long-press on any button to change it, remove it, or add a new one to the left of it. 
+</p>
+	 
+<p>&nbsp;&nbsp;Control commands are entered with <font color="lime"><em>^</em></font> followed by a letter:</p>
+	  
+<p>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>^D</em></font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;kick a door<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>^T</em></font>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;teleport
+</p>
+	    
+<p>&nbsp;&nbsp;Meta commands are entered with <font color="lime"><em>M-</em></font> followed by a letter:</p>
+	
+<p>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>M-j</em></font>&nbsp;&nbsp;&nbsp;&nbsp;jump<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<font color="lime"><em>M-2</em></font>&nbsp;&nbsp;&nbsp;&nbsp;two-weapon
+</p>
+	    
+<p>&nbsp;&nbsp;If you don\'t want to see the panel you can hide it in the settings.</p>
+
+
+<br/>
+<h3>The soft keyboard</h3>
+<p>
+&nbsp;&nbsp;Press <font color="lime"><em>...</em></font> to open the soft keyboard. Press back to close it again.
+When the soft keyboard is opened you can play NetHack almost as you would on a regular terminal.
+If you prefer to play with the keyboard you might want to turn the <font color="aqua"><em>Automenu</em></font> option off.
+</p>
+
+<br/>
+<h3>The volume keys</h3>
+<p>
+&nbsp;&nbsp;The volume keys can be mapped to a number of different actions. <font color="aqua"><em>Zoom in</em></font>, <font color="aqua"><em>Zoom out</em></font>, <font color="aqua"><em>Toggle keyboard</em></font>,
+ <font color="aqua"><em>Ctrl</em></font>, and <font color="aqua"><em>Meta</em></font>.
+</p>
+ 
+<p>
+&nbsp;&nbsp;Press <font color="aqua"><em>Toggle keyboard</em></font> to open or close the soft keyboard.
+Keep holding the volume key when you open the keyboard to close it again when you release the key.
+</p>
+
+<p>
+&nbsp;&nbsp;Use <font color="aqua"><em>Ctrl</em></font> and <font color="aqua"><em>Meta</em></font> to send control and meta commands with a physical keyboard.
+The soft keyboard will be opened if your phone doesn\'t have a physical one.   
+</p>
+
+<br/>
+<small>
+Please visit www.nethack.org or nethackwiki.com for more information, or press
+<font color="lime"><em>?</em></font> in the game for a help menu.
+</small>
+
+<br/>
+<h4><br/>Happy hacking!</h4>
 ]]>
 	</string>
 </resources>

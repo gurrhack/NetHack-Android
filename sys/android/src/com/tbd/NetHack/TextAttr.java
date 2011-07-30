@@ -15,26 +15,27 @@ public enum TextAttr
 {
 	None
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			return new SpannedString(str);
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.BLACK;
 		}
 	},
+
 	Bold
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			Spannable span = new SpannableString(str);
 			span.setSpan(new StyleSpan(Typeface.BOLD), 0, str.length(), 0);
 			return span;
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.BLACK;
 		}
@@ -42,14 +43,14 @@ public enum TextAttr
 
 	Dim
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			Spannable span = new SpannableString(str);
 			span.setSpan(new ForegroundColorSpan(Color.GRAY), 0, str.length(), 0);
 			return span;
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.BLACK;
 		}
@@ -57,14 +58,14 @@ public enum TextAttr
 
 	ULine
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			Spannable span = new SpannableString(str);
 			span.setSpan(new UnderlineSpan(), 0, str.length(), 0);
 			return span;
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.BLACK;
 		}
@@ -72,14 +73,14 @@ public enum TextAttr
 
 	Blink
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			Spannable span = new SpannableString(str);
 			span.setSpan(new ForegroundColorSpan(0xFFF88017), 0, str.length(), 0);
 			return span;
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.BLACK;
 		}
@@ -87,25 +88,26 @@ public enum TextAttr
 
 	Inverse
 	{
-		Spanned Style(String str)
+		Spanned style(String str)
 		{
 			Spannable span = new SpannableString(str);
-			span.setSpan(new BackgroundColorSpan(BgCol()), 0, str.length(), 0);
+			span.setSpan(new BackgroundColorSpan(bgCol()), 0, str.length(), 0);
 			span.setSpan(new ForegroundColorSpan(Color.BLACK), 0, str.length(), 0);
 			return span;
 		}
 
-		int BgCol()
+		int bgCol()
 		{
 			return Color.WHITE;
 		}
 	};
 
-	abstract Spanned Style(String str);
+	abstract Spanned style(String str);
 
-	abstract int BgCol();
+	abstract int bgCol();
 
-	public static TextAttr FromNative(int a)
+	// ____________________________________________________________________________________
+	public static TextAttr fromNative(int a)
 	{
 		switch(a)
 		{

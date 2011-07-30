@@ -1,46 +1,70 @@
 package com.tbd.NetHack;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
+import java.util.Set;
+
+import android.app.Activity;
+import android.util.FloatMath;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 
+import com.tbd.NetHack.Input.Modifier;
+
 public class AmountSelector
 {
-	private AlertDialog m_dialog;
-	private Tileset m_tileset;
-	private String m_text;
-	private TextView m_textView;
-	private int m_amount;
-	private int m_nMax;
+	public interface Listener
+	{
+		void onDismissCount(MenuItem item, int amount);
+	}
+	
+	private View mRoot;
+	private Tileset mTileset;
+	private TextView mAmountText;
+	private int mMax;
+	private int mItemId;
+	private MenuItem mItem;
+	private Activity mContext;
+	private Listener mListener;
 
 	// ____________________________________________________________________________________
-	public AmountSelector(NetHackIO io, Tileset tileset, String text, int nMax, int tile)
+	public AmountSelector(Listener listener, Activity context, NetHackIO io, Tileset tileset, MenuItem item)
 	{
-		m_tileset = tileset;
-		m_text = text;
-		m_nMax = nMax;
-		m_amount = -1;
+		mItem = item;
+		mListener = listener;
+		mContext = context;
+		mTileset = tileset;
+		mMax = item.getMaxCount();
+		mItemId = item.getId();
 
-		View v = Util.Inflate(R.layout.amount_selector);
-		ImageView tileView = (ImageView)v.findViewById(R.id.amount_tile);
-		if(tile != 0)
+		mRoot = Util.inflate(mContext, R.layout.amount_selector, R.id.dlg_frame);
+		ImageView tileView = (ImageView)mRoot.findViewById(R.id.amount_tile);
+		final SeekBar seek =((SeekBar)mRoot.findViewById(R.id.amount_slider)); 
+		if(item.getTile() != 0 && mTileset.hasTiles())
 		{
 			tileView.setVisibility(View.VISIBLE);
-			tileView.setImageDrawable(new TileDrawable(m_tileset, tile));
+			tileView.setImageDrawable(new TileDrawable(mTileset, item.getTile()));
 		}
 		else
 		{
 			tileView.setVisibility(View.GONE);
 		}
-		m_textView = (TextView)v.findViewById(R.id.amount_title);
-		final SeekBar seek =((SeekBar)v.findViewById(R.id.amount_slider)); 
+		
+		((TextView)mRoot.findViewById(R.id.amount_title)).setText(" " + item.getName().toString());
+		
+		mAmountText = (TextView)mRoot.findViewById(R.id.amount);
+		int pad = 9;
+		while(pad <= mMax)
+			pad = pad * 10 + 9;
+		int w = (int)FloatMath.floor(mAmountText.getPaint().measureText(" " + Integer.toString(pad)));
+		mAmountText.setWidth(w);
+		
 		seek.setOnSeekBarChangeListener(new OnSeekBarChangeListener()
-		{
+		{			
 			public void onStopTrackingTouch(SeekBar seekBar)
 			{
 			}
@@ -51,41 +75,60 @@ public class AmountSelector
 			
 			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
 			{
-				m_textView.setText(String.format("%d %s", progress, m_text));
+				mAmountText.setText(Integer.toString(progress));
 			}
 		});
-		seek.setMax(m_nMax);
-		seek.setProgress(m_nMax);
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(NetHack.get());
-		builder.setTitle("Select amount");
-		builder.setView(v);
-		builder.setPositiveButton("Ok", new OnClickListener()
+		seek.setMax(mMax);
+		seek.setProgress(mMax);
+		
+		mRoot.findViewById(R.id.btn_0).setOnClickListener(new OnClickListener()
 		{
-			public void onClick(DialogInterface dialog, int which)
+			public void onClick(View v)
 			{
-				if(m_dialog.isShowing())
+				if(mRoot != null)
 				{
-					m_amount = seek.getProgress();
-					m_dialog.dismiss();
+					dismiss(seek.getProgress());
 				}
 			}
 		});
-		builder.setNegativeButton("Back", null);
-		builder.setCancelable(true);
-		m_dialog = builder.create();
-		m_dialog.show();
+		mRoot.findViewById(R.id.btn_1).setOnClickListener(new OnClickListener()
+		{
+			public void onClick(View v)
+			{
+				dismiss(-1);
+			}
+		});
+		
+		seek.requestFocus();
+		seek.requestFocusFromTouch();
 	}
 
 	// ____________________________________________________________________________________
-	public void setOnDismissListener(DialogInterface.OnDismissListener listener)
+	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
-		m_dialog.setOnDismissListener(listener);
+		if(mRoot == null)
+			return 0;
+		
+		switch(keyCode)
+		{
+		case KeyEvent.KEYCODE_BACK:
+			dismiss(-1);
+		break;
+
+		default:
+			return 2;// let system handle
+		}
+		return 1;
 	}
-	
-	// ____________________________________________________________________________________
-	public int GetAmount()
+
+	public void dismiss(int amount)
 	{
-		return m_amount;
+		if(mRoot != null)
+		{
+			mRoot.setVisibility(View.GONE);
+			((ViewGroup)mRoot.getParent()).removeView(mRoot);
+			mRoot = null;
+			mListener.onDismissCount(mItem, amount);
+		}
 	}
 }

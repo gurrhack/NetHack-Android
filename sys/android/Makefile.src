@@ -84,7 +84,7 @@ SYSOBJ = ioctl.o androidmain.o unixtty.o androidunix.o
 # CC = arm-linux-gcc
 #
 # For cross-compiling with Android NDK
-NDK = /path/to/android-ndk-r5b
+NDK = /path/to/android-ndk-r5c
 SYSROOT=$(NDK)/platforms/android-9/arch-arm
 CC = $(NDK)/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-gcc --sysroot=$(SYSROOT)
 

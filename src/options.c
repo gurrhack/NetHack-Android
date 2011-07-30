@@ -45,17 +45,20 @@ static struct Bool_Opt
 	{"altmeta", (boolean *)0, TRUE, DISP_IN_GAME},
 #endif
 	{"ascii_map",     &iflags.wc_ascii_map, !PREFER_TILED, SET_IN_GAME},	/*WC*/
+#ifdef ANDROID
+	{"askkick", &iflags.askkick, TRUE, SET_IN_GAME},
+#endif
 #ifdef MFLOPPY
 	{"asksavedisk", &flags.asksavedisk, FALSE, SET_IN_GAME},
 #else
 	{"asksavedisk", (boolean *)0, FALSE, SET_IN_FILE},
 #endif
 	{"autodig", &flags.autodig, FALSE, SET_IN_GAME},
-	{"autopickup", &flags.pickup, TRUE, SET_IN_GAME},
 #ifdef ANDROID
-	{"autoopen", &flags.autoopen, TRUE, SET_IN_GAME},
-	{"askkick", &flags.askkick, FALSE, SET_IN_GAME},
+	{"automenu", &iflags.automenu, TRUE, SET_IN_GAME},
+	{"autoopen", &iflags.autoopen, TRUE, SET_IN_GAME},
 #endif
+	{"autopickup", &flags.pickup, TRUE, SET_IN_GAME},
 	{"autoquiver", &flags.autoquiver, FALSE, SET_IN_GAME},
 #if defined(MICRO) && !defined(AMIGA)
 	{"BIOS", &iflags.BIOS, FALSE, SET_IN_FILE},
@@ -117,7 +120,11 @@ static struct Bool_Opt
 #endif
 	{"large_font", &iflags.obsolete, FALSE, SET_IN_FILE},	/* OBSOLETE */
 	{"legacy", &flags.legacy, TRUE, DISP_IN_GAME},
+#ifdef ANDROID
+	{"lit_corridor", &flags.lit_corridor, TRUE, SET_IN_GAME},
+#else
 	{"lit_corridor", &flags.lit_corridor, FALSE, SET_IN_GAME},
+#endif
 	{"lootabc", &iflags.lootabc, FALSE, SET_IN_GAME},
 #ifdef MAC_GRAPHICS_ENV
 	{"Macgraphics", &iflags.MACgraphics, TRUE, SET_IN_GAME},

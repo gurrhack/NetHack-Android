@@ -2,18 +2,17 @@ package com.tbd.NetHack;
 
 public class Log
 {
-
+	// ____________________________________________________________________________________
 	public static void print(String string)
 	{
-		if(DEBUG.IsOn())
+		if(DEBUG.isOn())
 			android.util.Log.i("NetHack", string);
 	}
 
+	// ____________________________________________________________________________________
 	public static void print(int i)
 	{
-		if(DEBUG.IsOn())
+		if(DEBUG.isOn())
 			print(Integer.toString(i));
 	}
-	
-
 }

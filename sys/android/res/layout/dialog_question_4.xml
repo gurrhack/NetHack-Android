@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/menu_layout"
+	android:background="@android:drawable/screen_background_dark_transparent"
+	android:clickable="true"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+	<LinearLayout
+		style="@android:style/Theme.Dialog"
+		android:background="@android:drawable/alert_dark_frame"
+		android:orientation="vertical"
+		android:minWidth="300dip"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true">
+
+		<TextView
+			android:id="@+id/title"
+			style="@android:style/TextAppearance.Theme.Dialog"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="12dip"/>
+
+		<LinearLayout
+			style="@android:style/ButtonBar"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content">
+			<Button
+				android:id="@+id/btn_0"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+			<Button
+				android:id="@+id/btn_1"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+			<Button
+				android:id="@+id/btn_2"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+			<Button
+				android:id="@+id/btn_3"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+		</LinearLayout>
+	</LinearLayout>
+</RelativeLayout>

@@ -1,6 +1,7 @@
 package com.tbd.NetHack;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.preference.Preference;
 import android.text.Html;
 import android.text.Layout.Alignment;
@@ -31,13 +32,25 @@ public class TextViewPreference extends Preference
 			res = R.string.license;
 		else if(title.equalsIgnoreCase("history"))
 			res = R.string.history;
-		else
+		else if(title.equalsIgnoreCase("credits"))
 			res = R.string.credits;
-		
-		View view = Util.Inflate(R.layout.textwindow);
-		TextView text = (TextView)view.findViewById(R.id.text_view);
-		text.setText(Html.fromHtml(NetHack.get().getString(res)), TextView.BufferType.SPANNABLE);
-		
+		else
+			res = R.string.instructions;
+
+		TextView text;
+		View view;
+		if(res == R.string.instructions)
+		{
+			view = Util.inflate(getContext(), R.layout.instr_text);
+			text = (TextView)view.findViewById(R.id.text_view);
+		}
+		else
+		{
+			view = Util.inflate(getContext(), R.layout.textwindow);
+			text = (TextView)view.findViewById(R.id.text_view);
+		}
+		text.setText(Html.fromHtml(getContext().getString(res)), TextView.BufferType.SPANNABLE);
+
 		// bah
 		if(res == R.string.credits)
 		{
@@ -46,7 +59,7 @@ public class TextViewPreference extends Preference
 			Spannable span = (Spannable)text.getText();
 			span.setSpan(new AlignmentSpan.Standard(Alignment.ALIGN_CENTER), 0, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
-		
+
 		return view;
 	}
 }

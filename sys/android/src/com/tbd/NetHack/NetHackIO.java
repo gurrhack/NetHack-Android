@@ -1,157 +1,56 @@
 package com.tbd.NetHack;
 
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.os.Handler;
-import android.preference.PreferenceManager;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.KeyEvent;
 import android.view.View;
 
 public class NetHackIO implements Runnable
 {
-	private Handler m_handler;
-	private Thread nhThread;
-	private NHW_Message m_message;
-	private NHW_Status m_status;
-	private NHW_Map m_map;
-	private DPadOverlay m_dPad;
-	private boolean m_bdPadVisible;
-	private HashMap<Integer, NH_Window> m_windows;
-	private int m_nextWinId;
-	private ConcurrentLinkedQueue<Integer> m_cmdQue;
-	private Tileset m_tileset;
-	private String m_dataDir;
-	private Thread m_nhThread;
+	private Handler mHandler;
+	private Thread mThread;
+	private NH_State mState;
+	private ConcurrentLinkedQueue<Integer> mCmdQue;
+	private int mNextWinId;
+	private int mMessageWid;
+
+	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// Send commands																		//
+	// ____________________________________________________________________________________ //
+	private static final int KeyCmd = 0x80000000;
+	private static final int PosCmd = 0x90000000;
+	private static final int LineCmd = 0xa0000000;
+	private static final int SelectCmd = 0xb0000000;
+	private static final int SaveStateCmd = 0xc0000000;
+
+	private static final int FlagCmd = 0xe0000000;
+	private static final int CmdMask = 0xf0000000;
+	private static final int DataMask = 0x0fffffff;
 
 	// ____________________________________________________________________________________
-	public NetHackIO(Tileset tileset, String dataDir)
+	public NetHackIO(NH_State state)
 	{
-		m_dataDir = dataDir;
-		m_cmdQue = new ConcurrentLinkedQueue<Integer>();
-		m_windows = new HashMap<Integer, NH_Window>();
-		m_nextWinId = 1;
-		m_tileset = tileset;
-		m_tileset.SetOnChangedListener(OnTilesetChanged);
-		NetHack.get().setContentView(R.layout.mainwindow);
-
-		m_message = new NHW_Message(NetHack.get(), this);
-		m_message.Clear();
-
-		m_status = new NHW_Status(NetHack.get(), this);
-		m_status.Clear();
-
-		m_dPad = new DPadOverlay(this);
-
-		m_map = (NHW_Map)NetHack.get().findViewById(R.id.nh_map);
-		m_map.Init(NetHack.get(), this, m_tileset, m_dPad, m_status);
-
-		m_handler = new Handler();
-
-		m_nhThread = new Thread(this);
-		m_nhThread.setUncaughtExceptionHandler(new UncaughtExceptionHandler()
-		{
-			public void uncaughtException(Thread thread, Throwable ex)
-			{
-				Log.print("native process threw exception");
-			}
-		});
-		m_nhThread.start();
-		PreferencesUpdated();
+		mState = state;
+		mNextWinId = 1;
+		mCmdQue = new ConcurrentLinkedQueue<Integer>();
+		mHandler = new Handler();
 	}
 
 	// ____________________________________________________________________________________
-	public void onConfigurationChanged(Configuration newConfig)
+	public void start()
 	{
-		m_map.onConfigurationChanged(newConfig);
+		if(mThread != null)
+			throw new IllegalStateException();
+		mThread = new Thread(this);
+		mThread.start();
 	}
 
 	// ____________________________________________________________________________________
-	public void SendAutoPickup(boolean bAutoPickup, String pickupTypes)
+	public void sendFlags(boolean bAutoMenu, boolean bAutoPickup, String pickupTypes)
 	{
-		m_cmdQue.add(AutoPickupCmd);
-		m_cmdQue.add(bAutoPickup ? 1 : 0);
-		SendLineCmd(pickupTypes.trim());
-	}
-
-	// ____________________________________________________________________________________
-	public void SaveState()
-	{
-		m_cmdQue.add(SaveStateCmd);
-		// give it some time
-		try
-		{
-			Thread.sleep(40);
-		}
-		catch(InterruptedException e)
-		{
-		}
-	}
-
-	// ____________________________________________________________________________________
-	public void SaveAndExit()
-	{
-		m_cmdQue.add(SaveAndExitCmd);
-		/*SendKeyCmd('\033');
-		// give it some time
-		try
-		{
-			Thread.sleep(40);
-		}
-		catch(InterruptedException e)
-		{
-		}*/
-	}
-
-	// ____________________________________________________________________________________
-	Tileset.OnChangedListener OnTilesetChanged = new Tileset.OnChangedListener()
-	{
-		public void OnChanged()
-		{
-			m_map.ResetZoom();
-		}
-	};
-
-	// ____________________________________________________________________________________
-	static
-	{
-		System.loadLibrary("nethack");
-	}
-
-	private native void RunNetHack(String path, String username, boolean bWizard);
-
-	private native void SaveNetHackState();
-
-	private native void SaveNetHackAndExit();
-
-	private native void SetAutoPickup(int bAutoPickup, String pickupTypes);
-
-	// ____________________________________________________________________________________
-	public void run()
-	{
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(NetHack.get());
-		String username = prefs.getString("username", "").trim();
-		boolean bWizard = prefs.getBoolean("wizard", false);
-		RunNetHack(m_dataDir, username, bWizard);
-		Log.print("native process finished");
-		Quit();
-	}
-
-	// ____________________________________________________________________________________
-	public void PreferencesUpdated()
-	{
-		m_map.PreferencesUpdated();
-
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(NetHack.get());
-
-		String pickupTypes = prefs.getString("autoPickupTypes", "");
-
 		// take care of special characters
 		pickupTypes = pickupTypes.replace('\'', '`');
 		pickupTypes = pickupTypes.replace('\u00B4', '`');
@@ -160,125 +59,143 @@ public class NetHackIO implements Runnable
 		pickupTypes = pickupTypes.replace('\u201C', '"');
 		pickupTypes = pickupTypes.replace('\u201D', '"');
 
-		boolean bAutoPickup = prefs.getBoolean("autoPickup", false);
-		SendAutoPickup(bAutoPickup, pickupTypes);
+		mCmdQue.add(FlagCmd);
+		mCmdQue.add(bAutoMenu ? 1 : 0);
+		mCmdQue.add(bAutoPickup ? 1 : 0);
+		sendLineCmd(pickupTypes.trim());
+	}
+
+	// ____________________________________________________________________________________
+	public void saveState()
+	{
+		mCmdQue.add(SaveStateCmd);
+		// give it some time
+		for(int i = 0; i < 5; i++)
+		{
+			try
+			{
+				Thread.sleep(150);
+				break;
+			}
+			catch(InterruptedException e)
+			{
+			}
+		}
+	}
+
+	// ____________________________________________________________________________________
+	public void run()
+	{
+		Log.print("start native process");
+		try
+		{
+			System.loadLibrary("nethack");
+			RunNetHack(mState.getDataDir(), mState.getUsername(), mState.isWizard());
+		}
+		catch(Exception e)
+		{
+			Log.print("EXCEPTED");
+		}
+		Log.print("native process finished");
+		// Quit();
 	}
 
 	// ____________________________________________________________________________________
 	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
 	{
-		m_map.onCreateContextMenu(menu, v, menuInfo);
+		mState.onCreateContextMenu(menu, v, menuInfo);
 	}
 
 	// ____________________________________________________________________________________
 	public void onContextItemSelected(android.view.MenuItem item)
 	{
-		m_map.onContextItemSelected(item);
+		mState.onContextItemSelected(item);
 	}
 
 	// ____________________________________________________________________________________
-	public boolean HandleKeyDown(int keyCode, KeyEvent event)
+	int verifyData(int d)
 	{
-		if(m_dPad.HandleKeyDown(keyCode, event))
-			return true;
-		for(NH_Window w : m_windows.values())
-		{
-			if(w != m_map && w.HandleKeyDown(keyCode, event))
-				return true;
-		}
-		return m_map.HandleKeyDown(keyCode, event);
-	}
-
-	// ____________________________________________________________________________________
-	public boolean HandleKeyUp(int keyCode, KeyEvent event)
-	{
-		return m_map.HandleKeyUp(keyCode);
-	}
-
-	// ____________________________________________________________________________________
-	int VerifyData(int d)
-	{
-		if(DEBUG.IsOn() && d != 0 && (d & DataMask) == 0)
+		if(DEBUG.isOn() && d != 0 && (d & DataMask) == 0)
 			throw new IllegalArgumentException();
 		return d;
 	}
 
-	// ------------------------------------------------------------------------------------
-	// Send commands called from UI thread
-	// ------------------------------------------------------------------------------------
-	private static final int KeyCmd = 0x80000000;
-	private static final int PosCmd = 0x90000000;
-	private static final int LineCmd = 0xa0000000;
-	private static final int SelectCmd = 0xb0000000;
-	private static final int SaveStateCmd = 0xc0000000;
-	private static final int SaveAndExitCmd = 0xd0000000;
-	private static final int AutoPickupCmd = 0xe0000000;
-	private static final int CmdMask = 0xf0000000;
-	private static final int DataMask = 0x0fffffff;
-
 	// ____________________________________________________________________________________
-	public void SendKeyCmd(char key)
+	public void sendKeyCmd(char key)
 	{
-		m_map.HideDPad();
-		m_cmdQue.add(KeyCmd);
-		m_cmdQue.add((int)key);
+		mState.hideDPad();
+		mCmdQue.add(KeyCmd);
+		mCmdQue.add((int)key);
 	}
 
 	// ____________________________________________________________________________________
-	public void SendPosCmd(int x, int y)
+	public void sendDirKeyCmd(char key)
 	{
-		m_map.HideDPad();
-		m_cmdQue.add(PosCmd);
-		m_cmdQue.add(VerifyData(x));
-		m_cmdQue.add(VerifyData(y));
+		mState.hideDPad();
+		mCmdQue.add(PosCmd);
+		mCmdQue.add((int)key);
+		mCmdQue.add(0);
+		mCmdQue.add(0);
 	}
 
 	// ____________________________________________________________________________________
-	public void SendLineCmd(String str)
+	public void sendPosCmd(int x, int y)
 	{
-		Log.print("send line: " + str);
-		m_cmdQue.add(LineCmd);
+		mState.hideDPad();
+		mCmdQue.add(PosCmd);
+		mCmdQue.add(0);
+		mCmdQue.add(verifyData(x));
+		mCmdQue.add(verifyData(y));
+	}
+
+	// ____________________________________________________________________________________
+	public void sendLineCmd(String str)
+	{
+		mCmdQue.add(LineCmd);
 		for(int i = 0; i < str.length(); i++)
 		{
 			char c = str.charAt(i);
 			if(c == '\n')
 				break;
 			if(c < 0xff)
-				m_cmdQue.add((int)c);
+				mCmdQue.add((int)c);
 		}
-		m_cmdQue.add((int)'\n');
+		mCmdQue.add((int)'\n');
 	}
 
 	// ____________________________________________________________________________________
-	public void SendSelectCmd(int id, int count)
+	public void sendSelectCmd(int id, int count)
 	{
-		m_cmdQue.add(SelectCmd);
-		m_cmdQue.add(1);
-		m_cmdQue.add(VerifyData(id));
-		m_cmdQue.add(VerifyData(count));
+		mCmdQue.add(SelectCmd);
+		mCmdQue.add(1);
+		mCmdQue.add(verifyData(id));
+		mCmdQue.add(verifyData(count));
 	}
 
-	public void SendSelectCmd(ArrayList<MenuItem> items)
+	// ____________________________________________________________________________________
+	public void sendSelectCmd(ArrayList<MenuItem> items)
 	{
-		m_cmdQue.add(SelectCmd);
-		m_cmdQue.add(VerifyData(items.size()));
+		mCmdQue.add(SelectCmd);
+		mCmdQue.add(verifyData(items.size()));
 		for(MenuItem i : items)
 		{
-			m_cmdQue.add(VerifyData(i.GetId()));
-			m_cmdQue.add(VerifyData(-1/* i.GetCount() */));
+			mCmdQue.add(verifyData(i.getId()));
+			mCmdQue.add(verifyData(i.getCount()));
 		}
 	}
 
-	public void SendSelectNoneCmd()
+	// ____________________________________________________________________________________
+	public void sendSelectNoneCmd()
 	{
-		m_cmdQue.add(SelectCmd);
-		m_cmdQue.add(0);
+		mCmdQue.add(SelectCmd);
+		mCmdQue.add(0);
 	}
 
-	public void SendCancelSelectCmd()
+	// ____________________________________________________________________________________
+	public void sendCancelSelectCmd()
 	{
-		m_cmdQue.add(SelectCmd);
-		m_cmdQue.add(-1);
+		mCmdQue.add(SelectCmd);
+		mCmdQue.add(-1);
 	}
 
 	// ------------------------------------------------------------------------------------
@@ -286,9 +203,9 @@ public class NetHackIO implements Runnable
 	// ------------------------------------------------------------------------------------
 
 	// ____________________________________________________________________________________
-	private int RemoveFromQue()
+	private int removeFromQue()
 	{
-		Integer c = m_cmdQue.poll();
+		Integer c = mCmdQue.poll();
 		while(c == null)
 		{
 			try
@@ -298,97 +215,89 @@ public class NetHackIO implements Runnable
 			catch(InterruptedException e)
 			{
 			}
-			c = m_cmdQue.poll();
+			c = mCmdQue.poll();
 		}
 		return c;
 	}
 
 	// ____________________________________________________________________________________
-	private void HandleSpecialCmds(int cmd)
+	private void handleSpecialCmds(int cmd)
 	{
 		switch(cmd)
 		{
 		case SaveStateCmd:
 			SaveNetHackState();
 		break;
-		case SaveAndExitCmd:
-			SaveNetHackAndExit();
-		break;
-		case AutoPickupCmd:
-			int bAuto = RemoveFromQue();
-			String types = WaitForLine();
-			SetAutoPickup(bAuto, types);
+		case FlagCmd:
+			int autoMenu = removeFromQue();
+			int autoPickup = removeFromQue();
+			String types = waitForLine();
+			SetFlags(autoPickup, types, autoMenu);
 		break;
 		}
 	}
 
 	// ____________________________________________________________________________________
-	private int DiscardUntil(int cmd0)
+	private int discardUntil(int cmd0)
 	{
 		int cmd = 0;
 		do
 		{
-			cmd = RemoveFromQue();
-			HandleSpecialCmds(cmd);
-		} while(cmd != cmd0);
+			cmd = removeFromQue();
+			handleSpecialCmds(cmd);
+		}while(cmd != cmd0);
 		return cmd;
 	}
 
 	// ____________________________________________________________________________________
-	private int DiscardUntil(int cmd0, int cmd1)
+	private int discardUntil(int cmd0, int cmd1)
 	{
 		int cmd = 0;
 		do
 		{
-			cmd = RemoveFromQue();
-			HandleSpecialCmds(cmd);
-		} while(cmd != cmd0 && cmd != cmd1);
+			cmd = removeFromQue();
+			handleSpecialCmds(cmd);
+		}while(cmd != cmd0 && cmd != cmd1);
 		return cmd;
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private int ReceiveKeyCmd()
+	private int receiveKeyCmd()
 	{
 		int key = '\033';
 
-		if(DiscardUntil(KeyCmd) != KeyCmd)
+		if(discardUntil(KeyCmd) != KeyCmd)
 			return key;
 
-		key = RemoveFromQue();
+		key = removeFromQue();
 
 		return key;
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private int ReceivePosKeyCmd(int lockMouse, int[] pos)
+	private int receivePosKeyCmd(int lockMouse, int[] pos)
 	{
 		if(lockMouse != 0)
 		{
-			m_handler.post(new Runnable()
+			mHandler.post(new Runnable()
 			{
 				public void run()
 				{
-					m_map.LockMouse();
+					mState.lockMouse();
 				}
 			});
 		}
 
-		int cmd = DiscardUntil(KeyCmd, PosCmd);
+		int cmd = discardUntil(KeyCmd, PosCmd);
 
 		if(cmd == 0)
 			return '\033';
 
-		int key = 0;
-		if(cmd == KeyCmd)
+		int key = removeFromQue();
+		if(cmd == PosCmd)
 		{
-			key = RemoveFromQue();
-		}
-		else
-		{
-			pos[0] = RemoveFromQue(); // x
-			pos[1] = RemoveFromQue(); // y
+			pos[0] = removeFromQue(); // x
+			pos[1] = removeFromQue(); // y
 		}
 		return key;
 	}
@@ -397,100 +306,103 @@ public class NetHackIO implements Runnable
 	// Functions called by nethack thread to schedule an operation on UI thread
 	// ------------------------------------------------------------------------------------
 
-	@SuppressWarnings("unused")
-	private void DebugLog(final String msg)
+	// ____________________________________________________________________________________
+	private void debugLog(final byte[] cmsg)
 	{
+		Log.print(CP437.decode(cmsg));
+	}
+
+	// ____________________________________________________________________________________
+	private void setCursorPos(final int wid, final int x, final int y)
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.setCursorPos(wid, x, y);
+			}
+		});
+	}
+
+	// ____________________________________________________________________________________
+	private void putString(final int wid, final int attr, final byte[] cmsg, final int append, final int hp, final int hpMax)
+	{
+		final String msg = CP437.decode(cmsg);
+		if(wid == mMessageWid)
+			Log.print(msg);
+
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.putString(wid, attr, msg, append, hp, hpMax);
+			}
+		});
+	}
+
+	// ____________________________________________________________________________________
+	private void rawPrint(final int attr, final byte[] cmsg)
+	{
+		final String msg = CP437.decode(cmsg);
 		Log.print(msg);
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void SetCursorPos(final int wid, final int x, final int y)
-	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				NH_Window wnd = m_windows.get(wid);
-				if(wnd == m_map)
-					m_map.SetCursorPos(x, y);
-				else if(wnd == m_status)
-					m_status.SetRow(y); // cursor x position not supported in status window
+				mState.rawPrint(attr, msg);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void PutString(final int wid, final int attr, final String msg, final int hp, final int hpMax)
+	private void printTile(final int wid, final int x, final int y, final int tile, final int ch, final int col, final int special)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				NH_Window wnd = m_windows.get(wid);
-				if(wnd == null)
-					m_message.PrintString(TextAttr.FromNative(attr), msg);
-				else
-					wnd.PrintString(TextAttr.FromNative(attr), msg);
-				if(m_map != null)
-					m_map.SetHealthLevel(hp, hpMax);
+				mState.printTile(wid, x, y, tile, ch, col, special);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void RawPrint(final int attr, final String msg)
+	private void ynFunction(final byte[] cquestion, final byte[] choices, final int def)
 	{
-		Log.print(msg);
-		m_handler.post(new Runnable()
+		final String question = CP437.decode(cquestion);
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_message.PrintString(TextAttr.FromNative(attr), msg);
+				mState.ynFunction(question, choices, def);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void PrintTile(final int wid, final int x, final int y, final int tile, final int ch, final int col, final int special)
+	private String getLine(final byte[] title, final int nMaxChars)
 	{
-		m_handler.post(new Runnable()
+		final String msg = CP437.decode(title);
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_map.PrintTile(x, y, tile, ch, col, special);
+				mState.getLine(msg, nMaxChars);
 			}
 		});
+		return waitForLine();
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void YNFunction(final String question, final byte[] choices, final int def)
+	private String waitForLine()
 	{
-		m_handler.post(new NH_Question(NetHack.get(), this, question, choices, def));
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private String GetLine(final String title, final int nMaxChars)
-	{
-		m_handler.post(new NH_GetLine(this, title, nMaxChars));
-		return WaitForLine();
-	}
-
-	// ____________________________________________________________________________________
-	private String WaitForLine()
-	{
-		if(DiscardUntil(LineCmd) != LineCmd)
+		if(discardUntil(LineCmd) != LineCmd)
 			return "";
 
 		StringBuilder builder = new StringBuilder();
 		while(true)
 		{
-			int c = RemoveFromQue();
+			int c = removeFromQue();
 			if(c == '\n')
 				break;
 			builder.append((char)c);
@@ -500,190 +412,131 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void UpdatePositionbar(byte[] sym)
+	private void delayOutput()
 	{
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void Bell()
-	{
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private int DoPrevMessage()
-	{
-		return 0;
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private int GetExtCmd()
-	{
-		return 0;
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void DelayOutput()
-	{
-		// sleep on UI thread?
 		try
 		{
 			Thread.sleep(50);
 		}
 		catch(InterruptedException e)
 		{
-			e.printStackTrace();
 		}
 	}
 
 	// ____________________________________________________________________________________
 	// @SuppressWarnings("unused")
-	private int CreateWindow(final int type)
+	private int createWindow(final int type)
 	{
-		final int wid = m_nextWinId++;
-		final NetHackIO io = this;
-		m_handler.post(new Runnable()
+		final int wid = mNextWinId++;
+		if(type == 1)
+			mMessageWid = wid;
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				switch(type)
-				{
-				case 1: // #define NHW_MESSAGE 1
-					m_windows.put(wid, m_message);
-				break;
-
-				case 2: // #define NHW_STATUS 2
-					m_windows.put(wid, m_status);
-				break;
-
-				case 3: // #define NHW_MAP 3
-					m_windows.put(wid, m_map);
-				break;
-
-				case 4: // #define NHW_MENU 4
-					m_windows.put(wid, new NHW_Menu(NetHack.get(), io, m_tileset));
-				break;
-
-				case 5: // #define NHW_TEXT 5
-					m_windows.put(wid, new NHW_Text(NetHack.get(), io));
-				break;
-				}
+				mState.createWindow(wid, type);
 			}
 		});
 		return wid;
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void DisplayWindow(final int wid, final int bBlocking)
+	private void displayWindow(final int wid, final int bBlocking)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_windows.get(wid).Show(bBlocking != 0);
+				mState.displayWindow(wid, bBlocking);
 			}
 		});
 
 		if(bBlocking != 0)
-			ReceiveKeyCmd();
+			receiveKeyCmd();
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void ClearWindow(final int wid, final int isRogueLevel)
+	private void clearWindow(final int wid, final int isRogueLevel)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				NH_Window wnd = m_windows.get(wid);
-				wnd.Clear();
-				if(wnd == m_map)
-					m_map.SetRogueLevel(isRogueLevel != 0);
+				mState.clearWindow(wid, isRogueLevel);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void DestroyWindow(final int wid)
+	private void destroyWindow(final int wid)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				// better hide it before we remove it. never know when the GC decides to kick in
-				m_windows.get(wid).Hide();
-				m_windows.remove(wid);
+				mState.destroyWindow(wid);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void StartMenu(final int wid)
+	private void startMenu(final int wid)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				((NHW_Menu)m_windows.get(wid)).StartMenu();
+				mState.startMenu(wid);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void AddMenu(final int wid, final int tile, final int id, final int acc, final int groupAcc, final int attr, final String text, final int bSelected)
+	private void addMenu(final int wid, final int tile, final int id, final int acc, final int groupAcc, final int attr, final byte[] text, final int bSelected)
 	{
-		m_handler.post(new Runnable()
+		final String msg = CP437.decode(text);
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				((NHW_Menu)m_windows.get(wid)).AddMenu(tile, id, acc, groupAcc, TextAttr.FromNative(attr), text, bSelected);
+				mState.addMenu(wid, tile, id, acc, groupAcc, attr, msg, bSelected);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void EndMenu(final int wid, final String prompt)
+	private void endMenu(final int wid, final byte[] prompt)
 	{
-		m_handler.post(new Runnable()
+		final String msg = CP437.decode(prompt);
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				((NHW_Menu)m_windows.get(wid)).EndMenu(prompt);
+				mState.endMenu(wid, msg);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private int[] SelectMenu(final int wid, final int how)
+	private int[] selectMenu(final int wid, final int how)
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				((NHW_Menu)m_windows.get(wid)).SelectMenu(NHW_Menu.SelectMode.FromInt(how));
+				mState.selectMenu(wid, how);
 			}
 		});
-		return WaitForSelect();
+		return waitForSelect();
 	}
 
 	// ____________________________________________________________________________________
-	private int[] WaitForSelect()
+	private int[] waitForSelect()
 	{
-		if(DiscardUntil(SelectCmd) != SelectCmd)
+		if(discardUntil(SelectCmd) != SelectCmd)
 			return null;
 
-		int nItems = RemoveFromQue();
+		int nItems = removeFromQue();
 		if(nItems < 0)
 			return null;
 
@@ -692,80 +545,71 @@ public class NetHackIO implements Runnable
 		{
 			for(int i = 0; i < items.length;)
 			{
-				items[i++] = RemoveFromQue(); // id
-				items[i++] = RemoveFromQue(); // count
+				items[i++] = removeFromQue(); // id
+				items[i++] = removeFromQue(); // count
 			}
 		}
 		return items;
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void UpdateInventory()
+	private void cliparound(final int x, final int y, final int playerX, final int playerY)
 	{
-	}
-
-	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void Cliparound(final int x, final int y, final int playerX, final int playerY)
-	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_map.Cliparound(x, y, playerX, playerY);
+				mState.cliparound(x, y, playerX, playerY);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void AskDirection()
+	private void askDirection()
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_map.ShowDPad();
+				mState.showDPad();
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void ShowPrevMessage()
+	private void showPrevMessage()
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_message.ShowPrev();
+				mState.showPrevMessage();
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	@SuppressWarnings("unused")
-	private void ShowLog()
+	private void showLog()
 	{
-		m_handler.post(new Runnable()
+		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				m_message.ShowLog();
+				mState.showLog();
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	private void Quit()
+	private native void RunNetHack(String path, String username, boolean bWizard);
+
+	private native void SaveNetHackState();
+
+	private native void SetFlags(int bAutoPickup, String pickupTypes, int bAutoMenu);
+
+	// ____________________________________________________________________________________
+	/*static
 	{
-		m_handler.post(new Runnable()
-		{
-			public void run()
-			{
-				NetHack.get().finish();
-			}
-		});
-	}
+		System.loadLibrary("nethack");
+	}*/
 }
