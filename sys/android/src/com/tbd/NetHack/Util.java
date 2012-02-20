@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -16,7 +15,6 @@ import android.util.Base64OutputStream;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
@@ -108,24 +106,6 @@ public class Util
 		imm.hideSoftInputFromWindow(input.getWindowToken(), 0);
 	}
 
-	// TODO move this to SoftKeyboardIME class or similar
-	// ____________________________________________________________________________________
-/*	public static void showKeyboard(final Context context, final View view)
-	{
-		view.setFocusable(true);
-		view.requestFocus();
-		view.post(new Runnable()
-		{
-			public void run()
-			{
-				InputMethodManager imm = (InputMethodManager)context.getSystemService(Context.INPUT_METHOD_SERVICE);
-				// imm.showSoftInput(view, InputMethodManager.SHOW_FORCED);
-				// imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
-				imm.toggleSoftInputFromWindow(view.getWindowToken(), InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
-			}
-		});
-	}*/
-	
 	// ____________________________________________________________________________________
 	public static void hideKeyboard(Context context, View view)
 	{

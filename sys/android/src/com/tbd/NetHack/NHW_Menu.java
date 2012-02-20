@@ -69,6 +69,12 @@ public class NHW_Menu implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
+	public String getTitle()
+	{
+		return mTitle;
+	}
+	
+	// ____________________________________________________________________________________
 	public void setContext(Activity context)
 	{
 		mUI = new UI(context);
@@ -165,7 +171,6 @@ public class NHW_Menu implements NH_Window
 	// ____________________________________________________________________________________
 	public void endMenu(final String prompt)
 	{
-		Log.print(prompt);
 		mTitle = prompt;
 	}
 
@@ -194,7 +199,7 @@ public class NHW_Menu implements NH_Window
 		char acc = 'a';
 		for(MenuItem i : mItems)
 		{
-			if(!i.isHeader() && acc != 0)
+			if(!i.isHeader() && i.isSelectable() && acc != 0)
 			{
 				i.setAcc(acc);
 				acc++;
@@ -214,7 +219,7 @@ public class NHW_Menu implements NH_Window
 		show(false);
 	}
 
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
 	private class UI implements AmountSelector.Listener
@@ -416,7 +421,7 @@ public class NHW_Menu implements NH_Window
 			if(itemPos >= 0 && itemPos < mItems.size())
 			{
 				MenuItem item = mItems.get(itemPos);
-				if(item.isHeader())
+				if(item.isHeader() || !item.isSelectable())
 					return;
 				item.toggle();
 				if(item.getCount() != -1)
@@ -442,7 +447,7 @@ public class NHW_Menu implements NH_Window
 			for(int i = 0; i < mItems.size(); i++)
 			{
 				MenuItem item = mItems.get(i);
-				if(item.getAcc() == acc && !item.isHeader())
+				if(item.getAcc() == acc && !item.isHeader() && item.isSelectable())
 					return i;
 			}
 			return -1;
@@ -471,7 +476,7 @@ public class NHW_Menu implements NH_Window
 					for(i = 0; i < mItems.size(); i++)
 					{
 						MenuItem item = mItems.get(i);
-						if(item.getGroupAcc() == acc && !item.isHeader())
+						if(item.getGroupAcc() == acc && !item.isHeader() && item.isSelectable())
 						{
 							toggleItemAt(i);
 							bRet = true;
@@ -491,7 +496,7 @@ public class NHW_Menu implements NH_Window
 				for(int i = 0; i < mItems.size(); i++)
 				{
 					MenuItem item = mItems.get(i);
-					if(!item.isHeader() && !item.isSelected())
+					if(!item.isHeader() && item.isSelectable() && !item.isSelected())
 						toggleItemAt(i);
 				}
 			}
@@ -505,7 +510,7 @@ public class NHW_Menu implements NH_Window
 				for(int i = 0; i < mItems.size(); i++)
 				{
 					MenuItem item = mItems.get(i);
-					if(!item.isHeader() && item.isSelected())
+					if(!item.isHeader() && item.isSelectable() && item.isSelected())
 						toggleItemAt(i);
 				}
 			}
@@ -558,7 +563,6 @@ public class NHW_Menu implements NH_Window
 		// ____________________________________________________________________________________
 		public void createMenu(SelectMode how)
 		{
-			Log.print("create menu");
 			if(mRoot == null || mHow != how)
 				inflateLayout(how);
 
@@ -649,7 +653,7 @@ public class NHW_Menu implements NH_Window
 					break;
 					case PickOne:
 						MenuItem item = mItems.get(position);
-						if(!item.isHeader())
+						if(!item.isHeader() && item.isSelectable())
 							sendSelectOne(item.getId(), -1);
 					break;
 					case PickMany:
@@ -664,6 +668,8 @@ public class NHW_Menu implements NH_Window
 				public boolean onItemLongClick(AdapterView<?> parent, final View view, int position, long id)
 				{
 					final MenuItem item = mItems.get(position);
+					if(!item.isSelectable())
+						return false;
 					if(item.getMaxCount() < 2 || mHow == SelectMode.PickNone)
 						return false;
 					// hideInternal();

@@ -7,17 +7,15 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
 	<LinearLayout
-		style="@android:style/Theme.Dialog"
-		android:background="@android:drawable/alert_dark_frame"
+		style="@style/NH_Dialog"
 		android:orientation="vertical"
-		android:minWidth="300dip"
-		android:layout_width="wrap_content"
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_centerInParent="true">
 
 		<TextView
 			android:id="@+id/title"
-			style="@android:style/TextAppearance.Theme.Dialog"
+			style="@style/DialogText"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:padding="12dip"/>
@@ -27,11 +25,13 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content">
 			<Button
+			    style="@style/ButtonText"
 				android:id="@+id/btn_0"
 				android:layout_weight="1"
 				android:layout_width="0dip"
 				android:layout_height="wrap_content"/>
 			<Button
+			    style="@style/ButtonText"
 				android:id="@+id/btn_1"
 				android:layout_weight="1"
 				android:layout_width="0dip"

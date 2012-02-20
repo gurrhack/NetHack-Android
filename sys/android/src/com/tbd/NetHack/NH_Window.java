@@ -1,9 +1,7 @@
 package com.tbd.NetHack;
 
 import java.util.Set;
-
 import android.app.Activity;
-import android.view.KeyEvent;
 
 public interface NH_Window
 {
@@ -15,4 +13,5 @@ public interface NH_Window
 	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput);
 	public void setContext(Activity context);
 	public boolean isBlocking();
+	public String getTitle();
 }

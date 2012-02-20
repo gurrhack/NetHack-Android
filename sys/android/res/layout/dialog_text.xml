@@ -7,9 +7,9 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
 	<LinearLayout
-		style="@android:style/Theme.Dialog"
-		android:background="@android:drawable/alert_dark_frame"
+		style="@style/NH_Dialog"
 		android:orientation="vertical"
+		android:minWidth="150dip"
 		android:layout_centerInParent="true"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content">
@@ -37,6 +37,7 @@
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content">
 			<Button
+			    style="@style/ButtonText"
 				android:text="Ok"
 				android:layout_gravity="center"
 				android:id="@+id/btn_ok"

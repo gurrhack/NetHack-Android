@@ -1,7 +1,6 @@
 package com.tbd.NetHack;
 
 import android.content.Context;
-import android.graphics.Typeface;
 import android.preference.Preference;
 import android.text.Html;
 import android.text.Layout.Alignment;

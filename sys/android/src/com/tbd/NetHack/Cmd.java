@@ -1,104 +1,170 @@
 package com.tbd.NetHack;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
-
-import android.widget.Button;
+import android.os.Handler;
+import com.tbd.NetHack.Input.Modifier;
 
 public interface Cmd
 {
 	void execute();
 
-	// ____________________________________________________________________________________
-	public class Zoom implements Cmd
-	{
-		private int mAmount;
-		private char mCh;
-		private NHW_Map mMap;
+	boolean hasLabel();
 
-		// ____________________________________________________________________________________
-		public Zoom(NHW_Map map, char c, int amount)
-		{
-			mAmount = amount;
-			mCh = c;
-			mMap = map;
-		}
+	String getCommand();
 
-		// ____________________________________________________________________________________
-		public void execute()
-		{
-			mMap.zoom(mAmount);
-		}
-
-		// ____________________________________________________________________________________
-		@Override
-		public String toString()
-		{
-			return Character.toString(mCh);
-		}
-	}
+	String getLabel();
 
 	// ____________________________________________________________________________________
 	public class ToggleKeyboard implements Cmd
 	{
-		private CmdPanel mPanel;
-		
+		private NH_State mState;
+		private String mLabel = "";
+
 		// ____________________________________________________________________________________
-		public ToggleKeyboard(CmdPanel panel)
+		public ToggleKeyboard(NH_State state, String label)
 		{
-			mPanel = panel;
+			mState = state;
+			mLabel = label;
 		}
-		
+
 		// ____________________________________________________________________________________
 		public void execute()
 		{
-			mPanel.showKeyboard();
+			mState.showKeyboard();
 		}
 
 		// ____________________________________________________________________________________
 		@Override
 		public String toString()
 		{
+			if(mLabel.length() > 0)
+				return mLabel;
 			return "...";
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public boolean hasLabel()
+		{
+			return mLabel.length() > 0;
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getCommand()
+		{
+			return "...";
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getLabel()
+		{
+			return mLabel;
 		}
 	}
 
 	// ____________________________________________________________________________________
 	public class KeySequnece implements Cmd
 	{
-		private Button mButton;
+		private class KeyCmd
+		{
+			public KeyCmd(char ch, EnumSet<Modifier> mod)
+			{
+				this.ch = ch;
+				this.mod = mod;
+			}
+
+			public EnumSet<Input.Modifier> mod;
+			public char ch;
+		}
+
 		private NH_State mState;
+		private boolean mExecuting;
+		private String mLabel = "";
+		private ArrayList<KeyCmd> mSeq = new ArrayList<KeyCmd>();
+		private String mCommand;
 
 		// ____________________________________________________________________________________
-		public KeySequnece(NH_State state)
+		public KeySequnece(NH_State state, String command, String label)
 		{
 			mState = state;
+			mLabel = label;
+			mCommand = command;
 		}
 
 		// ____________________________________________________________________________________
-		public void setButton(Button btn)
+		public void setCommand(String command)
 		{
-			mButton = btn;
+			if(!mCommand.equals(command))
+			{
+				mCommand = command;
+				mSeq.clear();
+			}
+		}
+
+		// ____________________________________________________________________________________
+		public void setLabel(String label)
+		{
+			mLabel = label;
 		}
 
 		// ____________________________________________________________________________________
 		public String toString()
 		{
-			if(mButton != null)
-				return mButton.getText().toString();
-			return "";
+			if(mLabel.length() > 0)
+				return mLabel;
+			return mCommand;
 		}
 
 		// ____________________________________________________________________________________
 		public void execute()
 		{
-			CharSequence seq = mButton.getText();
-			for(int i = 0; i < seq.length(); i++)
+			// Prevent re-entry while already executing the command!
+			if(mExecuting)
+				return;
+			if(mSeq.isEmpty())
+				rebuildSequence();
+
+			mExecuting = true;
+
+			// Handle response from NetHack for each key, before posting the next
+			final Handler handler = mState.getHandler();
+			@SuppressWarnings("unchecked")
+			final ArrayList<KeyCmd> seq = (ArrayList<KeyCmd>)mSeq.clone();
+			handler.post(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					char ch = seq.get(0).ch;
+					EnumSet<Modifier> mod = seq.get(0).mod;
+					Log.print("cmdpanel: " + Character.toString(ch));
+					mState.handleKeyDown(ch, Input.nhKeyFromMod(ch, mod), Input.toKeyCode(ch), mod, 0, true);
+					seq.remove(0);
+					if(seq.size() > 0)
+					{
+						mState.waitReady();
+						handler.post(this);
+					}
+					else
+						mExecuting = false;
+				}
+			});
+		}
+
+		// ____________________________________________________________________________________
+		private void rebuildSequence()
+		{
+			mSeq.clear();
+			for(int i = 0; i < mCommand.length(); i++)
 			{
 				EnumSet<Input.Modifier> mod = Input.modifiers();
-				char ch = seq.charAt(i);				
-				if(ch == '^' && seq.length() - i >= 2)
+				char ch = mCommand.charAt(i);
+				if(ch == '^' && mCommand.length() - i >= 2)
 				{
-					char n = seq.charAt(i + 1);
+					char n = mCommand.charAt(i + 1);
 					if(n != ' ')
 					{
 						mod.add(Input.Modifier.Control);
@@ -106,18 +172,40 @@ public interface Cmd
 						i++;
 					}
 				}
-				else if(ch == 'M' && seq.length() - i >= 3)
+				else if(ch == 'M' && mCommand.length() - i >= 3)
 				{
-					char n = seq.charAt(i + 2);
-					if(n != ' ' && seq.charAt(i + 1) == '-')
+					char n = mCommand.charAt(i + 2);
+					if(n != ' ' && mCommand.charAt(i + 1) == '-')
 					{
 						mod.add(Input.Modifier.Meta);
 						ch = n;
 						i += 2;
 					}
 				}
-				mState.handleKeyDown(ch, Input.nhKeyFromMod(ch, mod), Input.toKeyCode(ch), mod, 0, true);
+				mSeq.add(new KeyCmd(ch, mod));
 			}
 		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public boolean hasLabel()
+		{
+			return mLabel.length() > 0;
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getCommand()
+		{
+			return mCommand;
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getLabel()
+		{
+			return mLabel;
+		}
+
 	}
 }

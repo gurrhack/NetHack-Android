@@ -362,6 +362,12 @@ static boolean need_redraw; /* for doset() */
 extern boolean colors_changed;	/* in tos.c */
 #endif
 
+#ifdef ANDROID
+	extern boolean autoMenuFromFile;
+	extern boolean autoPickupFromFile;
+	extern boolean pickupTypesFromFile;
+#endif
+	
 #ifdef VIDEOSHADES
 extern char *shade[3];		  /* in sys/msdos/video.c */
 extern char ttycolors[CLR_MAX];	  /* in sys/msdos/video.c */
@@ -1001,7 +1007,7 @@ boolean tinitial, tfrom_file;
 		badoption("option too long");
 		return;
 	}
-
+	
 	/* strip leading and trailing white space */
 	while (isspace(*opts)) opts++;
 	op = eos(opts);
@@ -1719,6 +1725,10 @@ goodfruit:
 		    }
 		    if (badopt) badoption(opts);
 		}
+#ifdef ANDROID
+		if(initial && tfrom_file)
+			pickupTypesFromFile = TRUE;
+#endif
 		return;
 	}
 	/* WINCAP
@@ -2142,12 +2152,14 @@ goodfruit:
 		return;
 	    }
 	}
-
+	
 	/* OK, if we still haven't recognized the option, check the boolean
 	 * options list
 	 */
-	for (i = 0; boolopt[i].name; i++) {
-		if (match_optname(opts, boolopt[i].name, 3, FALSE)) {
+	for (i = 0; boolopt[i].name; i++)
+	{
+		if (match_optname(opts, boolopt[i].name, 3, FALSE))
+		{
 			/* options that don't exist */
 			if (!boolopt[i].addr) {
 			    if (!initial && !negated)
@@ -2165,6 +2177,14 @@ goodfruit:
 
 			duplicate_opt_detection(boolopt[i].name, 0);
 
+#ifdef ANDROID
+		    if(initial && tfrom_file) {
+		    	if((boolopt[i].addr) == &iflags.automenu)
+		    		autoMenuFromFile = TRUE;
+		    	if((boolopt[i].addr) == &flags.pickup)
+		    		autoPickupFromFile = TRUE;
+		    }
+#endif
 #if defined(TERMLIB) || defined(ASCIIGRAPH) || defined(MAC_GRAPHICS_ENV)
 			if (FALSE
 # ifdef TERMLIB
@@ -2616,6 +2636,7 @@ boolean setinitial,setfromfile;
 	int disc_cat[NUM_DISCLOSURE_OPTIONS];
 	const char *disclosure_name;
 
+    
         tmpwin = create_nhwindow(NHW_MENU);
 	start_menu(tmpwin);
 	for (i = 0; i < NUM_DISCLOSURE_OPTIONS; i++) {

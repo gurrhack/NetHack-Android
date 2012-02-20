@@ -90,6 +90,7 @@ static jmethodID jDelayOutput;
 static jmethodID jShowDPad;
 static jmethodID jShowPrevMessage;
 static jmethodID jShowLog;
+static jmethodID jSetUsername;
 
 static boolean quit_if_possible;
 
@@ -121,6 +122,10 @@ void destroy_jobject(jstring jstr)
 
 //____________________________________________________________________________________
 
+boolean autoMenuFromFile;
+boolean autoPickupFromFile;
+boolean pickupTypesFromFile;
+
 
 //____________________________________________________________________________________
 void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username, jboolean bWizard)
@@ -144,22 +149,22 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jSetCursorPos = (*jEnv)->GetMethodID(jEnv, jApp, "setCursorPos", "(III)V");
 	jPrintTile = (*jEnv)->GetMethodID(jEnv, jApp, "printTile", "(IIIIIII)V");
 	jYNFunction = (*jEnv)->GetMethodID(jEnv, jApp, "ynFunction", "([B[BI)V");
-	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BI)Ljava/lang/String;");
+	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BII)Ljava/lang/String;");
 	jStartMenu = (*jEnv)->GetMethodID(jEnv, jApp, "startMenu", "(I)V");
 	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "addMenu", "(IIIIII[BI)V");
 	jEndMenu = (*jEnv)->GetMethodID(jEnv, jApp, "endMenu", "(I[B)V");
-	jSelectMenu = (*jEnv)->GetMethodID(jEnv, jApp, "selectMenu", "(II)[I");
+	jSelectMenu = (*jEnv)->GetMethodID(jEnv, jApp, "selectMenu", "(III)[I");
 	jCliparound = (*jEnv)->GetMethodID(jEnv, jApp, "cliparound", "(IIII)V");
 	jDelayOutput = (*jEnv)->GetMethodID(jEnv, jApp, "delayOutput", "()V");
 	jShowDPad = (*jEnv)->GetMethodID(jEnv, jApp, "askDirection", "()V");
 	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "showPrevMessage", "()V");
 	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "()V");
-
+	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
 
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
-			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog))
+			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog && jSetUsername))
 	{
 		debuglog("baaaaad");
 		return;
@@ -178,8 +183,8 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	{
 	//	debuglog("Wizard mode");
 		params[nParams++] = "-D";
-		params[nParams++] = "-u";
-		params[nParams++] = "wizard";
+	//	params[nParams++] = "-u";
+	//	params[nParams++] = "wizard";
 	}
 	else if(username && (*jEnv)->GetStringUTFLength(jEnv, username) > 0)
 	{
@@ -190,8 +195,12 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 		params[nParams++] = "-u";
 		params[nParams++] = (char*)pChars;
 	}
-
 	params[nParams] = 0;
+
+	autoMenuFromFile = FALSE;
+	autoPickupFromFile = FALSE;
+	pickupTypesFromFile = FALSE;
+
 	NetHackMain(nParams, params);
 }
 
@@ -201,23 +210,28 @@ void Java_com_tbd_NetHack_NetHackIO_SetFlags(JNIEnv* env, jobject thiz, int auto
 	int n, i, j, oc_sym;
 	const char* pChars;
 
-	iflags.automenu = autoMenu ? TRUE : FALSE;
+	if(!autoMenuFromFile)
+		iflags.automenu = autoMenu ? TRUE : FALSE;
 
-	flags.pickup = autoPickup ? TRUE : FALSE;
+	if(!autoPickupFromFile)
+		flags.pickup = autoPickup ? TRUE : FALSE;
 
 	n = (*jEnv)->GetStringUTFLength(jEnv, pickupTypes);
 	pChars = (*jEnv)->GetStringUTFChars(jEnv, pickupTypes, 0);
 
 	//debuglog("set auto pickup %s (%s)", autoPickup ? "ON" : "OFF", autoPickup ? pChars : "-");
 
-	flags.pickup_types[0] = '\0';
-	for(i = 0, j = 0; i < n && j < MAXOCLASSES - 1; i++)
+	if(!pickupTypesFromFile)
 	{
-		oc_sym = def_char_to_objclass(pChars[i]);
-		if(oc_sym != MAXOCLASSES && !index(flags.pickup_types, oc_sym))
+		flags.pickup_types[0] = '\0';
+		for(i = 0, j = 0; i < n && j < MAXOCLASSES - 1; i++)
 		{
-			flags.pickup_types[j] = oc_sym;
-			flags.pickup_types[++j] = '\0';
+			oc_sym = def_char_to_objclass(pChars[i]);
+			if(oc_sym != MAXOCLASSES && !index(flags.pickup_types, oc_sym))
+			{
+				flags.pickup_types[j] = oc_sym;
+				flags.pickup_types[++j] = '\0';
+			}
 		}
 	}
 
@@ -268,6 +282,15 @@ void quit_possible()
 }
 
 //____________________________________________________________________________________
+void setUsername()
+{
+	jstring username = create_bytearray(plname);
+	JNICallV(jSetUsername, username);
+	destroy_jobject(username);
+
+}
+
+//____________________________________________________________________________________
 void debuglog(const char *fmt, ...)
 {
 	char buf[256];
@@ -304,7 +327,7 @@ void debuglog(const char *fmt, ...)
 //		** windows?  Or at least all but WIN_INFO?	-dean
 void and_init_nhwindows(int* argcp, char** argv)
 {
-	debuglog("and_init_nhwindows()");
+	//debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
 
 	flags.time = TRUE;
@@ -361,6 +384,8 @@ void and_player_selection()
 			win = create_nhwindow(NHW_MENU);
 			and_start_menu(win);
 			any.a_void = 0; /* zero out all bits */
+			any.a_int = randrole()+1;
+			and_add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "Random", MENU_UNSELECTED);
 			for(i = 0; roles[i].name.m; i++)
 			{
 				if(ok_role(i, flags.initrace, flags.initgend, flags.initalign))
@@ -401,6 +426,8 @@ void and_player_selection()
 			win = create_nhwindow(NHW_MENU);
 			and_start_menu(win);
 			any.a_void = 0; /* zero out all bits */
+			any.a_int = randrace(flags.initrole)+1;
+			and_add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "random", MENU_UNSELECTED);
 			for(i = 0; races[i].noun; i++)
 				if(ok_race(flags.initrole, i, flags.initgend, flags.initalign))
 				{
@@ -435,6 +462,8 @@ void and_player_selection()
 			win = create_nhwindow(NHW_MENU);
 			and_start_menu(win);
 			any.a_void = 0; /* zero out all bits */
+			any.a_int = randgend(flags.initrole, flags.initrace)+1;
+			and_add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "random", MENU_UNSELECTED);
 			for(i = 0; i < ROLE_GENDERS; i++)
 				if(ok_gend(flags.initrole, flags.initrace, i, flags.initalign))
 				{
@@ -467,6 +496,8 @@ void and_player_selection()
 			win = and_create_nhwindow(NHW_MENU);
 			and_start_menu(win);
 			any.a_void = 0; /* zero out all bits */
+			any.a_int = randalign(flags.initrole, flags.initrace)+1;
+			and_add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "random", MENU_UNSELECTED);
 			for(i = 0; i < ROLE_ALIGNS; i++)
 				if(ok_align(flags.initrole, flags.initrace, flags.initgend, i))
 				{
@@ -490,6 +521,12 @@ void and_askname()
 {
 	//debuglog("ask name");
 	and_n_getline("Who are you?", plname, PL_NSIZ);
+	if(*plname == '\033')
+	{
+		clearlocks();
+		and_exit_nhwindows("bye");
+		terminate(EXIT_SUCCESS);
+	}
 }
 
 //____________________________________________________________________________________
@@ -557,6 +594,8 @@ void and_display_nhwindow(winid wid, BOOLEAN_P blocking)
 	if(wid != WIN_MESSAGE && wid != WIN_STATUS && wid != WIN_MAP)
 		blocking = TRUE;
 	JNICallV(jDisplayWindow, wid, blocking);
+	if(blocking)
+		and_nhgetch();
 }
 
 //____________________________________________________________________________________
@@ -707,10 +746,8 @@ void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, 
 	else
 		tile = glyph2tile[glyph];
 
-	int id = ident ? ident->a_int : 0;
-
 	jbyteArray jstr = create_bytearray(str);
-	JNICallV(jAddMenu, wid, tile, id, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected);
+	JNICallV(jAddMenu, wid, tile, ident->a_int, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected);
 	destroy_jobject(jstr);
 }
 
@@ -759,13 +796,18 @@ void and_end_menu(winid wid, const char *prompt)
 //		   create_nhwindow() time.
 int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
 {
+	return and_select_menu_r(wid, how, selected, 0);
+}
+
+int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
+{
 	int i, n;
 	jintArray a;
 	jint* p;
 
 	//debuglog("and_select_menu");
 
-	a = (jintArray)JNICallO(jSelectMenu, wid, how);
+	a = (jintArray)JNICallO(jSelectMenu, wid, how, reentry);
 
 	*selected = 0;
 
@@ -787,6 +829,14 @@ int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
 			(*selected)[i].count = *p++;
 		}
 		(*jEnv)->ReleaseIntArrayElements(jEnv, a, p, 0);
+	}
+	else if(n == 1)
+	{
+		// special case: ABORT
+		if(!program_state.gameover && program_state.something_worth_saving)
+			n = 0;
+		else
+			n = and_select_menu_r(wid, how, selected, 1);
 	}
 
 	destroy_jobject(a);
@@ -954,8 +1004,13 @@ int and_nhgetch()
 	quit_if_possible = FALSE;
 	if(c == 0x80)
 	{
-		c = '\033';
-		quit_if_possible = TRUE;
+		if(!program_state.gameover && program_state.something_worth_saving)
+		{
+			c = '\033';
+			quit_if_possible = TRUE;
+		}
+		else
+			c = and_nhgetch();
 	}
 	return c;
 }
@@ -998,8 +1053,13 @@ int and_nh_poskey(int *x, int *y, int *mod)
 	quit_if_possible = FALSE;
 	if(c == 0x80)
 	{
-		c = '\033';
-		quit_if_possible = TRUE;
+		if(!program_state.gameover && program_state.something_worth_saving)
+		{
+			c = '\033';
+			quit_if_possible = TRUE;
+		}
+		else
+			c = and_nh_poskey(x, y, mod);
 	}
 	destroy_jobject(a);
 	return c;
@@ -1276,13 +1336,18 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 //____________________________________________________________________________________
 void and_n_getline(const char* question, char* buf, int nMax)
 {
+	and_n_getline_r(question, buf, nMax, 0);
+}
+
+void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
+{
 	int i, n;
 	const jchar* pChars;
 	jstring jstr;
 	jbyteArray jq;
 
 	jq = create_bytearray(question);
-	jstr = (jstring)JNICallO(jGetLine, jq, nMax);
+	jstr = (jstring)JNICallO(jGetLine, jq, nMax, reentry);
 	destroy_jobject(jq);
 
 	n = (*jEnv)->GetStringLength(jEnv, jstr);
@@ -1292,7 +1357,23 @@ void and_n_getline(const char* question, char* buf, int nMax)
 	if(n > 0)
 	{
 		pChars = (*jEnv)->GetStringChars(jEnv, jstr, 0);
-		if(*pChars == '\033')
+		if(*pChars == 0x80)
+		{
+			// special case: ABORT
+			if(!program_state.gameover && program_state.something_worth_saving)
+			{
+				buf[0] = '\033';
+				i = 1;
+			}
+			else
+			{
+				(*jEnv)->ReleaseStringChars(jEnv, jstr, pChars);
+				destroy_jobject(jstr);
+				and_n_getline_r(question, buf, nMax, 1);
+				return;
+			}
+		}
+		else if(*pChars == '\033')
 		{
 			buf[0] = '\033';
 			i = 1;
@@ -1351,7 +1432,7 @@ int do_ext_cmd_menu()
 	and_start_menu(wid);
 	for(i = 0; (ptr = extcmdlist[i].ef_txt); i++)
 	{
-		any.a_int = i;
+		any.a_int = i+1;
 		and_add_menu(wid, NO_GLYPH, &any, accelerator, 0, ATR_NONE, ptr, FALSE);
 
 		if(accelerator == 'z')
@@ -1363,7 +1444,7 @@ int do_ext_cmd_menu()
 	}
 	and_end_menu(wid, "Extended command");
 	count = and_select_menu(wid, PICK_ONE, &selected);
-	what = count > 0 ? selected->item.a_int : -1;
+	what = count > 0 ? selected->item.a_int - 1 : -1;
 	if(selected)
 		free(selected);
 	and_destroy_nhwindow(wid);
@@ -1552,3 +1633,4 @@ int doshowlog()
 	JNICallV(jShowLog);
 	return 0;
 }
+

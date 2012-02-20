@@ -3,14 +3,13 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
 	android:versionCode="110"
-	android:versionName="1.1"
+	android:versionName="1.2"
 	android:installLocation="auto">
 	<uses-sdk
 		android:minSdkVersion="8"/>
 	<uses-permission
 		android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
-<!-- android:theme="@android:style/Theme.NoTitleBar.Fullscreen" -->	 
 	<application
 		android:label="NetHack"
 		android:icon="@drawable/icon"

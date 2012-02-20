@@ -17,7 +17,6 @@ package com.tbd.NetHack;
 
 import java.io.File;
 import java.util.EnumSet;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -31,13 +30,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
-
 import com.tbd.NetHack.Input.Modifier;
 
 public class NetHack extends Activity
 {
 	private static NH_State nhState;
+	private static File mAppDir;
 	private boolean mCtrlDown;
 	private boolean mMetaDown;
 
@@ -53,7 +51,6 @@ public class NetHack extends Activity
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setDefaultKeyMode(DEFAULT_KEYS_DISABLE);
 		// takeKeyEvents(true);
-
 
 		setContentView(R.layout.mainwindow);
 
@@ -81,13 +78,14 @@ public class NetHack extends Activity
 	// ____________________________________________________________________________________
 	public void start(File path)
 	{
+		mAppDir = path;
+		
 		// Create save directory if it doesn't exist
 		File nhSaveDir = new File(path, "save");
 		if(!nhSaveDir.exists())
 			nhSaveDir.mkdir();
 
-		nhState.startNetHack(path.getAbsolutePath());
-		
+		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		if(prefs.getBoolean("firsttime", true))
 		{
@@ -95,6 +93,8 @@ public class NetHack extends Activity
 			Intent prefsActivity = new Intent(getBaseContext(), Instructions.class);
 			startActivity(prefsActivity);
 		}
+		
+		nhState.startNetHack(path.getAbsolutePath());
 	}
 
 	// ____________________________________________________________________________________
@@ -126,9 +126,6 @@ public class NetHack extends Activity
 		mCtrlDown = false;
 		mMetaDown = false;
 
-		// prevent cheating
-		// Log.print("onPause. cheat protected");
-		// nhState.SaveState();
 		super.onPause();
 	}
 
@@ -149,10 +146,12 @@ public class NetHack extends Activity
 	{
 		mCtrlDown = false;
 		mMetaDown = false;
-
-		Log.print("onDestroy");
+		
+		Log.print("onDestroy()");
+		if(nhState != null)
+			nhState.saveAndQuit();
+		
 		super.onDestroy();
-	//	System.exit(0);
 	}
 
 	// ____________________________________________________________________________________
@@ -231,7 +230,6 @@ public class NetHack extends Activity
 		mMetaDown = false;
 
 		Log.print("onSaveInstanceState(Bundle outState)");
-		// m_io.SendKeyCmd('S');
 		if(nhState != null)
 			nhState.saveState();
 	};
@@ -309,5 +307,10 @@ public class NetHack extends Activity
 			return true;
 		}
 		return super.onKeyUp(keyCode, event);
+	}
+
+	public static File getApplicationDir()
+	{
+		return mAppDir;
 	}
 }

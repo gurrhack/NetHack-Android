@@ -66,8 +66,9 @@ int NetHackMain(int argc, char** argv)
 	choose_windows(DEFAULT_WINDOW_SYS);
 
 	initoptions();
+
 	init_nhwindows(&argc, argv);
-	exact_username = whoami();
+	//exact_username = whoami();
 
 	/*
 	 * It seems you really want to play.
@@ -96,7 +97,9 @@ int NetHackMain(int argc, char** argv)
 #ifdef WIZARD
 	if(wizard)
 		debuglog("i'm the wiz");
+	if(!wizard)
 #endif
+	setUsername();
 
 	Sprintf(lock, "%d%s", (int)getuid(), plname);
 	getlock();
@@ -222,16 +225,19 @@ static void process_options(argc, argv)
 			break;
 #endif
 		case 'u':
-			if(argv[0][2])
-				(void)strncpy(plname, argv[0] + 2, sizeof(plname) - 1);
-			else if(argc > 1)
+			if(!*plname)
 			{
-				argc--;
-				argv++;
-				(void)strncpy(plname, argv[0], sizeof(plname) - 1);
+				if(argv[0][2])
+					(void)strncpy(plname, argv[0] + 2, sizeof(plname) - 1);
+				else if(argc > 1)
+				{
+					argc--;
+					argv++;
+					(void)strncpy(plname, argv[0], sizeof(plname) - 1);
+				}
+				else
+					raw_print("Player name expected after -u");
 			}
-			else
-				raw_print("Player name expected after -u");
 		break;
 		case 'I':
 		case 'i':
@@ -289,8 +295,7 @@ static boolean whoami()
 {
 	/*
 	 * Who am i? Algorithm: 1. Use name as specified in NETHACKOPTIONS
-	 *			2. Use $USER or $LOGNAME	(if 1. fails)
-	 *			3. Use getlogin()		(if 2. fails)
+	 *			2. Use getlogin()		(if 1. fails)
 	 * The resulting name is overridden by command line options.
 	 * If everything fails, or if the resulting name is some generic
 	 * account like "games", "play", "player", "hack" then eventually
@@ -302,11 +307,7 @@ static boolean whoami()
 
 	if(*plname)
 		return FALSE;
-	if(/* !*plname && */(s = nh_getenv("USER")))
-		(void)strncpy(plname, s, sizeof(plname) - 1);
-	if(!*plname && (s = nh_getenv("LOGNAME")))
-		(void)strncpy(plname, s, sizeof(plname) - 1);
-	if(!*plname && (s = getlogin()))
+	if((s = getlogin()))
 		(void)strncpy(plname, s, sizeof(plname) - 1);
 	return TRUE;
 }

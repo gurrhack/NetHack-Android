@@ -1,7 +1,6 @@
 package com.tbd.NetHack;
 
 import java.util.ArrayList;
-
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
@@ -12,7 +11,6 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import com.tbd.NetHack.NHW_Menu.SelectMode;
 
 public class MenuItemAdapter extends ArrayAdapter<MenuItem>
@@ -99,6 +97,14 @@ public class MenuItemAdapter extends ArrayAdapter<MenuItem>
 			}
 			else
 				cb.setVisibility(View.GONE);
+
+			boolean enabled = item.isHeader() || item.isSelectable();
+			tt.setEnabled(enabled);
+			at.setEnabled(enabled);
+			st.setEnabled(enabled);
+			ic.setEnabled(enabled);
+			tile.setEnabled(enabled);
+			cb.setEnabled(enabled);
 		}
 		return v;
 	}

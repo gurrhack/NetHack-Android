@@ -38,49 +38,34 @@
     	<item>111</item>
     </string-array>
 
-    <string-array name="shortcutCmds">
-    	<item>...</item>
-    	<item>#</item>
-		<item>20s</item>
-		<item>.</item>
-		<item>:</item>
-		<item>;</item>
-		<item>,</item>
-		<item>e</item>
-		<item>d</item>
-		<item>r</item>
-		<item>z</item>
-		<item>Z</item>
-		<item>q</item>
-		<item>t</item>
-		<item>f</item>
-		<item>w</item>
-		<item>x</item>
-		<item>i</item>
-		<item>E</item>
-		<item>Q</item>
-		<item>P</item>
-		<item>R</item>
-		<item>W</item>
-		<item>T</item>
-		<item>o</item>
-		<item>^d</item>
-		<item>^p</item>
-		<item>a</item>
-		<item>A</item>
-		<item>^t</item>
-		<item>D</item>
-		<item>F</item>
-		<item>p</item>
-		<item>^x</item>
-		<item>^e</item>
-		<item>^f</item>
-		<item>^g</item>
-		<item>^i</item>
-		<item>^o</item>
-		<item>^v</item>
-		<item>^w</item>
-		<item>\?</item>
+    <string-array name="dirLocationNames">
+        <item>Left</item>
+        <item>Center</item>
+    	<item>Right</item>
+        <item>Bottom left</item>
+    	<item>Bottom center</item>
+        <item>Bottom right</item>
+    </string-array>
+    <string-array name="dirLocationValues">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        </string-array>
+
+    <string-array name="locationNames">
+        <item>Left</item>
+    	<item>Right</item>
+        <item>Top</item>
+        <item>Bottom</item>
+    </string-array>
+    <string-array name="locationValues">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
     </string-array>
     
 </resources>

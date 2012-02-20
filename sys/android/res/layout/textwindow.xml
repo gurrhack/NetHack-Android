@@ -9,8 +9,8 @@
 
 	<TextView
 		android:id="@+id/text_view"
+		style="@style/WindowText"
 		android:background="#00000000"
-		style="@style/MonospaceText"
 		android:maxLength="999999"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"/>

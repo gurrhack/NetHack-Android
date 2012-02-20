@@ -1,15 +1,19 @@
 package com.tbd.NetHack;
 
+import java.util.Set;
+import android.app.Activity;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.DialogInterface.OnCancelListener;
-import android.content.DialogInterface.OnClickListener;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.InputFilter;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.View.OnKeyListener;
 import android.view.ViewGroup;
+import android.view.View.OnClickListener;
+import android.view.View.OnKeyListener;
 import android.widget.EditText;
+import android.widget.TextView;
+
 
 public class NH_GetLine
 {
@@ -17,15 +21,17 @@ public class NH_GetLine
 	private NetHackIO mIO;
 	private String mTitle;
 	private int mMaxChars;
+	private NH_State mState;
 
 	// ____________________________________________________________________________________
-	public NH_GetLine(NetHackIO io)
+	public NH_GetLine(NetHackIO io, NH_State state)
 	{
 		mIO = io;
+		mState = state;
 	}
 
 	// ____________________________________________________________________________________
-	public void show(Context context, final String title, final int nMaxChars)
+	public void show(Activity context, final String title, final int nMaxChars)
 	{
 		mTitle = title;
 		mMaxChars = nMaxChars;
@@ -33,28 +39,37 @@ public class NH_GetLine
 	}
 
 	// ____________________________________________________________________________________
-	public void setContext(Context context)
+	public void setContext(Activity context)
 	{
 		if(mUI != null)
 			mUI = new UI(context);
 	}
 
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// ____________________________________________________________________________________
+	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	{
+		if(mUI == null)
+			return 0;
+		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
+	}
+	
+	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
 	private class UI
 	{
 		private Context mContext;
 		private EditText mInput;
-		private NH_Dialog mDialog;
+		//private NH_Dialog mDialog;
+		private View mRoot;
 
 		// ____________________________________________________________________________________
-		public UI(Context context)
+		public UI(Activity context)
 		{
 			mContext = context;
 
-			ViewGroup v = (ViewGroup)Util.inflate(context, R.layout.dialog_getline);
-			mInput = (EditText)v.findViewById(R.id.input);
+			mRoot = (View)Util.inflate(context, R.layout.dialog_getline, R.id.dlg_frame);
+			mInput = (EditText)mRoot.findViewById(R.id.input);
 			mInput.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(mMaxChars) });
 			mInput.setOnKeyListener(new OnKeyListener()
 			{
@@ -67,49 +82,84 @@ public class NH_GetLine
 						ok();
 					else if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == 111/*KeyEvent.KEYCODE_ESCAPE*/)
 						cancel();
+					else if(keyCode == KeyEvent.KEYCODE_SEARCH) // This is doing weird stuff, might as well block it 
+						return true;
 					return false;
 				}
 			});
 
-			mDialog = new NH_Dialog(context);
-			mDialog.setTitle(mTitle);
-			mDialog.setView(v);
-			mDialog.setCancelable(true);
-			mDialog.setPositiveButton("Ok", new OnClickListener()
-			{
-				public void onClick(DialogInterface dialog, int which)
-				{
-					ok();
-				}
-			});
-			mDialog.setNegativeButton("Cancel", new OnClickListener()
-			{
-				public void onClick(DialogInterface dialog, int which)
-				{
-					cancel();
-				}
-			});
-			mDialog.setOnCancelListener(new OnCancelListener()
-			{
-				public void onCancel(DialogInterface dialog)
-				{
-					cancel();
-				}
-			});
+			((TextView)mRoot.findViewById(R.id.title)).setText(mTitle);
 			
-			mDialog.show();
+			mRoot.findViewById(R.id.btn_0).setOnClickListener(new OnClickListener()
+			{
+				public void onClick(View v)
+				{
+					if(v != null)
+					{
+						ok();
+					}
+				}
+			});
+			mRoot.findViewById(R.id.btn_1).setOnClickListener(new OnClickListener()
+			{
+				public void onClick(View v)
+				{
+					cancel();
+				}
+			});
 
-			Util.showKeyboard(context, mInput);
+			mState.hideControls();
+			mInput.requestFocus();
+			
+			// special case
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+			String lastUsername = prefs.getString("lastUsername", "");
+			if(mTitle.equals("Who are you?") && lastUsername.length() > 0)
+			{
+				mInput.setText(lastUsername);
+				mInput.selectAll();
+			}
+			else
+			{
+				Util.showKeyboard(context, mInput);
+			}
 		}
 
+		// ____________________________________________________________________________________
+		public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+		{
+			if(mRoot == null)
+				return 0;
+
+			switch(keyCode)
+			{
+			case KeyEvent.KEYCODE_BACK:
+				cancel();
+			break;
+
+			case KeyEvent.KEYCODE_ENTER:
+				ok();
+			break;
+			
+			default:
+				if(ch == '\033')
+					cancel();
+				else
+					return 2;
+			}
+			return 1;
+		}
+		
 		// ____________________________________________________________________________________
 		public void dismiss()
 		{
 			Util.hideKeyboard(mContext, mInput);
-			if(mDialog != null)
+			if(mRoot != null)
 			{
-				mDialog.dismiss();
-				mDialog = null;
+				mRoot.setVisibility(View.GONE);
+				((ViewGroup)mRoot.getParent()).removeView(mRoot);
+				mRoot = null;
+				mState.showControls();
 			}
 			mUI = null;
 		}
@@ -117,9 +167,9 @@ public class NH_GetLine
 		// ____________________________________________________________________________________
 		private void ok()
 		{
-			if(mDialog != null)
+			if(mRoot != null)
 			{
-				String text = mInput.getText().toString().trim();
+				String text = mInput.getText().toString();
 				mIO.sendLineCmd(text);
 				dismiss();
 			}
@@ -128,7 +178,7 @@ public class NH_GetLine
 		// ____________________________________________________________________________________
 		private void cancel()
 		{
-			if(mDialog != null)
+			if(mRoot != null)
 			{
 				mIO.sendLineCmd("\033");
 				dismiss();

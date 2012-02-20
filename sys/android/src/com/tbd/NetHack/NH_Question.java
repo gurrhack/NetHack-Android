@@ -1,7 +1,6 @@
 package com.tbd.NetHack;
 
 import java.util.Set;
-
 import android.app.Activity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -10,7 +9,6 @@ import android.view.View.OnKeyListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-
 import com.tbd.NetHack.Input.Modifier;
 
 public class NH_Question
@@ -22,11 +20,13 @@ public class NH_Question
 	private int mDefCh;
 	private UI mUI;
 	private int[] mBtns = new int[]{R.id.btn_0, R.id.btn_1, R.id.btn_2, R.id.btn_3};
+	private NH_State mState;
 
 	// ____________________________________________________________________________________
-	public NH_Question(NetHackIO io)
+	public NH_Question(NetHackIO io, NH_State state)
 	{
 		mIO = io;
+		mState = state;
 	}
 
 	// ____________________________________________________________________________________
@@ -64,7 +64,7 @@ public class NH_Question
 		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 	}
 	
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
 	private class UI
@@ -74,8 +74,6 @@ public class NH_Question
 		// ____________________________________________________________________________________
 		public UI(Activity context)
 		{
-			Log.print("Build question");
-
 			switch(mChoices.length)
 			{
 			case 1:
@@ -134,18 +132,11 @@ public class NH_Question
 			{
 				def.requestFocus();
 				def.requestFocusFromTouch();
-				def.post(new Runnable()
-				{
-					public void run()
-					{
-						if(mRoot != null)
-						{
-						}
-					}
-				});
 			}
 			else
 				mRoot.requestFocus();
+			
+			mState.hideControls();
 		}
 
 		OnKeyListener mKeyListener = new OnKeyListener()
@@ -215,16 +206,9 @@ public class NH_Question
 				mRoot.setVisibility(View.GONE);
 				((ViewGroup)mRoot.getParent()).removeView(mRoot);
 				mRoot = null;
+				mState.showControls();
 			}
 			mUI = null;
-		}
-
-		// ____________________________________________________________________________________
-		private String cmdToString(char cmd)
-		{
-			if((cmd & 0x80) > 0)
-				return "^" + Character.toString((char)(cmd & 0x7f));
-			return Character.toString(cmd);
 		}
 
 		// ____________________________________________________________________________________

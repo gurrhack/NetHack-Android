@@ -1,94 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:orientation="vertical"
-	android:id="@+id/base_frame"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/base_frame"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:baselineAligned="false"
+    android:orientation="vertical" >
 
-	<FrameLayout
-		android:id="@+id/dlg_frame"
-		android:layout_weight="1"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent">
+    <FrameLayout
+        android:id="@+id/dlg_frame"
+        android:layout_width="match_parent"
+        android:layout_height="0dip"
+        android:layout_weight="1" >
 
-		<FrameLayout
-			android:id="@+id/map_frame"
-			android:descendantFocusability="blocksDescendants"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent">
+        <FrameLayout
+            android:id="@+id/map_frame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:descendantFocusability="blocksDescendants" >
 
-			<LinearLayout
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:orientation="vertical">
+            <com.tbd.NetHack.CmdPanelLayout
+                android:id="@+id/cmdPanelLayout1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" >
 
-				<com.tbd.NetHack.AutoFitTextView
-					android:id="@+id/nh_stat0"
-					android:layout_width="match_parent"
-					android:layout_height="wrap_content"
-					android:textSize="15dp"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|fill_horizontal"
+                    android:orientation="vertical" >
 
-				<com.tbd.NetHack.AutoFitTextView
-					android:id="@+id/nh_stat1"
-					android:layout_width="match_parent"
-					android:layout_height="wrap_content"
-					android:textSize="15dp"/>
+                    <com.tbd.NetHack.AutoFitTextView
+                        android:id="@+id/nh_stat0"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="15sp" />
 
-				<TextView
-					android:id="@+id/nh_message"
-					android:layout_width="match_parent"
-					android:layout_height="wrap_content"
-					android:textSize="15dp"/>
+                    <com.tbd.NetHack.AutoFitTextView
+                        android:id="@+id/nh_stat1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="15sp" />
 
-				<ImageView
-					android:src="@drawable/more"
-					android:layout_height="wrap_content"
-					android:layout_width="wrap_content"
-					android:visibility="gone"
-					android:id="@+id/more"/>
-			</LinearLayout>
+                    <TextView
+                        android:id="@+id/nh_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="15sp" />
 
-			<TextView
-				android:text="Tap to continue"
-				android:id="@+id/nh_blockmsg"
-				android:visibility="gone"
-				android:layout_width="wrap_content"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center"
-				android:clickable="false"
-				android:focusable="false"
-				android:focusableInTouchMode="false"
-				android:textSize="12dp"/>
+                    <ImageView
+                        android:id="@+id/more"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:scaleType="center"
+                        android:src="@drawable/more"
+                        android:visibility="gone" />
+                </LinearLayout>
 
-			<include
-				layout="@layout/dpad_ovl"
-				android:id="@+id/dpad"
-				android:layout_gravity="center"
-				android:layout_width="150dip"
-				android:layout_height="200dip"/>
+                <TextView
+                    android:id="@+id/nh_blockmsg"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:text="Tap to continue"
+                    android:textSize="15sp"
+                    android:visibility="gone" />
 
-			<HorizontalScrollView
-				android:id="@+id/horizontalScrollView1"
-				android:layout_gravity="bottom"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content">
-				<LinearLayout
-					android:id="@+id/cmdPanel"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:hapticFeedbackEnabled="true"
-					android:baselineAligned="true"
-					android:orientation="horizontal"/>
-			</HorizontalScrollView>
-		</FrameLayout>
-	
-	</FrameLayout>
+                <include
+                    android:id="@+id/dpad"
+                    android:layout_gravity="center"
+                    layout="@layout/dpad_ovl" />
 
-	<LinearLayout
-		android:id="@+id/kbd_frame"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_gravity="bottom"/>
+				
+                <LinearLayout
+                     android:id="@+id/viewArea"
+                     android:layout_width="match_parent"
+                     android:layout_height="match_parent" />
+                
+            </com.tbd.NetHack.CmdPanelLayout>
+        </FrameLayout>
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/kbd_frame"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
 
 </LinearLayout>

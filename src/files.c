@@ -723,7 +723,7 @@ d_level *lev;
 	tempname = set_bonestemp_name();
 	tempname = fqname(tempname, BONESPREFIX, 1);
 
-#if (defined(SYSV) && !defined(SVR4)) || defined(GENIX)
+#if (defined(SYSV) && !defined(SVR4) && !defined(ANDROID)) || defined(GENIX)
 	/* old SYSVs don't have rename.  Some SVR3's may, but since they
 	 * also have link/unlink, it doesn't matter. :-)
 	 */
@@ -1452,13 +1452,13 @@ const char *filename;
 /* ----------  BEGIN CONFIG FILE HANDLING ----------- */
 
 const char *configfile =
-#ifdef UNIX
+#if defined(UNIX) && !defined(ANDROID)
 			".nethackrc";
 #else
 # if defined(MAC) || defined(__BEOS__)
 			"NetHack Defaults";
 # else
-#  if defined(MSDOS) || defined(WIN32)
+#  if defined(MSDOS) || defined(WIN32) || defined(ANDROID)
 			"defaults.nh";
 #  else
 			"NetHack.cnf";
@@ -1998,7 +1998,7 @@ const char *filename;
 #endif
 	char	buf[4*BUFSZ];
 	FILE	*fp;
-
+	
 	if (!(fp = fopen_config_file(filename))) return;
 
 #if defined(MICRO) || defined(WIN32)

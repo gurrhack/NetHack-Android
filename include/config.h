@@ -181,17 +181,12 @@
 
 #if defined(UNIX) && !defined(ANDROID)
 /* path and file name extension for compression program */
-#ifdef ANDROID
-# define COMPRESS "/system/bin/gzip"
-# define COMPRESS_EXTENSION ".gz"
-#else
-/* #define COMPRESS "/usr/bin/compress" */	/* Lempel-Ziv compression */
-/* #define COMPRESS_EXTENSION ".Z" */		/* compress's extension */
+#define COMPRESS "/usr/bin/compress"	/* Lempel-Ziv compression */
+#define COMPRESS_EXTENSION ".Z"		/* compress's extension */
 /* An example of one alternative you might want to use: */
-# define COMPRESS "/usr/local/bin/gzip"	/* FSF gzip compression */
-# define COMPRESS_EXTENSION ".gz"		/* normal gzip extension */
-#endif /* ANDROID */
-#endif /* UNIX */
+/* #define COMPRESS "/usr/local/bin/gzip" */	/* FSF gzip compression */
+/* #define COMPRESS_EXTENSION ".gz" */		/* normal gzip extension */
+#endif
 
 #ifndef COMPRESS
 # define INTERNAL_COMP	/* control use of NetHack's compression routines */

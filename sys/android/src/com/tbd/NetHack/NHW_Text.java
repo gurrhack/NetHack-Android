@@ -1,10 +1,6 @@
 package com.tbd.NetHack;
 
-import java.nio.CharBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-
 import android.app.Activity;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -32,6 +28,12 @@ public class NHW_Text implements NH_Window
 		setContext(context);
 	}
 
+	// ____________________________________________________________________________________
+	public String getTitle()
+	{
+		return "NHW_Text";
+	}
+	
 	// ____________________________________________________________________________________
 	public void setContext(Activity context)
 	{
@@ -121,7 +123,7 @@ public class NHW_Text implements NH_Window
 		return mIsVisible;
 	}
 	
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
 	private class UI

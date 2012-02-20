@@ -5,8 +5,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.KeyEvent;
-import android.view.View;
-import android.view.Window;
 
 public class NH_Dialog extends AlertDialog
 {

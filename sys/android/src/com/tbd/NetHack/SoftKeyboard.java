@@ -1,13 +1,15 @@
 package com.tbd.NetHack;
 
 import java.util.EnumSet;
-
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
 import android.inputmethodservice.KeyboardView.OnKeyboardActionListener;
-import android.os.SystemClock;
+import android.view.Gravity;
 import android.view.KeyEvent;
-
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.FrameLayout;
 import com.tbd.NetHack.Input.Modifier;
 
 public class SoftKeyboard implements OnKeyboardActionListener
@@ -19,31 +21,66 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	private static final int KEYCODE_ABC = -11;
 
 	private NetHack mContext;
-	private KeyboardView mInputView;
+	private ViewGroup mKeyboardFrame;
+	private KeyboardView mKeyboardView;
 	private Keyboard mSymbolsKeyboard;
 	private Keyboard mQwertyKeyboard;
 	private Keyboard mMetaKeyboard;
 	private Keyboard mCtrlKeyboard;
-	private CmdPanel mCmdPanel;
 	private NH_State mState;
+	private int mCurrent;
 	private boolean mIsShifted;
 	
 	// ____________________________________________________________________________________
-	public SoftKeyboard(NetHack context, NH_State state, CmdPanel cmdPanel, KeyboardView keyboardView)
+	public SoftKeyboard(NetHack context, NH_State state)
 	{
 		mContext = context;
-		
 		mState = state;
-		mCmdPanel = cmdPanel;
+		mCurrent = 0;
 
-		mQwertyKeyboard = new Keyboard(context, R.xml.qwerty);
-		mMetaKeyboard = new Keyboard(context, R.xml.meta);
-		mCtrlKeyboard = new Keyboard(context, R.xml.ctrl);
-		mSymbolsKeyboard = new Keyboard(context, R.xml.symbols);
+		mKeyboardFrame = (ViewGroup)mContext.findViewById(R.id.kbd_frame);
 
-		mInputView = keyboardView;
-		mInputView.setOnKeyboardActionListener(this);
-		mInputView.setKeyboard(mQwertyKeyboard);
+		mKeyboardView = (KeyboardView)Util.inflate(mContext, R.layout.input);
+		mKeyboardView.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+		mKeyboardFrame.addView(mKeyboardView);
+		mKeyboardView.setOnKeyboardActionListener(this);
+	}
+
+	// ____________________________________________________________________________________
+	public void show()
+	{
+		if(mQwertyKeyboard == null)
+		{
+			mQwertyKeyboard = new Keyboard(mContext, R.xml.qwerty);
+			mMetaKeyboard = new Keyboard(mContext, R.xml.meta);
+			mCtrlKeyboard = new Keyboard(mContext, R.xml.ctrl);
+			mSymbolsKeyboard = new Keyboard(mContext, R.xml.symbols);
+
+			mKeyboardView.setKeyboard(mQwertyKeyboard);
+			mKeyboardView.setShifted(mIsShifted);
+			
+			if(mCurrent == 1)
+				setKeyboard(mSymbolsKeyboard);
+			else if(mCurrent == 2)
+				setKeyboard(mCtrlKeyboard);
+			else if(mCurrent == 3)
+				setKeyboard(mMetaKeyboard);
+			mKeyboardFrame.setVisibility(View.VISIBLE);
+		}
+	}
+	
+	// ____________________________________________________________________________________
+	public void hide()
+	{
+		if(mQwertyKeyboard != null)
+		{
+			Util.hideKeyboard(mContext, mKeyboardView);
+			mKeyboardFrame.setVisibility(View.GONE);
+			mQwertyKeyboard = null;
+			mMetaKeyboard = null;
+			mCtrlKeyboard = null;
+			mSymbolsKeyboard = null;
+		}
 	}
 
 	// ____________________________________________________________________________________
@@ -96,9 +133,10 @@ public class SoftKeyboard implements OnKeyboardActionListener
 		break;
 
 		case Keyboard.KEYCODE_SHIFT:
-			mInputView.setKeyboard(mQwertyKeyboard);
+			mCurrent = 0;
+			mKeyboardView.setKeyboard(mQwertyKeyboard);
 			mIsShifted = !mIsShifted;
-			mInputView.setShifted(mIsShifted);
+			mKeyboardView.setShifted(mIsShifted);
 		break;
 
 		case Keyboard.KEYCODE_CANCEL:			
@@ -115,7 +153,7 @@ public class SoftKeyboard implements OnKeyboardActionListener
 
 		default:
 			EnumSet<Modifier> mod = Input.modifiers();
-			if(mInputView.getKeyboard() == mQwertyKeyboard && mIsShifted)
+			if(mKeyboardView.getKeyboard() == mQwertyKeyboard && mIsShifted)
 			{
 				// shiftOff(); only on shift release if key is pressed while shift is down
 				mod.add(Input.Modifier.Shift);
@@ -129,7 +167,15 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	private void setKeyboard(Keyboard keyboard)
 	{
 		setShift(keyboard, mIsShifted);
-		mInputView.setKeyboard(keyboard);
+		mKeyboardView.setKeyboard(keyboard);
+		if(keyboard == mQwertyKeyboard)
+			mCurrent = 0;
+		else if(keyboard == mSymbolsKeyboard)
+			mCurrent = 1;
+		else if(keyboard == mCtrlKeyboard)
+			mCurrent = 2;
+		else if(keyboard == mMetaKeyboard)
+			mCurrent = 3;
 	}
 	
 	// ____________________________________________________________________________________
@@ -143,13 +189,13 @@ public class SoftKeyboard implements OnKeyboardActionListener
 				break;
 			}
 		}
-	//	mInputView.invalidateAllKeys();
+	//	mKeyboardView.invalidateAllKeys();
 	}
 
 	// ____________________________________________________________________________________
 	private void handleClose()
 	{
-		mCmdPanel.hideKeyboard();
+		mState.hideKeyboard();
 	}
 
 	// ____________________________________________________________________________________

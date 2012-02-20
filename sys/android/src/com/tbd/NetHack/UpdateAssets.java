@@ -176,7 +176,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 				return false;
 			}
 			
-			if(dst.lastModified() > verDat)
+			if(!file.equals("defaults.nh") && dst.lastModified() > verDat)
 			{
 				Log.print("Update required. '" + file + "' has been tampered with");
 				return false;

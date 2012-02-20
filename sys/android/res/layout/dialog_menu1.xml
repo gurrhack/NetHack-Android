@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:id="@+id/menu_layout"
 	android:background="@android:drawable/screen_background_dark_transparent"
 	android:clickable="true"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
 	<LinearLayout
 		android:orientation="vertical"
-		android:background="@android:drawable/alert_dark_frame"
+		style="@style/NH_Dialog"
 		android:padding="12dip"
 		android:layout_centerInParent="true"
 		android:layout_width="wrap_content"
@@ -16,7 +15,7 @@
 
 		<TextView
 			android:id="@+id/title"
-			style="@android:style/TextAppearance.DialogWindowTitle"
+			style="@style/DialogTitle"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:padding="12dip"/>

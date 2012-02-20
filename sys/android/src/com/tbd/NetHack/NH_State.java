@@ -2,19 +2,26 @@ package com.tbd.NetHack;
 
 import java.util.ArrayList;
 import java.util.Set;
-
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Rect;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
-import android.view.KeyEvent;
-import android.view.WindowManager;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowManager;
 
 public class NH_State
 {
+	private enum CmdMode
+	{
+		Panel,
+		Keyboard,
+	}
+
 	private Activity mContext;
 	private NetHackIO mIO;
 	private NHW_Message mMessage;
@@ -24,23 +31,33 @@ public class NH_State
 	private NH_Question mQuestion;
 	private ArrayList<NH_Window> mWindows;
 	private Tileset mTileset;
-	String mDataDir;
-	String mUsername;
+	private String mDataDir;
+	private String mUsername;
 	boolean mIsWizard;
-	private CmdPanel mCmdPanel;
-
+	private CmdPanelLayout mCmdPanelLayout;
+	private DPadOverlay mDPad;
+	private boolean mIsDPadActive;
+	private boolean mStickyKeyboard;
+	private boolean mHideQuickKeyboard;
+	private CmdMode mMode;
+	private SoftKeyboard mKeyboard;
+	private boolean mControlsVisible;
+	
 	// ____________________________________________________________________________________
 	public NH_State(NetHack context)
 	{
 		mIO = new NetHackIO(this);
 		mTileset = new Tileset();
 		mWindows = new ArrayList<NH_Window>();
-		mGetLine = new NH_GetLine(mIO);
-		mQuestion = new NH_Question(mIO);
+		mGetLine = new NH_GetLine(mIO, this);
+		mQuestion = new NH_Question(mIO, this);
 		mMessage = new NHW_Message(context, mIO);
 		mStatus = new NHW_Status(context, mIO);
-		mCmdPanel = new CmdPanel(this, mIO);
-		mMap = new NHW_Map(context, mTileset, mStatus, mCmdPanel);
+		mMap = new NHW_Map(context, mTileset, mStatus, this);
+		mCmdPanelLayout = (CmdPanelLayout)context.findViewById(R.id.cmdPanelLayout1);
+		mDPad = new DPadOverlay(this);
+		mKeyboard = new SoftKeyboard(context, this);
+		mMode = CmdMode.Panel;
 
 		setContext(context);
 	}
@@ -55,7 +72,8 @@ public class NH_State
 		mQuestion.setContext(context);
 		mMessage.setContext(context);
 		mStatus.setContext(context);
-		mCmdPanel.setContext(context, mMap);
+		mCmdPanelLayout.setContext(context, this);
+		mDPad.setContext(context);
 		mMap.setContext(context);
 	}
 
@@ -64,25 +82,36 @@ public class NH_State
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 		
-		mUsername = prefs.getString("username", "").trim();
-		if(mUsername.length() == 0)
-		{
-			mUsername = System.getProperty("user.name").trim();
-			if(mUsername.length() == 0)
-				mUsername = "app34";
-			prefs.edit().putString("username", mUsername).commit();
-		}
+		mUsername = prefs.getString("username", "");
 		mIsWizard = prefs.getBoolean("wizard", false);
 		mDataDir = path;
-		mCmdPanel.setWizard(mIsWizard);
+		mCmdPanelLayout.setWizard(mIsWizard);
 		mIO.start();
+
 		preferencesUpdated();
+		updateVisibleState();
 	}
 
 	// ____________________________________________________________________________________
+	public void setUsername(String username)
+	{
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		prefs.edit().putString("lastUsername", username).commit();
+	}
+	
+	// ____________________________________________________________________________________
 	public void onConfigurationChanged(Configuration newConfig)
 	{
-		mCmdPanel.onConfigurationChanged(newConfig);
+		if(mMode == CmdMode.Keyboard)
+		{
+			// Since the keyboard refuses to change its layout when the orientation changes
+			// we recreate a new keyboard every time
+			hideKeyboard();
+			showKeyboard();
+		}
+		
+		mCmdPanelLayout.setOrientation(newConfig.orientation);
+		mDPad.setOrientation(newConfig.orientation);
 	}
 
 	// ____________________________________________________________________________________
@@ -90,7 +119,11 @@ public class NH_State
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 
-		mCmdPanel.preferencesUpdated(prefs);
+		mCmdPanelLayout.preferencesUpdated(prefs);
+		mDPad.preferencesUpdated(prefs);
+
+		if(mMode == CmdMode.Panel)
+			mCmdPanelLayout.show();
 
 		String tilesetName = prefs.getString("tileset", "default_32");
 		if(mTileset.updateTileset(tilesetName, mContext.getResources()))
@@ -104,45 +137,81 @@ public class NH_State
 		int flag = prefs.getBoolean("fullscreen", false) ? WindowManager.LayoutParams.FLAG_FULLSCREEN : 0;		
 		mContext.getWindow().setFlags(flag, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 	}
-	
+
 	// ____________________________________________________________________________________
 	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
 	{
-		mCmdPanel.onCreateContextMenu(menu, v, menuInfo);
+		mCmdPanelLayout.onCreateContextMenu(menu, v, menuInfo);
 	}
 
 	// ____________________________________________________________________________________
 	public void onContextItemSelected(android.view.MenuItem item)
 	{
-		mCmdPanel.onContextItemSelected(item);
+		mCmdPanelLayout.onContextItemSelected(item);
 	}
 
 	// ____________________________________________________________________________________
 	public boolean handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
-		if(keyCode == KeyEvent.KEYCODE_BACK && mCmdPanel.isKeyboardMode())
+		if(keyCode == KeyEvent.KEYCODE_BACK && isKeyboardMode())
 		{
-			mCmdPanel.hideKeyboard();
+			hideKeyboard();
 			return true;
 		}
 		
 		int ret = mQuestion.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
-		
+
 		for(int i = mWindows.size() - 1; ret == 0 && i >= 0; i--)
 		{
 			NH_Window w = mWindows.get(i);
 			ret = w.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 		}
-		
+
+		if(ret == 0)
+			ret = mGetLine.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
+
 		if(ret == 1)
 			return true;
 		if(ret == 2)// let system handle
 			return false;
-		
-		if(mCmdPanel.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput))
+				
+		if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME)
+		{
+			if(mMode == CmdMode.Keyboard)
+			{
+				hideKeyboard();
+				return true;
+			}
+			
+			if(mIsDPadActive)
+				return sendKeyCmd('\033');
+		}
+		else if(keyCode == KeyAction.Keyboard)
+		{
+			if(repeatCount == 0)
+			{
+				mStickyKeyboard = true;
+				toggleKeyboard();
+			}
+			else if(mMode == CmdMode.Keyboard)
+				mStickyKeyboard = false;
 			return true;
-		
-		return false;
+		}
+		else if(keyCode == KeyAction.Control || keyCode == KeyAction.Meta)
+		{
+			if(repeatCount == 0 && !Util.hasPhysicalKeyboard(mContext))
+			{
+				if(mMode != CmdMode.Keyboard)
+					mHideQuickKeyboard = true;
+				showKeyboard();
+				if(keyCode == KeyAction.Control)
+					setCtrlKeyboard();
+				else
+					setMetaKeyboard();
+			}
+			return true;
+		}
+		return sendKeyCmd(nhKey);
 	}
 	
 	// ____________________________________________________________________________________
@@ -150,7 +219,28 @@ public class NH_State
 	{
 		if(mMap.handleKeyUp(keyCode))
 			return true;
-		return mCmdPanel.handleKeyUp(keyCode);
+
+		if(keyCode == KeyAction.Keyboard)
+		{
+			if(!mStickyKeyboard && mMode == CmdMode.Keyboard)
+				hideKeyboard();
+			mStickyKeyboard = false;
+			return true;
+		}
+		else if(keyCode == KeyAction.Control || keyCode == KeyAction.Meta)
+		{
+			if(mMode == CmdMode.Keyboard)
+			{
+				if(mHideQuickKeyboard)
+					hideKeyboard();
+				else
+					setQwertyKeyboard();
+			}
+					
+			mHideQuickKeyboard = false;
+			return true;
+		}
+		return false;
 	}
 
 	// ____________________________________________________________________________________
@@ -207,7 +297,6 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void createWindow(int wid, int type)
 	{
-		Log.print("creat " + Integer.toString(wid));
 		switch(type)
 		{
 		case 1: // #define NHW_MESSAGE 1
@@ -291,7 +380,7 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void destroyWindow(final int wid)
 	{
-		Log.print("dest " + Integer.toString(wid));
+		//Log.print("dest " + Integer.toString(wid));
 		// better hide it before we remove it. never know when the GC
 		// decides to kick in
 		int i = getWindowI(wid);
@@ -320,7 +409,6 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void selectMenu(int wid, int how)
 	{
-		Log.print("select " + Integer.toString(wid));
 		((NHW_Menu)toFront(wid)).selectMenu(NHW_Menu.SelectMode.fromInt(how));
 	}
 
@@ -349,21 +437,14 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
+	public void editOpts()
+	{
+	}
+	
+	// ____________________________________________________________________________________
 	public void lockMouse()
 	{
 		mMap.lockMouse();
-	}
-
-	// ____________________________________________________________________________________
-	public void showDPad()
-	{
-		mCmdPanel.showDPad();
-	}
-
-	// ____________________________________________________________________________________
-	public void hideDPad()
-	{
-		mCmdPanel.hideDPad();
 	}
 
 	// ____________________________________________________________________________________
@@ -385,8 +466,182 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
+	public void saveAndQuit()
+	{
+		// Save and quit if no "important" dialogs are opened 
+		mIO.saveAndQuit();
+	}
+
+	// ____________________________________________________________________________________
 	public void saveState()
 	{
 		mIO.saveState();
+	}
+
+	// ____________________________________________________________________________________
+	public Handler getHandler()
+	{
+		return mIO.getHandler();
+	}
+
+	// ____________________________________________________________________________________
+	public void waitReady()
+	{
+		mIO.waitReady();
+	}
+
+	// ____________________________________________________________________________________
+	public boolean sendKeyCmd(int key)
+	{
+		if(key <= 0 || key > 0xff)
+			return false;
+		hideDPad();
+		//Log.print(Integer.toHexString(key&0x1f));
+		mIO.sendKeyCmd((char)key);
+		return true;
+	}
+
+	// ____________________________________________________________________________________
+	public boolean sendDirKeyCmd(int key)
+	{
+		if(key <= 0 || key > 0xff)
+			return false;
+		if(mIsDPadActive)
+			mIO.sendKeyCmd((char)key);
+		else
+			mIO.sendDirKeyCmd((char)key);
+		hideDPad();
+		return true;
+	}
+
+	// ____________________________________________________________________________________
+	public void sendPosCmd(int x, int y)
+	{
+		hideDPad();
+		mIO.sendPosCmd(x, y);
+	}
+
+
+	// ____________________________________________________________________________________
+	public void clickCursorPos()
+	{
+		mMap.onCursorPosClicked();
+	}
+
+	// ____________________________________________________________________________________
+	public void showControls()
+	{
+		mControlsVisible = true;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void hideControls()
+	{
+		mControlsVisible = false;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void showKeyboard()
+	{
+		mMode = CmdMode.Keyboard;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void hideKeyboard()
+	{
+		mMode = CmdMode.Panel;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void toggleKeyboard()
+	{
+		if(mMode == CmdMode.Panel)
+			showKeyboard();
+		else
+			hideKeyboard();
+	}
+
+	// ____________________________________________________________________________________
+	public void setMetaKeyboard()
+	{
+		mKeyboard.setMetaKeyboard();
+	}
+
+	// ____________________________________________________________________________________
+	public void setQwertyKeyboard()
+	{
+		mKeyboard.setQwertyKeyboard();
+	}
+
+	// ____________________________________________________________________________________
+	public void setCtrlKeyboard()
+	{
+		mKeyboard.setCtrlKeyboard();
+	}
+
+	// ____________________________________________________________________________________
+	public boolean isKeyboardMode()
+	{
+		return mMode == CmdMode.Keyboard;
+	}
+	
+	// ____________________________________________________________________________________
+	public void showDPad()
+	{
+		mIsDPadActive = true;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void hideDPad()
+	{
+		mIsDPadActive = false;
+		updateVisibleState();
+	}
+
+	// ____________________________________________________________________________________
+	public void updateVisibleState()
+	{
+		if(mControlsVisible)
+		{
+			if(mMode == CmdMode.Panel)
+			{
+				mKeyboard.hide();
+				if(mIsDPadActive)
+				{
+					mDPad.setVisible(true);
+					mCmdPanelLayout.hide();
+				}
+				else
+				{
+					mDPad.setVisible(false);
+					mCmdPanelLayout.show();
+				}
+			}
+			else
+			{
+				mKeyboard.show();
+				mCmdPanelLayout.hide();
+				//mDPad.setVisible(false);
+				mDPad.forceHide();
+			}
+		}
+		else
+		{
+			mCmdPanelLayout.hide();
+			mKeyboard.hide();
+			mDPad.forceHide();
+		}
+	}
+
+	// ____________________________________________________________________________________
+	public void viewAreaCanged(Rect viewRect)
+	{
+		mMap.viewAreaChanged(viewRect);
+		
 	}
 }

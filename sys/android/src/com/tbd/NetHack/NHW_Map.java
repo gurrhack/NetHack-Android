@@ -3,8 +3,8 @@ package com.tbd.NetHack;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint.Align;
@@ -16,7 +16,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.CountDownTimer;
-import android.os.Debug;
+import android.preference.PreferenceManager;
 import android.text.TextPaint;
 import android.util.FloatMath;
 import android.view.KeyEvent;
@@ -66,7 +66,6 @@ public class NHW_Map implements NH_Window
 
 	private Activity mContext;
 	private UI mUI;
-	private CmdPanel mCmdPanel;
 	private Tile[][] mTiles;
 	private float mScale;
 	private int mScaleCount;
@@ -75,7 +74,7 @@ public class NHW_Map implements NH_Window
 	private Tileset mTileset;
 	private PointF mViewOffset;
 	private boolean mIsMouseLocked;
-	private PointF mCanvasSize;
+	private RectF mCanvasRect;
 	private Point mPlayerPos;
 	private Point mCursorPos;
 	private boolean mIsRogue;
@@ -84,11 +83,12 @@ public class NHW_Map implements NH_Window
 	private boolean mIsVisible;
 	private boolean mIsBlocking;
 	private int mWid;
+	private NH_State mNHState;
 
 	// ____________________________________________________________________________________
-	public NHW_Map(Activity context, Tileset tileset, NHW_Status status, CmdPanel cmdPanel)
+	public NHW_Map(Activity context, Tileset tileset, NHW_Status status, NH_State nhState)
 	{
-		mCmdPanel = cmdPanel;
+		mNHState = nhState;
 		mTileset = tileset;
 		mTiles = new Tile[TileRows][TileCols];
 		for(Tile[] row : mTiles)
@@ -98,7 +98,7 @@ public class NHW_Map implements NH_Window
 		}
 		mScale = 1.f;
 		mViewOffset = new PointF();
-		mCanvasSize = new PointF();
+		mCanvasRect = new RectF();
 		mPlayerPos = new Point();
 		mCursorPos = new Point(-1, -1);
 		mStatus = status;
@@ -106,6 +106,12 @@ public class NHW_Map implements NH_Window
 		setContext(context);
 	}
 
+	// ____________________________________________________________________________________
+	public String getTitle()
+	{
+		return "NHW_Map";
+	}
+	
 	// ____________________________________________________________________________________
 	public void setContext(Activity context)
 	{
@@ -182,8 +188,8 @@ public class NHW_Map implements NH_Window
 		float tileW = mUI.getScaledTileWidth();
 		float tileH = mUI.getScaledTileHeight();
 
-		float ofsX = (mCanvasSize.x - tileW) * .5f - tileW * tileX;
-		float ofsY = (mCanvasSize.y - tileH) * .5f - tileH * tileY;
+		float ofsX = mCanvasRect.left + (mCanvasRect.width() - tileW) * .5f - tileW * tileX;
+		float ofsY = mCanvasRect.top + (mCanvasRect.height() - tileH) * .5f - tileH * tileY;
 
 		if(mViewOffset.x != ofsX || mViewOffset.y != ofsY)
 		{
@@ -193,7 +199,7 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	private void onCursorPosClicked()
+	public void onCursorPosClicked()
 	{
 		if(mIsBlocking)
 		{
@@ -202,7 +208,7 @@ public class NHW_Map implements NH_Window
 		}
 
 		Log.print(String.format("cursor pos clicked: %dx%d", mCursorPos.x, mCursorPos.y));
-		mCmdPanel.sendPosCmd(mCursorPos.x, mCursorPos.y);
+		mNHState.sendPosCmd(mCursorPos.x, mCursorPos.y);
 		mIsMouseLocked = false;
 	}
 
@@ -250,8 +256,8 @@ public class NHW_Map implements NH_Window
 		if(amount == 0 || mUI == null)
 			return;
 
-		float ofsX = (mViewOffset.x - mCanvasSize.x * 0.5f) / mUI.getViewWidth();
-		float ofsY = (mViewOffset.y - mCanvasSize.y * 0.5f) / mUI.getViewHeight();
+		float ofsX = (mViewOffset.x - mCanvasRect.left - mCanvasRect.width() * 0.5f) / mUI.getViewWidth();
+		float ofsY = (mViewOffset.y - mCanvasRect.top - mCanvasRect.height() * 0.5f) / mUI.getViewHeight();
 
 		mScaleCount += amount;
 		if(mScaleCount > 139)
@@ -264,8 +270,8 @@ public class NHW_Map implements NH_Window
 		if(mScale > 2.0f)
 			mScale = 2.0f;
 
-		ofsX = ofsX * mUI.getViewWidth() + mCanvasSize.x * 0.5f;
-		ofsY = ofsY * mUI.getViewHeight() + mCanvasSize.y * 0.5f;
+		ofsX = mCanvasRect.left + ofsX * mUI.getViewWidth() + mCanvasRect.width() * 0.5f;
+		ofsY = mCanvasRect.top + ofsY * mUI.getViewHeight() + mCanvasRect.height() * 0.5f;
 
 		mViewOffset.set(ofsX, ofsY);
 		mUI.invalidate();
@@ -315,7 +321,7 @@ public class NHW_Map implements NH_Window
 		{
 			showControls();
 			if(mIsBlocking)
-				mCmdPanel.sendKeyCmd(' ');
+				mNHState.sendKeyCmd(' ');
 			mUI.setBlockingInternal(bBlocking);
 		}
 		mIsBlocking = bBlocking;
@@ -325,14 +331,14 @@ public class NHW_Map implements NH_Window
 	private void hideControls()
 	{
 		mStatus.hide();
-		mCmdPanel.hide();
+		mNHState.hideControls();
 	}
 
 	// ____________________________________________________________________________________
 	private void showControls()
 	{
 		mStatus.show(false);
-		mCmdPanel.show();
+		mNHState.showControls();
 	}
 
 	// ____________________________________________________________________________________
@@ -395,8 +401,14 @@ public class NHW_Map implements NH_Window
 			mUI.invalidateTile(mCursorPos.x, mCursorPos.y);
 		}
 	}
+	
+	// ____________________________________________________________________________________
+	public void viewAreaChanged(Rect viewRect)
+	{
+		mUI.viewAreaChanged(viewRect);
+	}
 
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ // 
+	// ____________________________________________________________________________________ // 
 	//																						// 
 	// ____________________________________________________________________________________ // 
 	private class UI extends View
@@ -427,7 +439,6 @@ public class NHW_Map implements NH_Window
 
 			((ViewGroup)mContext.findViewById(R.id.map_frame)).addView(this, 0);
 			mPaint = new TextPaint();
-			//mTypeface = Typeface.create("DroidSans", 0);
 			mTypeface = Typeface.createFromAsset(mContext.getAssets(), "fonts/monobold.ttf");
 			mPaint.setTypeface(mTypeface);
 			mPaint.setTextAlign(Align.LEFT);
@@ -643,14 +654,19 @@ public class NHW_Map implements NH_Window
 			if(hMode == MeasureSpec.AT_MOST && h > hConstraint || hMode == MeasureSpec.EXACTLY)
 				h = hConstraint;
 
-			mCanvasSize.x = w;
-			mCanvasSize.y = h - mCmdPanel.getCurPanelHeight();
-
 			setMeasuredDimension(w, h);
 
 			centerView(mCursorPos.x, mCursorPos.y);
 		}
 
+		// ____________________________________________________________________________________
+		public void viewAreaChanged(Rect viewRect)
+		{
+			mCanvasRect.set(viewRect);
+			centerView(mCursorPos.x, mCursorPos.y);
+			//Log.print(Integer.toString(cmdW) + " " + Integer.toString(cmdH));
+		}
+		
 		// ____________________________________________________________________________________
 		@Override
 		public boolean onTrackballEvent(MotionEvent event)
@@ -742,6 +758,7 @@ public class NHW_Map implements NH_Window
 					// second pointer down, enter zoom mode
 					mPressCountDown.cancel();
 					mZoomPanMode = ZoomPanMode.Zooming;
+					mIsViewPanned = false;
 					mIsStickyZoom = false;
 					idx = getActionIndex(event);
 					mPointerId1 = event.getPointerId(idx);
@@ -824,8 +841,9 @@ public class NHW_Map implements NH_Window
 			if(Math.abs(dx) > th || Math.abs(dy) > th)
 			{
 				mPressCountDown.cancel();
+				if(mZoomPanMode != ZoomPanMode.Zooming)
+					mIsViewPanned = true;
 				mZoomPanMode = ZoomPanMode.Panning;
-				mIsViewPanned = true;
 			}
 		}
 
@@ -952,7 +970,7 @@ public class NHW_Map implements NH_Window
 				tileY = clamp(tileY, 0, TileRows - 1);
 				if(mIsMouseLocked)
 					setCursorPos(tileX, tileY);
-				mCmdPanel.sendPosCmd(tileX, tileY);
+				mNHState.sendPosCmd(tileX, tileY);
 				mIsMouseLocked = false;
 			}
 			else
@@ -978,7 +996,7 @@ public class NHW_Map implements NH_Window
 					dir = Character.toUpperCase(dir);
 
 				Log.print("walking");
-				mCmdPanel.sendDirKeyCmd(dir);
+				mNHState.sendDirKeyCmd(dir);
 			}
 			mIsViewPanned = false;
 		}
@@ -996,7 +1014,7 @@ public class NHW_Map implements NH_Window
 			}
 			else
 			{
-				mCmdPanel.sendDirKeyCmd(c);
+				mNHState.sendDirKeyCmd(c);
 			}
 		}
 
@@ -1012,6 +1030,10 @@ public class NHW_Map implements NH_Window
 			if(!mIsViewPanned)
 				return false;
 
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+			if(!prefs.getBoolean("travelAfterPan", true))
+				return false;
+
 			// Don't send pos command if clicking within a few tiles from the player
 
 			int dx = Math.abs(tileX - mPlayerPos.x);
@@ -1024,14 +1046,6 @@ public class NHW_Map implements NH_Window
 			// . . . . .
 			if(dx <= 3 && dy <= 3)
 				return false;
-
-			// Don't send pos command if clicking a position right next to our hero, as it can do nasty stuff (like autokicking a door)
-			//if(mPlayerPos.equals(tileX - 1, tileY - 1) || mPlayerPos.equals(tileX, tileY - 1) || mPlayerPos.equals(tileX + 1, tileY - 1))
-			//	return false;
-			//if(mPlayerPos.equals(tileX - 1, tileY + 1) || mPlayerPos.equals(tileX, tileY + 1) || mPlayerPos.equals(tileX + 1, tileY + 1))
-			//	return false;
-			//if(mPlayerPos.equals(tileX - 1, tileY) || mPlayerPos.equals(tileX + 1, tileY))
-			//	return false;
 
 			return true;
 		}
@@ -1065,7 +1079,7 @@ public class NHW_Map implements NH_Window
 				}
 				if(mCancelKeys.contains((char)nhKey))
 				{
-					mCmdPanel.sendDirKeyCmd(nhKey);
+					mNHState.sendDirKeyCmd(nhKey);
 					mIsMouseLocked = false;
 					return true;
 				}

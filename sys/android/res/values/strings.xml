@@ -233,6 +233,9 @@ domain roguelike tileset "RLTiles".</p>
 <i>by Dan Anthony F. Alcantara</i><br/>
 <a href="http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112>http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112</a></p>
 
+<p><br/><br/><h2>Other</h2>
+An icon by <a href="http://p.yusukekamiyamane.com/">Yusuke Kamiyamane</a>.</p>
+
 <p><br/><small>&copy; 2011 Martin Gustafsson</small></p> 
 ]]>
 	</string>
@@ -361,7 +364,7 @@ the center button. You can also zoom with the volume buttons.
 <p>
 &nbsp;&nbsp;Pan the map and tap on a position to Travel to it (see the
 <font color="lime"><em>_</em></font> command in the NetHack
-help).<br/>
+help). This can be disabled with the <font color="aqua"><em>Travel after pan</em></font> option. <br/>
 </p>
 
 <p>&nbsp;&nbsp;Long-press an inventory item to specify an amount, when for instance dropping (<font color="lime"><em>d</em></font>) something.</p>
@@ -385,7 +388,7 @@ keyboard.
 </p>
 
 <p>
-&nbsp;&nbsp;Long-press on any button to change it, remove it, or add a new one to the left of it. 
+&nbsp;&nbsp;Long-press on any button to change it, remove it, or add a new one to the left of it.
 </p>
 	 
 <p>&nbsp;&nbsp;Control commands are entered with <font color="lime"><em>^</em></font> followed by a letter:</p>

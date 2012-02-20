@@ -2,8 +2,6 @@ package com.tbd.NetHack;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.text.Layout.Alignment;
-import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -15,6 +13,7 @@ public class AutoFitTextView extends TextView
 	private float mTextSize;
 	private float mAdd;
 	private float mMul;
+	private final float minSize;
 
 	// ____________________________________________________________________________________
 	public AutoFitTextView(Context context)
@@ -35,15 +34,15 @@ public class AutoFitTextView extends TextView
 		mTextSize = getTextSize();
 		mAdd = 0.f;
 		mMul = 1.f;
+		final float density = context.getResources().getDisplayMetrics().density;
+		minSize = 11.f * density;
 	}
 
 	// ____________________________________________________________________________________
 	@Override
 	protected void onTextChanged(final CharSequence text, final int start, final int before, final int after)
 	{
-		if(!getText().equals(text))
-			mDoMeasureText = true;
-//		measureText();
+		mDoMeasureText = true;
 	}
 
 	// ____________________________________________________________________________________
@@ -57,6 +56,8 @@ public class AutoFitTextView extends TextView
 	// ____________________________________________________________________________________
 	public void measureText()
 	{
+		mDoMeasureText = false;
+
 		int viewW = getMeasuredWidth() - getPaddingLeft() - getPaddingRight();
 		int viewH = getMeasuredHeight() - getPaddingTop() - getPaddingBottom();
 
@@ -71,7 +72,7 @@ public class AutoFitTextView extends TextView
 		paint.setTextSize(mTextSize);
 		float textSize = mTextSize;
 		float textW = paint.measureText(text, 0, text.length());
-		while(textSize > 10.f && textW > viewW)
+		while(textSize > minSize && textW > viewW)
 		{
 			textSize--;
 			paint.setTextSize(textSize);
@@ -79,8 +80,6 @@ public class AutoFitTextView extends TextView
 		}
 		super.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
 		super.setLineSpacing(mAdd, mMul);
-
-		mDoMeasureText = false;
 	}
 
 	// ____________________________________________________________________________________

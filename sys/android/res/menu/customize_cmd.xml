@@ -6,6 +6,10 @@
 		android:titleCondensed="Change..."
 		android:title="Change command..."/>
 	<item
+		android:id="@+id/label"
+		android:titleCondensed="Label..."
+		android:title="Set custom label..."/>
+	<item
 		android:id="@+id/add"
 		android:titleCondensed="New command..."
 		android:title="New command..."/>

@@ -2,7 +2,6 @@ package com.tbd.NetHack;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
 import android.os.Handler;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -16,8 +15,10 @@ public class NetHackIO implements Runnable
 	private ConcurrentLinkedQueue<Integer> mCmdQue;
 	private int mNextWinId;
 	private int mMessageWid;
+	private volatile Integer mIsReady = 0;
+	private Object mReadyMonitor = new Object();
 
-	// ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ //
+	// ____________________________________________________________________________________ //
 	// Send commands																		//
 	// ____________________________________________________________________________________ //
 	private static final int KeyCmd = 0x80000000;
@@ -25,6 +26,7 @@ public class NetHackIO implements Runnable
 	private static final int LineCmd = 0xa0000000;
 	private static final int SelectCmd = 0xb0000000;
 	private static final int SaveStateCmd = 0xc0000000;
+	private static final int AbortCmd = 0xd0000000;
 
 	private static final int FlagCmd = 0xe0000000;
 	private static final int CmdMask = 0xf0000000;
@@ -37,6 +39,21 @@ public class NetHackIO implements Runnable
 		mNextWinId = 1;
 		mCmdQue = new ConcurrentLinkedQueue<Integer>();
 		mHandler = new Handler();
+/*		Looper.myQueue().addIdleHandler(new MessageQueue.IdleHandler()
+		{			
+			@Override
+			public boolean queueIdle()
+			{
+				//Log.print("idling...");
+				waitOut(2000);
+				while(!mHandler.empty())
+				{
+					flushIn();
+					waitOut(2000);
+				}
+				return true;
+			}
+		});*/
 	}
 
 	// ____________________________________________________________________________________
@@ -84,6 +101,62 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
+	public void saveAndQuit()
+	{
+		// send a few abort commands to cancel ongoing operations
+		sendAbortCmd();
+		sendAbortCmd();
+		sendAbortCmd();
+		sendAbortCmd();
+
+		// give it some time
+		for(int i = 0; i < 5; i++)
+		{
+			try
+			{
+				Thread.sleep(150);
+				break;
+			}
+			catch(InterruptedException e)
+			{
+			}
+		}
+	}
+
+	// ____________________________________________________________________________________
+	public void waitReady()
+	{
+		// flush out queue   
+		long endTime = System.currentTimeMillis() + 1000;			
+		while(mCmdQue.peek() != null && endTime - System.currentTimeMillis() > 0)
+			Thread.yield();
+
+		// boolean test = mIsReady == 0;
+		// if(test)
+		// 	Log.print("TEST:TEST:TEST:");
+		
+		synchronized(mReadyMonitor)
+		{
+			try
+			{
+				// wait until nethack is ready for more input
+				do
+					mReadyMonitor.wait(10);
+				while(mIsReady == 0);
+			}
+			catch(InterruptedException e)
+			{
+			}
+		}
+	}
+	
+	// ____________________________________________________________________________________
+	public Handler getHandler()
+	{
+		return mHandler;
+	}
+
+	// ____________________________________________________________________________________
 	public void run()
 	{
 		Log.print("start native process");
@@ -97,7 +170,6 @@ public class NetHackIO implements Runnable
 			Log.print("EXCEPTED");
 		}
 		Log.print("native process finished");
-		// Quit();
 	}
 
 	// ____________________________________________________________________________________
@@ -198,6 +270,12 @@ public class NetHackIO implements Runnable
 		mCmdQue.add(-1);
 	}
 
+	// ____________________________________________________________________________________
+	private void sendAbortCmd()
+	{
+		mCmdQue.add(AbortCmd);
+	}
+
 	// ------------------------------------------------------------------------------------
 	// Receive commands called from nethack thread
 	// ------------------------------------------------------------------------------------
@@ -240,43 +318,64 @@ public class NetHackIO implements Runnable
 	// ____________________________________________________________________________________
 	private int discardUntil(int cmd0)
 	{
-		int cmd = 0;
+		int cmd;
 		do
 		{
 			cmd = removeFromQue();
 			handleSpecialCmds(cmd);
-		}while(cmd != cmd0);
+		}while(cmd != cmd0 && cmd != AbortCmd);
 		return cmd;
 	}
 
 	// ____________________________________________________________________________________
 	private int discardUntil(int cmd0, int cmd1)
 	{
-		int cmd = 0;
+		int cmd;
 		do
 		{
 			cmd = removeFromQue();
 			handleSpecialCmds(cmd);
-		}while(cmd != cmd0 && cmd != cmd1);
+		}while(cmd != cmd0 && cmd != cmd1 && cmd != AbortCmd);
 		return cmd;
+	}
+
+	// ____________________________________________________________________________________
+	private void incReady()
+	{
+		synchronized(mReadyMonitor)
+		{
+			if(mIsReady++ == 0)
+				mReadyMonitor.notify();
+		}
+	}
+
+	// ____________________________________________________________________________________
+	private void decReady()
+	{
+		mIsReady--;
+		if(mIsReady < 0)
+			throw new RuntimeException();
 	}
 
 	// ____________________________________________________________________________________
 	private int receiveKeyCmd()
 	{
-		int key = '\033';
+		int key = 0x80;
 
-		if(discardUntil(KeyCmd) != KeyCmd)
-			return key;
+		incReady();
+		
+		if(discardUntil(KeyCmd) == KeyCmd)
+			key = removeFromQue();
 
-		key = removeFromQue();
-
+		decReady();
 		return key;
 	}
 
 	// ____________________________________________________________________________________
 	private int receivePosKeyCmd(int lockMouse, int[] pos)
 	{
+		incReady();
+
 		if(lockMouse != 0)
 		{
 			mHandler.post(new Runnable()
@@ -290,15 +389,19 @@ public class NetHackIO implements Runnable
 
 		int cmd = discardUntil(KeyCmd, PosCmd);
 
-		if(cmd == 0)
-			return '\033';
+		int key = 0x80;
 
-		int key = removeFromQue();
-		if(cmd == PosCmd)
-		{
-			pos[0] = removeFromQue(); // x
-			pos[1] = removeFromQue(); // y
+		if(cmd != AbortCmd)
+		{			
+			key = removeFromQue();
+			if(cmd == PosCmd)
+			{
+				pos[0] = removeFromQue(); // x
+				pos[1] = removeFromQue(); // y
+			}
 		}
+		
+		decReady();		
 		return key;
 	}
 
@@ -370,44 +473,60 @@ public class NetHackIO implements Runnable
 	private void ynFunction(final byte[] cquestion, final byte[] choices, final int def)
 	{
 		final String question = CP437.decode(cquestion);
+		//Log.print("nhthread: ynFunction");
 		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
+				//Log.print("uithread: ynFunction");
 				mState.ynFunction(question, choices, def);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	private String getLine(final byte[] title, final int nMaxChars)
+	private String getLine(final byte[] title, final int nMaxChars, int reentry)
 	{
-		final String msg = CP437.decode(title);
-		mHandler.post(new Runnable()
+		if(reentry == 0)
 		{
-			public void run()
+			final String msg = CP437.decode(title);
+			//Log.print("nhthread: getLine");
+			mHandler.post(new Runnable()
 			{
-				mState.getLine(msg, nMaxChars);
-			}
-		});
+				public void run()
+				{
+					//Log.print("uithread: getLine");
+					mState.getLine(msg, nMaxChars);
+				}
+			});
+		}
 		return waitForLine();
 	}
 
 	// ____________________________________________________________________________________
 	private String waitForLine()
 	{
-		if(discardUntil(LineCmd) != LineCmd)
-			return "";
-
+		incReady();
+		
 		StringBuilder builder = new StringBuilder();
-		while(true)
-		{
-			int c = removeFromQue();
-			if(c == '\n')
-				break;
-			builder.append((char)c);
-		}
 
+		if(discardUntil(LineCmd) == LineCmd)
+		{
+			while(true)
+			{
+				int c = removeFromQue();
+				if(c == '\n')
+					break;
+				// prevent injecting special abort character
+				if(c == 0x80)
+					c = '?';
+				builder.append((char)c);
+			}
+		}
+		else
+			builder.append((char)0x80);
+		
+		decReady();
 		return builder.toString();
 	}
 
@@ -450,9 +569,6 @@ public class NetHackIO implements Runnable
 				mState.displayWindow(wid, bBlocking);
 			}
 		});
-
-		if(bBlocking != 0)
-			receiveKeyCmd();
 	}
 
 	// ____________________________________________________________________________________
@@ -508,47 +624,62 @@ public class NetHackIO implements Runnable
 	private void endMenu(final int wid, final byte[] prompt)
 	{
 		final String msg = CP437.decode(prompt);
+		//Log.print("nhthread: endMenu");
 		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
+				//Log.print("uithread: endMenu");
 				mState.endMenu(wid, msg);
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	private int[] selectMenu(final int wid, final int how)
+	private int[] selectMenu(final int wid, final int how, final int reentry)
 	{
-		mHandler.post(new Runnable()
+		//Log.print("nhthread: selectMenu");
+		if(reentry == 0)
 		{
-			public void run()
+			mHandler.post(new Runnable()
 			{
-				mState.selectMenu(wid, how);
-			}
-		});
+				public void run()
+				{
+					//Log.print("uithread: selectMenu");
+					mState.selectMenu(wid, how);
+				}
+			});
+		}
 		return waitForSelect();
 	}
 
 	// ____________________________________________________________________________________
 	private int[] waitForSelect()
 	{
-		if(discardUntil(SelectCmd) != SelectCmd)
-			return null;
-
-		int nItems = removeFromQue();
-		if(nItems < 0)
-			return null;
-
-		int[] items = new int[nItems * 2];
-		if(nItems > 0)
+		incReady();
+		
+		int[] items = null;
+		
+		int cmd = discardUntil(SelectCmd);
+		if(cmd == SelectCmd)
 		{
-			for(int i = 0; i < items.length;)
+			int nItems = removeFromQue();
+			if(nItems >= 0)
 			{
-				items[i++] = removeFromQue(); // id
-				items[i++] = removeFromQue(); // count
+				items = new int[nItems * 2];
+				for(int i = 0; i < items.length;)
+				{
+					items[i++] = removeFromQue(); // id
+					items[i++] = removeFromQue(); // count
+				}				
 			}
 		}
+		else if(cmd == AbortCmd)
+		{
+			items = new int[1];
+		}
+		
+		decReady();
 		return items;
 	}
 
@@ -601,15 +732,31 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private native void RunNetHack(String path, String username, boolean bWizard);
-
-	private native void SaveNetHackState();
-
-	private native void SetFlags(int bAutoPickup, String pickupTypes, int bAutoMenu);
+	private void editOpts()
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.editOpts();
+			}
+		});
+	}
 
 	// ____________________________________________________________________________________
-	/*static
+	private void setUsername(final byte[] username)
 	{
-		System.loadLibrary("nethack");
-	}*/
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.setUsername(new String(username));
+			}
+		});
+	}
+
+	// ____________________________________________________________________________________
+	private native void RunNetHack(String path, String username, boolean bWizard);
+	private native void SaveNetHackState();
+	private native void SetFlags(int bAutoPickup, String pickupTypes, int bAutoMenu);
 }

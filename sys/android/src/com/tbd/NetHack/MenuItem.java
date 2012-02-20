@@ -40,9 +40,9 @@ public class MenuItem
 		mIdent = ident;
 		mAccelerator = (char)accelerator;
 		mGroupacc = (char)groupacc;
-		mAttr = attr == TextAttr.Bold ? TextAttr.Inverse : attr;		
+		mAttr = attr == TextAttr.Bold ? TextAttr.Inverse : attr;
 
-		String text = str.trim();
+		String text = str;
 		int lp = text.indexOf('(');
 		int rp = text.indexOf(')');
 		if(accelerator != 0 && lp > 0 && lp != rp && rp == text.length() - 1)
@@ -190,6 +190,12 @@ public class MenuItem
 	public char getGroupAcc()
 	{
 		return mGroupacc;
+	}
+
+	// ____________________________________________________________________________________
+	public boolean isSelectable()
+	{
+		return mIdent != 0;
 	}
 
 }

@@ -9,7 +9,7 @@
 
 	<TextView
 		android:id="@+id/item_acc"
-		style="@style/ListItem1"
+		style="@style/ListText1"
 		android:text="t"
 		android:minWidth="20dip"
 		android:layout_gravity="center_vertical"
@@ -34,20 +34,21 @@
 
 		<TextView
 			android:id="@+id/item_text"
-			style="@style/ListItem1"
+			style="@style/ListText1"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:text="item_text"/>
 
 		<TextView
 			android:id="@+id/item_sub"
-			style="@style/ListItem2"
+			style="@style/ListText2"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:text="item_sub"/>
 	</LinearLayout>
 	<TextView
 		android:id="@+id/item_count"
+		style="@style/ListText1"
 		android:text="1234"
 		android:layout_gravity="center_vertical"
 		android:layout_width="wrap_content"
