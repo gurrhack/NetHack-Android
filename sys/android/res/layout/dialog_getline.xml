@@ -8,14 +8,14 @@
 	android:nextFocusUp="@+id/input"
 	android:nextFocusLeft="@+id/btn_1"
 	android:nextFocusRight="@+id/btn_0"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent">
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
 
 	<LinearLayout
 		style="@style/NH_Dialog"
 		android:orientation="vertical"
 		android:layout_centerInParent="true"
-		android:layout_width="match_parent"
+		android:layout_width="fill_parent"
 		android:layout_height="wrap_content">
 
 		<TextView
@@ -28,13 +28,13 @@
 
 		<ImageView
 			android:background="@android:drawable/divider_horizontal_bright"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="2px"/>
 		
 		<EditText
 			android:id="@+id/input"
 		    style="@style/InputText"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content"
 			android:layout_margin="6dip"
 			android:text=""
@@ -47,7 +47,7 @@
 			
 		<LinearLayout
 			style="@android:style/ButtonBar"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content">
 			<Button
 				android:id="@+id/btn_0"

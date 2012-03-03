@@ -20,8 +20,10 @@ public class NH_GetLine
 	private UI mUI;
 	private NetHackIO mIO;
 	private String mTitle;
+	private String mLastLine = "";
 	private int mMaxChars;
 	private NH_State mState;
+	public boolean mSaveLastLine;
 
 	// ____________________________________________________________________________________
 	public NH_GetLine(NetHackIO io, NH_State state)
@@ -116,11 +118,15 @@ public class NH_GetLine
 			String lastUsername = prefs.getString("lastUsername", "");
 			if(mTitle.equals("Who are you?") && lastUsername.length() > 0)
 			{
+				mSaveLastLine = false;
 				mInput.setText(lastUsername);
 				mInput.selectAll();
 			}
 			else
 			{
+				mSaveLastLine = true;
+				mInput.setText(mLastLine);
+				mInput.selectAll();
 				Util.showKeyboard(context, mInput);
 			}
 		}
@@ -171,6 +177,8 @@ public class NH_GetLine
 			{
 				String text = mInput.getText().toString();
 				mIO.sendLineCmd(text);
+				if(mSaveLastLine)
+					mLastLine = text;
 				dismiss();
 			}
 		}

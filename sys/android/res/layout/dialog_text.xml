@@ -4,8 +4,8 @@
 	android:id="@+id/menu_layout"
 	android:background="@android:drawable/screen_background_dark_transparent"
 	android:clickable="true"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent">
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
 	<LinearLayout
 		style="@style/NH_Dialog"
 		android:orientation="vertical"
@@ -20,7 +20,7 @@
 			android:cacheColorHint="#00000000"
 			android:layout_weight="1"
 			android:layout_width="wrap_content"
-			android:layout_height="match_parent">
+			android:layout_height="fill_parent">
 
 			<TextView
 				android:id="@+id/text_view"
@@ -34,14 +34,14 @@
 		<LinearLayout
 			style="@android:style/ButtonBar"
 			android:orientation="vertical"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content">
 			<Button
 			    style="@style/ButtonText"
 				android:text="Ok"
 				android:layout_gravity="center"
 				android:id="@+id/btn_ok"
-				android:layout_width="match_parent"
+				android:layout_width="fill_parent"
 				android:layout_height="wrap_content"/>
 		</LinearLayout>
 

@@ -9,9 +9,6 @@ import java.io.Serializable;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.util.Base64;
-import android.util.Base64InputStream;
-import android.util.Base64OutputStream;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -44,35 +41,9 @@ public class Util
 	}
 
 	// ____________________________________________________________________________________
-	public static String objectToString(Serializable obj)
-	{
-		try
-		{
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			ObjectOutputStream oos = new ObjectOutputStream(new Base64OutputStream(baos, Base64.NO_PADDING | Base64.NO_WRAP));
-			oos.writeObject(obj);
-			oos.close();
-			return baos.toString("UTF-8");
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	// ____________________________________________________________________________________
 	public static Object stringToObject(String str)
 	{
-		try
-		{
-			return new ObjectInputStream(new Base64InputStream(new ByteArrayInputStream(str.getBytes()), Base64.NO_PADDING | Base64.NO_WRAP)).readObject();
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
-		return null;
+		return ObsoleteBase64.stringToObject(str);
 	}
 
 	// ____________________________________________________________________________________

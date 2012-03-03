@@ -214,19 +214,6 @@ public class CmdPanelLayout extends FrameLayout
 	}
 
 	// ____________________________________________________________________________________
-	public String[] getLabels()
-	{
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		String s = prefs.getString("cmdLayoutL", "");
-		String[] a = null;
-
-		if(s.length() > 0)
-			a = (String[])Util.stringToObject(s);
-
-		return a;
-	}
-
-	// ____________________________________________________________________________________
 	private void loadPanels(SharedPreferences prefs)
 	{
 		Editor editor = prefs.edit();
@@ -377,7 +364,7 @@ public class CmdPanelLayout extends FrameLayout
 			FrameLayout.LayoutParams params = generateDefaultLayoutParams();
 			params.gravity = (location == 0 ? Gravity.LEFT : Gravity.RIGHT) | Gravity.FILL_VERTICAL;
 			params.width = LayoutParams.WRAP_CONTENT;
-			params.height = LayoutParams.MATCH_PARENT;
+			params.height = LayoutParams.FILL_PARENT;
 			v.setLayoutParams(params);
 		}
 		else
@@ -385,7 +372,7 @@ public class CmdPanelLayout extends FrameLayout
 			v = new HorizontalScrollView(mContext);
 			FrameLayout.LayoutParams params = generateDefaultLayoutParams();
 			params.gravity = (location == 2 ? Gravity.TOP : Gravity.BOTTOM) | Gravity.FILL_HORIZONTAL;
-			params.width = LayoutParams.MATCH_PARENT;
+			params.width = LayoutParams.FILL_PARENT;
 			params.height = LayoutParams.WRAP_CONTENT;
 			v.setLayoutParams(params);
 		}

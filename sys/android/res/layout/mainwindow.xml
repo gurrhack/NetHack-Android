@@ -1,49 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/base_frame"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
     android:baselineAligned="false"
     android:orientation="vertical" >
 
     <FrameLayout
         android:id="@+id/dlg_frame"
-        android:layout_width="match_parent"
+        android:layout_width="fill_parent"
         android:layout_height="0dip"
         android:layout_weight="1" >
 
         <FrameLayout
             android:id="@+id/map_frame"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
             android:descendantFocusability="blocksDescendants" >
 
             <com.tbd.NetHack.CmdPanelLayout
                 android:id="@+id/cmdPanelLayout1"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" >
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent" >
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="fill_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|fill_horizontal"
                     android:orientation="vertical" >
 
                     <com.tbd.NetHack.AutoFitTextView
                         android:id="@+id/nh_stat0"
-                        android:layout_width="match_parent"
+                        android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:textSize="15sp" />
 
                     <com.tbd.NetHack.AutoFitTextView
                         android:id="@+id/nh_stat1"
-                        android:layout_width="match_parent"
+                        android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:textSize="15sp" />
 
                     <TextView
                         android:id="@+id/nh_message"
-                        android:layout_width="match_parent"
+                        android:layout_width="fill_parent"
                         android:layout_height="wrap_content"
                         android:textSize="15sp" />
 
@@ -76,8 +76,8 @@
 				
                 <LinearLayout
                      android:id="@+id/viewArea"
-                     android:layout_width="match_parent"
-                     android:layout_height="match_parent" />
+                     android:layout_width="fill_parent"
+                     android:layout_height="fill_parent" />
                 
             </com.tbd.NetHack.CmdPanelLayout>
         </FrameLayout>

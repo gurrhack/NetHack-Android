@@ -8,14 +8,14 @@
 	android:nextFocusUp="@+id/amount_slider"
 	android:nextFocusLeft="@+id/btn_1"
 	android:nextFocusRight="@+id/btn_0"
-	android:layout_width="match_parent"
-	android:layout_height="match_parent">
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
 
 	<LinearLayout
 		style="@style/NH_Dialog"
 		android:orientation="vertical"
 		android:layout_centerInParent="true"
-		android:layout_width="match_parent"
+		android:layout_width="fill_parent"
 		android:layout_height="wrap_content">
 
 		<TextView
@@ -27,11 +27,11 @@
 
 		<ImageView
 			android:background="@android:drawable/divider_horizontal_bright"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="2px"/>
 
 		<LinearLayout
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content"
 			android:padding="6dip">
 
@@ -56,7 +56,7 @@
 		</LinearLayout>
 
 		<LinearLayout
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content"
 			android:padding="0dip">
 
@@ -70,7 +70,7 @@
 
 			<SeekBar
 			    android:id="@+id/amount_slider"
-			    android:layout_width="match_parent"
+			    android:layout_width="fill_parent"
 			    android:layout_height="wrap_content"
 				android:layout_weight="1"
 				android:layout_gravity="center_vertical"
@@ -89,7 +89,7 @@
 
 		<LinearLayout
 			style="@android:style/ButtonBar"
-			android:layout_width="match_parent"
+			android:layout_width="fill_parent"
 			android:layout_height="wrap_content">
 			<Button
 			    style="@style/ButtonText"

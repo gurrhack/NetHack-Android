@@ -10,6 +10,6 @@
 		android:id="@+id/text_view"
 		android:background="#00000000"
 		style="@style/WindowText"
-		android:layout_width="match_parent"
+		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"/>
 </ScrollView>
