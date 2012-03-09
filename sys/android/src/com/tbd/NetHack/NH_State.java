@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Rect;
+import android.os.Debug;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
@@ -211,6 +212,8 @@ public class NH_State
 			}
 			return true;
 		}
+		if(DEBUG.runTrace() && keyCode == KeyEvent.KEYCODE_BACK)
+			Debug.stopMethodTracing();
 		return sendKeyCmd(nhKey);
 	}
 	

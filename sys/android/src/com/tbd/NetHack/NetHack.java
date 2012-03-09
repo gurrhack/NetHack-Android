@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.Debug;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -105,6 +106,8 @@ public class NetHack extends Activity
 		mMetaDown = false;
 
 		Log.print("onStart");
+		if(DEBUG.runTrace())
+			Debug.startMethodTracing("nethack");
 		super.onStart();
 	}
 

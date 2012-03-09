@@ -1,5 +1,6 @@
 package com.tbd.NetHack;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.PixelFormat;
@@ -44,10 +45,11 @@ class TileDrawable extends Drawable
 		src.right = src.left + mTileset.getTileWidth();
 		src.bottom = src.top + mTileset.getTileHeight();
 
-		// Rect dst = new Rect(0, 0, src.width(), src.height());
-
-		// ?android:attr/listPreferredItemHeight
-		canvas.drawBitmap(mTileset.getBitmap(), src, getBounds(), null);
+		// This check fixes a crash if ASCII mode is enabled while a menu is opened
+		// The menu doesn't look right after this, but it's better than a crash
+		Bitmap bmp = mTileset.getBitmap();
+		if(bmp != null)
+			canvas.drawBitmap(bmp, src, getBounds(), null);
 	}
 
 	// ____________________________________________________________________________________
