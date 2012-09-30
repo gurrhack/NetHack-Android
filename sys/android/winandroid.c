@@ -1334,6 +1334,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 }
 
 //____________________________________________________________________________________
+static void and_n_getline_r(const char* question, char* buf, int nMax, int reentry);
 void and_n_getline(const char* question, char* buf, int nMax)
 {
 	and_n_getline_r(question, buf, nMax, 0);

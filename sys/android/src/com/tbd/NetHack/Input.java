@@ -30,7 +30,13 @@ public class Input
 		//if(event.isCtrlPressed())
 		//	mod.add(Modifiers.Control);
 		
-		if(event.isShiftPressed())
+		// Some users have reported that they can't use the hardware shift key. I suspect
+		// that the "isShiftPressed" function is broken on those devices. Checking for
+		// META_SHIFT might work, otherwise I'll have to manually track the shift keys
+		
+		// I don't trust META_SHIFT_ON since its value is not equal to (META_SHIFT_LEFT_ON | META_SHIFT_RIGHT_ON)
+		int metaShiftMask = KeyEvent.META_SHIFT_LEFT_ON | KeyEvent.META_SHIFT_RIGHT_ON | KeyEvent.META_SHIFT_ON;
+		if(event.isShiftPressed() || (event.getMetaState() & metaShiftMask) != 0)
 			mod.add(Modifier.Shift);
 		
 		return mod;
@@ -84,13 +90,12 @@ public class Input
 			nhKey = ch;
 			if(nhKey != 0)
 			{
-				if(mod.contains(Modifier.Shift))
-					nhKey = Character.toUpperCase(nhKey);
-				// don't apply these to the special hardware keys above
 				if(mod.contains(Modifier.Meta))
 					nhKey = 0x80 | Character.toLowerCase(nhKey);
 				else if(mod.contains(Modifier.Control))
 					nhKey = 0x1f & Character.toLowerCase(nhKey);
+				else if(mod.contains(Modifier.Shift))
+					nhKey = Character.toUpperCase(nhKey);
 			}
 			return nhKey;
 		}
