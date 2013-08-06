@@ -4,19 +4,19 @@ public class CP437
 {
 	public static char decode(int b)
 	{
-		return m_unicode[b & 0xff];
+		return UNICODE[b & 0xff];
 	}
 
 	public static String decode(byte[] bytes)
 	{
 		StringBuilder builder = new StringBuilder(bytes.length);
 		for(byte b : bytes)
-			builder.append(m_unicode[b & 0xff]);
+			builder.append(UNICODE[b & 0xff]);
 		return builder.toString();
 	}
 
 	// switched out a few characters that are either missing or look odd
-	static char[] m_unicode = new char[]
+	private static char[] UNICODE = new char[]
 	{
 			0x0020, 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022, 0x25D8, 0x25CB, 0x000A, 0x2660, 0x2661, 0x000D, 0x266B, 0x2609,
 			0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8, 0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,

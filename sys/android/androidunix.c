@@ -62,7 +62,6 @@ getlock()
 	fq_lock = fqname(lock, LEVELPREFIX, 0);
 	if((fd = open(fq_lock, 0)) == -1)
 	{
-		debuglog("no lock yet: %s", fq_lock);
 		if(errno == ENOENT) goto gotlock;    /* no such file */
 		perror(fq_lock);
 		unlock_file(HLOCK);
@@ -70,15 +69,11 @@ getlock()
 	}
 	(void) close(fd);
 
-	c = yn("There are files from a game in progress under your name. Recover?");
-	if(c == 'y' || c == 'Y')
+	if(!recover_savefile())
 	{
-		if(!recover_savefile())
-		{
-			(void) eraseoldlocks();
-			unlock_file(HLOCK);
-			error("Couldn't recover old game.");
-		}
+		(void) eraseoldlocks();
+		unlock_file(HLOCK);
+		error("Couldn't recover old game.");
 	}
 
 gotlock:

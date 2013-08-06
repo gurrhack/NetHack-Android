@@ -1,7 +1,9 @@
 package com.tbd.NetHack;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -34,7 +36,6 @@ public class NH_State
 	private Tileset mTileset;
 	private String mDataDir;
 	private String mUsername;
-	boolean mIsWizard;
 	private CmdPanelLayout mCmdPanelLayout;
 	private DPadOverlay mDPad;
 	private boolean mIsDPadActive;
@@ -43,6 +44,7 @@ public class NH_State
 	private CmdMode mMode;
 	private SoftKeyboard mKeyboard;
 	private boolean mControlsVisible;
+	private boolean mNumPad;
 	
 	// ____________________________________________________________________________________
 	public NH_State(NetHack context)
@@ -84,20 +86,27 @@ public class NH_State
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 		
 		mUsername = prefs.getString("username", "");
-		mIsWizard = prefs.getBoolean("wizard", false);
 		mDataDir = path;
-		mCmdPanelLayout.setWizard(mIsWizard);
 		mIO.start();
 
 		preferencesUpdated();
 		updateVisibleState();
+
+		mMap.loadZoomLevel();
 	}
 
 	// ____________________________________________________________________________________
-	public void setUsername(String username)
+	public void setLastUsername(String username)
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 		prefs.edit().putString("lastUsername", username).commit();
+	}
+	
+	// ____________________________________________________________________________________
+	private String getLastUsername()
+	{
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		return prefs.getString("lastUsername", "");
 	}
 	
 	// ____________________________________________________________________________________
@@ -127,8 +136,7 @@ public class NH_State
 			mCmdPanelLayout.show();
 
 		String tilesetName = prefs.getString("tileset", "default_32");
-		if(mTileset.updateTileset(tilesetName, mContext.getResources()))
-			mMap.resetZoom();
+		mTileset.updateTileset(tilesetName, mContext.getResources());
 
 		String pickupTypes = prefs.getString("autoPickupTypes", "");
 		boolean bAutoPickup = prefs.getBoolean("autoPickup", false);
@@ -298,6 +306,20 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
+	public void askName(int nMaxChars, String[] saves) {
+		String last = getLastUsername();
+		List<String> list = new ArrayList<String>();
+		for(String s : saves)
+		{
+			if(last.equals(s))
+				list.add(0, s);
+			else
+				list.add(s);
+		}
+		mGetLine.showWhoAreYou(mContext, nMaxChars, list);
+	}
+	
+	// ____________________________________________________________________________________
 	public void createWindow(int wid, int type)
 	{
 		switch(type)
@@ -383,9 +405,6 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void destroyWindow(final int wid)
 	{
-		//Log.print("dest " + Integer.toString(wid));
-		// better hide it before we remove it. never know when the GC
-		// decides to kick in
 		int i = getWindowI(wid);
 		mWindows.get(i).hide();
 		mWindows.remove(i);
@@ -463,15 +482,8 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public boolean isWizard()
-	{
-		return mIsWizard;
-	}
-
-	// ____________________________________________________________________________________
 	public void saveAndQuit()
 	{
-		// Save and quit if no "important" dialogs are opened 
 		mIO.saveAndQuit();
 	}
 
@@ -499,7 +511,6 @@ public class NH_State
 		if(key <= 0 || key > 0xff)
 			return false;
 		hideDPad();
-		//Log.print(Integer.toHexString(key&0x1f));
 		mIO.sendKeyCmd((char)key);
 		return true;
 	}
@@ -645,6 +656,23 @@ public class NH_State
 	public void viewAreaCanged(Rect viewRect)
 	{
 		mMap.viewAreaChanged(viewRect);
-		
+	}
+
+	// ____________________________________________________________________________________
+	public void setNumPadOption(boolean numPadOn) {
+		mNumPad = numPadOn;
+		mDPad.updateNumPadState();
+	}
+
+	// ____________________________________________________________________________________
+	public boolean isNumPadOn() {
+		return mNumPad;
+	}
+
+	// ____________________________________________________________________________________
+	public void setWizardMode()
+	{
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		mCmdPanelLayout.wizardUpgrade(prefs);
 	}
 }

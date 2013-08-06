@@ -91,6 +91,9 @@ static jmethodID jShowDPad;
 static jmethodID jShowPrevMessage;
 static jmethodID jShowLog;
 static jmethodID jSetUsername;
+static jmethodID jSetNumPadOption;
+static jmethodID jAskName;
+static jmethodID jSetWizardMode;
 
 static boolean quit_if_possible;
 
@@ -128,7 +131,7 @@ boolean pickupTypesFromFile;
 
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username, jboolean bWizard)
+void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username)
 {
 	int nParams;
 	char* params[10];
@@ -160,16 +163,19 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "showPrevMessage", "()V");
 	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "()V");
 	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
+	jSetNumPadOption = (*jEnv)->GetMethodID(jEnv, jApp, "setNumPadOption", "(I)V");
+	jAskName = (*jEnv)->GetMethodID(jEnv, jApp, "askName", "(I[Ljava/lang/String;)Ljava/lang/String;");
+	jSetWizardMode = (*jEnv)->GetMethodID(jEnv, jApp, "setWizardMode", "()V");
 
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
-			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog && jSetUsername))
+			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog && jSetUsername &&
+			jSetNumPadOption && jAskName && jSetWizardMode))
 	{
 		debuglog("baaaaad");
 		return;
 	}
-
 
 	pChars = (*jEnv)->GetStringUTFChars(jEnv, path, 0);
 	if(chdir(pChars) != 0)
@@ -179,14 +185,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	params[0] = "nethack";
 	nParams = 1;
 
-	if(bWizard)
-	{
-	//	debuglog("Wizard mode");
-		params[nParams++] = "-D";
-	//	params[nParams++] = "-u";
-	//	params[nParams++] = "wizard";
-	}
-	else if(username && (*jEnv)->GetStringUTFLength(jEnv, username) > 0)
+	if(username && (*jEnv)->GetStringUTFLength(jEnv, username) > 0)
 	{
 		pChars = (*jEnv)->GetStringUTFChars(jEnv, username, 0);
 
@@ -512,20 +511,6 @@ void and_player_selection()
 				flags.initalign = selected[0].item.a_int - 1;
 			free((genericptr_t)selected), selected = 0;
 		}
-	}
-}
-
-//____________________________________________________________________________________
-//askname()	-- Ask the user for a player name.
-void and_askname()
-{
-	//debuglog("ask name");
-	and_n_getline("Who are you?", plname, PL_NSIZ);
-	if(*plname == '\033')
-	{
-		clearlocks();
-		and_exit_nhwindows("bye");
-		terminate(EXIT_SUCCESS);
 	}
 }
 
@@ -957,7 +942,11 @@ int nhcolor_to_RGB(int c)
 void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph)
 {
 //	debuglog("and_print_glyph wid=%d %dx%d", wid, x, y);
-	int tile = glyph2tile[glyph];
+	int tile;
+	if(glyph == NO_GLYPH)
+		tile = -1;
+	else
+		tile = glyph2tile[glyph];
 	int ch;
 	int col;
 	int special;
@@ -1352,7 +1341,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
 	destroy_jobject(jq);
 
 	n = (*jEnv)->GetStringLength(jEnv, jstr);
-	if(n > nMax - 1)
+	if(n >= nMax)
 		n = nMax - 1;
     i = 0;
 	if(n > 0)
@@ -1411,6 +1400,64 @@ void and_getlin(const char *question, char *input)
 {
 	//debuglog("and_getlin '%s'", question);
 	and_n_getline(question, input, BUFSZ);
+}
+
+//____________________________________________________________________________________
+//askname()	-- Ask the user for a player name.
+void and_askname()
+{
+	//debuglog("ask name");
+
+	int i, n, w;
+	const jchar* pChars;
+	jstring jstr;
+
+	char** saves = get_saved_games();
+
+	int nSaves = 0;
+	while(saves && saves[nSaves])
+		nSaves++;
+
+	jclass stringClass = (*jEnv)->FindClass(jEnv, "java/lang/String");
+	jobjectArray strings = (*jEnv)->NewObjectArray(jEnv, nSaves, stringClass, 0);
+    for(i = 0; i < nSaves; i++)
+    	(*jEnv)->SetObjectArrayElement(jEnv, strings, i, (*jEnv)->NewStringUTF(jEnv, saves[i]));
+
+	jstr = (jstring)JNICallO(jAskName, PL_NSIZ, strings);
+
+    for(i = 0; i < nSaves; i++)
+    	destroy_jobject((*jEnv)->GetObjectArrayElement(jEnv, strings, i));
+	destroy_jobject(strings);
+
+	n = (*jEnv)->GetStringLength(jEnv, jstr) - 1;
+	w = n;
+	if(n >= PL_NSIZ)
+		n = PL_NSIZ - 1;
+    i = 0;
+	if(n > 0)
+	{
+		pChars = (*jEnv)->GetStringChars(jEnv, jstr, 0);
+		if(*pChars == 0x80 || *pChars == '\033')
+		{
+			clearlocks();
+			and_exit_nhwindows("bye");
+			terminate(EXIT_SUCCESS);
+		}
+
+		if( pChars[w] == '1' )
+			wizard = TRUE;
+
+		for(; i < n; i++)
+		{
+			if(isprint(pChars[i]))
+				plname[i] = pChars[i];
+			else
+				plname[i] = '?';
+		}
+		(*jEnv)->ReleaseStringChars(jEnv, jstr, pChars);
+	}
+	plname[i] = 0;
+	destroy_jobject(jstr);
 }
 
 //____________________________________________________________________________________
@@ -1568,6 +1615,7 @@ int and_get_ext_cmd()
 void and_number_pad(int state)
 {
 //	debuglog("and_number_pad(%d)", state);
+	JNICallV(jSetNumPadOption, state);
 }
 
 //____________________________________________________________________________________
@@ -1635,3 +1683,7 @@ int doshowlog()
 	return 0;
 }
 
+void and_set_wizard_mode()
+{
+	JNICallV(jSetWizardMode);
+}

@@ -364,6 +364,7 @@ unsigned int *stuckid, *steedid;	/* STEED */
 	int uid;
 
 	mread(fd, (genericptr_t) &uid, sizeof uid);
+#ifndef ANDROID
 	if (uid != getuid()) {		/* strange ... */
 	    /* for wizard mode, issue a reminder; for others, treat it
 	       as an attempt to cheat and refuse to restore this file */
@@ -373,6 +374,7 @@ unsigned int *stuckid, *steedid;	/* STEED */
 #endif
 		return FALSE;
 	}
+#endif
 
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
 	flags.bypasses = 0;	/* never use the saved value of bypasses */

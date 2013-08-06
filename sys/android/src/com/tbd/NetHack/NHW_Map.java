@@ -3,6 +3,7 @@ package com.tbd.NetHack;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -278,7 +279,7 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void resetZoom()
+	private void resetZoom()
 	{
 		zoom(-mScaleCount);
 		centerView(mCursorPos.x, mCursorPos.y);
@@ -372,6 +373,7 @@ public class NHW_Map implements NH_Window
 			zoom(keyCode == KeyAction.ZoomIn ? 20 : -20);
 			if(mScaleCount == scale && repeatCount == 0)
 				resetZoom();
+			saveZoomLevel();
 			return 1;
 		}
 
@@ -408,6 +410,19 @@ public class NHW_Map implements NH_Window
 		mUI.viewAreaChanged(viewRect);
 	}
 
+	// ____________________________________________________________________________________
+	public void saveZoomLevel() {
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		prefs.edit().putInt("zoomLevel", mScaleCount).commit();
+	}
+	
+	// ____________________________________________________________________________________
+	public void loadZoomLevel() {
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		int zoomLevel = prefs.getInt("zoomLevel", 0);
+		zoom(zoomLevel - mScaleCount);
+	}
+	
 	// ____________________________________________________________________________________ // 
 	//																						// 
 	// ____________________________________________________________________________________ // 
@@ -436,6 +451,7 @@ public class NHW_Map implements NH_Window
 			super(mContext);
 			setFocusable(false);
 			setFocusableInTouchMode(false);
+			setBackgroundColor(0xff141418);
 
 			((ViewGroup)mContext.findViewById(R.id.map_frame)).addView(this, 0);
 			mPaint = new TextPaint();
@@ -463,7 +479,6 @@ public class NHW_Map implements NH_Window
 			int ofsY = (int)(mViewOffset.y + tileH * tileY);
 
 			invalidate(new Rect(ofsX - 4, ofsY - 4, (int)(ofsX + tileW) + 4, (int)(ofsY + tileH) + 4));
-			// invalidate();
 		}
 
 		// ____________________________________________________________________________________
@@ -493,7 +508,7 @@ public class NHW_Map implements NH_Window
 
 		// ____________________________________________________________________________________
 		protected void drawTiles(Canvas canvas)
-		{
+		{			
 			if(mTileset == null)
 				return;
 			
@@ -503,17 +518,28 @@ public class NHW_Map implements NH_Window
 			float tileW = getScaledTileWidth();
 			float tileH = getScaledTileHeight();
 
-			float x = FloatMath.floor(mViewOffset.x);// + .5f;
-			float y = FloatMath.floor(mViewOffset.y);// + .5f;
+			Rect clipRect = new Rect();
+			if (!canvas.getClipBounds(clipRect)) {
+				clipRect.set(0, 0, canvas.getWidth(), canvas.getHeight());
+			}
+			
+			int minTileX = clamp((int) ((clipRect.left - mViewOffset.x) / tileW), 0, TileCols - 1);
+			int maxTileX = clamp((int) FloatMath.ceil((clipRect.right - mViewOffset.x) / tileW), minTileX, TileCols - 1);
+			int minTileY = clamp((int) ((clipRect.top - mViewOffset.y) / tileH), 0, TileRows - 1);
+			int maxTileY = clamp((int) FloatMath.ceil((clipRect.bottom - mViewOffset.y) / tileH), minTileY, TileRows - 1);
+			
+			float x = FloatMath.floor(mViewOffset.x + minTileX * tileW);
+			float y = FloatMath.floor(mViewOffset.y + minTileY * tileH);
 
 			dst.set(x, y, x + tileW, y + tileH);
 
 			mPaint.setAntiAlias(false);
 
-			for(Tile[] row : mTiles)
+			for(int tileY = minTileY; tileY <= maxTileY; tileY++)
 			{
-				for(Tile tile : row)
+				for(int tileX = minTileX; tileX < maxTileX; tileX++)
 				{
+					Tile tile = mTiles[tileY][tileX];
 					if(tile.glyph >= 0)
 					{
 						int ofs = mTileset.getTileBitmapOffset(tile.glyph);
@@ -529,7 +555,7 @@ public class NHW_Map implements NH_Window
 					}
 					else
 					{
-						mPaint.setColor(0);
+						mPaint.setColor(0xff000000);
 						canvas.drawRect(dst, mPaint);
 					}
 
@@ -545,8 +571,8 @@ public class NHW_Map implements NH_Window
 
 		protected void drawCursor(Canvas canvas, float tileW, float tileH)
 		{
-			float x = FloatMath.floor(mViewOffset.x);// + .5f;
-			float y = FloatMath.floor(mViewOffset.y);// + .5f;
+			float x = FloatMath.floor(mViewOffset.x);
+			float y = FloatMath.floor(mViewOffset.y);
 
 			if(mCursorPos.x >= 0)
 			{
@@ -576,17 +602,27 @@ public class NHW_Map implements NH_Window
 			float tileW = getScaledTileWidth();
 			float tileH = getScaledTileHeight();
 
-			float x = FloatMath.floor(mViewOffset.x);
-			float y = FloatMath.floor(mViewOffset.y);
+			Rect clipRect = new Rect();
+			if (!canvas.getClipBounds(clipRect)) {
+				clipRect.set(0, 0, canvas.getWidth(), canvas.getHeight());
+			}
+			
+			int minTileX = clamp((int) ((clipRect.left - mViewOffset.x) / tileW), 0, TileCols - 1);
+			int maxTileX = clamp((int) Math.ceil((clipRect.right - mViewOffset.x) / tileW), minTileX, TileCols - 1);
+			int minTileY = clamp((int) ((clipRect.top - mViewOffset.y) / tileH), 0, TileRows - 1);
+			int maxTileY = clamp((int) Math.ceil((clipRect.bottom - mViewOffset.y) / tileH), minTileY, TileRows - 1);
+			
+			float x = FloatMath.floor(mViewOffset.x + minTileX * tileW);
+			float y = FloatMath.floor(mViewOffset.y + minTileY * tileH);
 
 			dst.set(x, y, x + tileW, y + tileH);
 
 			// setup paint
 			mPaint.setAntiAlias(true);
 
-			for(int tileY = 0; tileY < TileRows; tileY++)
+			for(int tileY = minTileY; tileY <= maxTileY; tileY++)
 			{
-				for(int tileX = 0; tileX < TileCols; tileX++)
+				for(int tileX = minTileX; tileX < maxTileX; tileX++)
 				{
 					Tile tile = mTiles[tileY][tileX];
 					int fgColor = tile.color;
@@ -608,17 +644,14 @@ public class NHW_Map implements NH_Window
 
 						fgColor = 0xff000000;
 					}
-					else if(tile.overlay == 8)
+					else if(tile.overlay == 8 && tile.glyph >= 0)
 					{
 						bgColor = fgColor;
 						fgColor = 0xff000000;
 					}
-
-					if(bgColor != 0xff000000)
-					{
-						mPaint.setColor(bgColor);
-						canvas.drawRect(dst, mPaint);
-					}
+					
+					mPaint.setColor(bgColor);
+					canvas.drawRect(dst, mPaint);
 
 					if(tile.glyph >= 0)
 					{
@@ -718,7 +751,7 @@ public class NHW_Map implements NH_Window
 			switch(getAction(event))
 			{
 			case MotionEvent.ACTION_DOWN:
-				mZoomPanMode = ZoomPanMode.Pressed;
+				setZoomPanMode(ZoomPanMode.Pressed);
 				if(mPressCountDown != null)
 					mPressCountDown.cancel();
 				mPressCountDown = new CountDownTimer(ViewConfiguration.getLongPressTimeout(), 10000)
@@ -733,7 +766,7 @@ public class NHW_Map implements NH_Window
 				{
 					if(mZoomPanMode == ZoomPanMode.Pressed)
 						onTouched(mPointer0.x, mPointer0.y, true);
-					mZoomPanMode = ZoomPanMode.Idle;
+					setZoomPanMode(ZoomPanMode.Idle);
 				}
 				}.start();
 
@@ -749,7 +782,7 @@ public class NHW_Map implements NH_Window
 					mPressCountDown.cancel();
 					onTouched(mPointer0.x, mPointer0.y, false);
 				}
-				mZoomPanMode = ZoomPanMode.Idle;
+				setZoomPanMode(ZoomPanMode.Idle);
 			break;
 
 			case MotionEvent.ACTION_POINTER_DOWN:
@@ -757,7 +790,7 @@ public class NHW_Map implements NH_Window
 				{
 					// second pointer down, enter zoom mode
 					mPressCountDown.cancel();
-					mZoomPanMode = ZoomPanMode.Zooming;
+					setZoomPanMode(ZoomPanMode.Zooming);
 					mIsViewPanned = false;
 					mIsStickyZoom = false;
 					idx = getActionIndex(event);
@@ -785,7 +818,7 @@ public class NHW_Map implements NH_Window
 					if(idx == idx0 || idx == idx1)
 					{
 						// Reset start position for the first pointer
-						mZoomPanMode = ZoomPanMode.Panning;
+						setZoomPanMode(ZoomPanMode.Panning);
 						mPointer0.set(event.getX(idx), event.getY(idx));
 						mPointerId0 = event.getPointerId(idx);
 						mPointerId1 = -1;
@@ -795,7 +828,7 @@ public class NHW_Map implements NH_Window
 				{
 					// Released the last pointer of the first two. Ignore other pointers
 					mPressCountDown.cancel();
-					mZoomPanMode = ZoomPanMode.Idle;
+					setZoomPanMode(ZoomPanMode.Idle);
 				}
 
 			break;
@@ -843,8 +876,16 @@ public class NHW_Map implements NH_Window
 				mPressCountDown.cancel();
 				if(mZoomPanMode != ZoomPanMode.Zooming)
 					mIsViewPanned = true;
-				mZoomPanMode = ZoomPanMode.Panning;
+				setZoomPanMode(ZoomPanMode.Panning);
 			}
+		}
+
+		// ____________________________________________________________________________________
+		private void setZoomPanMode(ZoomPanMode mode)
+		{
+			if(mZoomPanMode == ZoomPanMode.Zooming)
+				saveZoomLevel();
+			mZoomPanMode = mode;			
 		}
 
 		// ____________________________________________________________________________________

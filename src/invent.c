@@ -2210,7 +2210,9 @@ boolean picked_some;
 	char fbuf[BUFSZ], fbuf2[BUFSZ];
 	winid tmpwin;
 	boolean skip_objects = (obj_cnt >= 5), felt_cockatrice = FALSE;
-
+#ifdef ANDROID
+	skip_objects = obj_cnt >= 2;
+#endif
 	if (u.uswallow && u.ustuck) {
 	    struct monst *mtmp = u.ustuck;
 	    Sprintf(fbuf, "Contents of %s %s",

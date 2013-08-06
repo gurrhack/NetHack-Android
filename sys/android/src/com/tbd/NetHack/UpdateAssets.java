@@ -215,6 +215,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 			}
 
 			os.flush();
+			os.close();
 		}
 
 		// update version and date

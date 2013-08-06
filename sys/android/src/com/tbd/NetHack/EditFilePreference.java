@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -159,6 +160,7 @@ public class EditFilePreference extends Preference implements DialogInterface.On
 			int n;
 			while((n = input.read(data)) != -1)
 				output.write(data, 0, n);
+			input.close();
 			data = output.toByteArray();
 			mEditText.setText(new String(data));
 		}
@@ -180,6 +182,7 @@ public class EditFilePreference extends Preference implements DialogInterface.On
 			FileOutputStream output = new FileOutputStream(file, false);
 			byte[] data = text.getBytes();
 			output.write(data);
+			output.close();
 		}
 		catch(FileNotFoundException e)
 		{

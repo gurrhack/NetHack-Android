@@ -9,7 +9,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 
@@ -93,6 +92,12 @@ public class DPadOverlay
 		mUI.setOrientation(orientation);			
 	}
 
+	// ____________________________________________________________________________________
+	public void updateNumPadState()
+	{
+		mUI.updateNumPadState();
+	}
+	
 	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
@@ -134,6 +139,34 @@ public class DPadOverlay
 			}
 			
 			setTransparent();
+			updateNumPadState();
+		}
+
+		// ____________________________________________________________________________________
+		public void updateNumPadState()
+		{
+			if(mNHState.isNumPadOn())
+			{
+				mButtons[0].setText("7");
+				mButtons[1].setText("8");
+				mButtons[2].setText("9");
+				mButtons[3].setText("4");
+				mButtons[5].setText("6");
+				mButtons[6].setText("1");
+				mButtons[7].setText("2");
+				mButtons[8].setText("3");
+			}
+			else
+			{
+				mButtons[0].setText("y");
+				mButtons[1].setText("k");
+				mButtons[2].setText("u");
+				mButtons[3].setText("h");
+				mButtons[5].setText("l");
+				mButtons[6].setText("b");
+				mButtons[7].setText("j");
+				mButtons[8].setText("n");
+			}
 		}
 
 		// ____________________________________________________________________________________

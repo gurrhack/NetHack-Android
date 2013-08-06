@@ -2,8 +2,8 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
-	android:versionCode="120"
-	android:versionName="1.2"
+	android:versionCode="130"
+	android:versionName="1.3"
 	android:installLocation="auto">
 	<uses-sdk
 		android:minSdkVersion="7"/>
@@ -13,7 +13,8 @@
 	<application
 		android:label="NetHack"
 		android:icon="@drawable/icon"
-		android:debuggable="false">
+		android:debuggable="false"
+		android:allowBackup="true">
 		<activity
 			android:name=".NetHack"
 			android:label="NetHack"

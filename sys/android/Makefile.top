@@ -14,6 +14,7 @@
 # MAKE = make
 
 # make NetHack
+PREFIX	 = /usr
 GAME     = nethack
 # GAME     = nethack.prg
 GAMEUID  = games
@@ -35,10 +36,10 @@ DIRPERM  = 0775
 # instructions)
 GAMEDIR  = $(PWD)/sys/android/assets/$(GAME)dir
 VARDIR  = $(GAMEDIR)
-SHELLDIR = /usr/games
+SHELLDIR = $(PREFIX)/games
 
 # per discussion in Install.X11 and Install.Qt
-VARDATND =
+VARDATND = 
 # VARDATND = x11tiles NetHack.ad pet_mark.xbm
 # VARDATND = x11tiles NetHack.ad pet_mark.xbm rip.xpm
 # for Atari/Gem
@@ -192,8 +193,10 @@ dofiles:
 #	-( cd $(GAMEDIR) ; $(CHOWN) $(GAMEUID) $(GAME) recover ; \
 #			$(CHGRP) $(GAMEGRP) $(GAME) recover )
 #	chmod $(GAMEPERM) $(GAMEDIR)/$(GAME)
+#	chmod $(EXEPERM) $(GAMEDIR)/recover
 #	-$(CHOWN) $(GAMEUID) $(SHELLDIR)/$(GAME)
 #	$(CHGRP) $(GAMEGRP) $(SHELLDIR)/$(GAME)
+#	chmod $(EXEPERM) $(SHELLDIR)/$(GAME)
 
 dofiles-dlb: check-dlb
 	( cd dat ; cp nhdat $(DATNODLB) $(GAMEDIR) )
@@ -222,6 +225,9 @@ update: $(GAME) recover $(VARDAT) dungeon spec_levs
 # touch time-sensitive files
 	-touch -c $(VARDIR)/bones* $(VARDIR)/?lock* $(VARDIR)/wizard*
 	-touch -c $(VARDIR)/save/*
+	touch $(VARDIR)/perm $(VARDIR)/record
+# and a reminder
+#	@echo You may also want to install the man pages via the doc Makefile.
 
 install: $(GAME) recover $(VARDAT) dungeon spec_levs
 # set up the directories
@@ -235,6 +241,13 @@ install: $(GAME) recover $(VARDAT) dungeon spec_levs
 #	chmod $(DIRPERM) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
 # set up the game files
 	( $(MAKE) dofiles )
+# set up some additional files
+	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile
+	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile ; \
+			$(CHGRP) $(GAMEGRP) perm record logfile ; \
+			chmod $(FILEPERM) perm record logfile )
+# and a reminder
+#	@echo You may also want to reinstall the man pages via the doc Makefile.
 
 
 # 'make clean' removes all the .o files, but leaves around all the executables

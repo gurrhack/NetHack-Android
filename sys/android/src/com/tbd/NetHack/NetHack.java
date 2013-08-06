@@ -92,10 +92,12 @@ public class NetHack extends Activity
 		{
 			prefs.edit().putBoolean("firsttime", false).commit();
 			Intent prefsActivity = new Intent(getBaseContext(), Instructions.class);
-			startActivity(prefsActivity);
+			startActivityForResult(prefsActivity, 43);
 		}
-		
-		nhState.startNetHack(path.getAbsolutePath());
+		else
+		{
+			nhState.startNetHack(path.getAbsolutePath());
+		}
 	}
 
 	// ____________________________________________________________________________________
@@ -217,10 +219,13 @@ public class NetHack extends Activity
 		mCtrlDown = false;
 		mMetaDown = false;
 
-		Log.print(String.format("onActivityResult(requestCode=%d, resultCode=%d)", requestCode, resultCode));
 		if(requestCode == 42)
 		{
 			nhState.preferencesUpdated();
+		}
+		else if(requestCode == 43)
+		{
+			nhState.startNetHack(mAppDir.getAbsolutePath());
 		}
 		super.onActivityResult(requestCode, resultCode, data);
 	}

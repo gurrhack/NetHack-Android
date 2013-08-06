@@ -1110,7 +1110,6 @@ boolean tinitial, tfrom_file;
 	fullname = "number_pad";
 	if (match_optname(opts, fullname, 10, TRUE)) {
 		boolean compat = (strlen(opts) <= 10);
-		number_pad(iflags.num_pad ? 1 : 0);
 		op = string_for_opt(opts, (compat || !initial));
 		if (!op) {
 		    if (compat || negated || initial) {
@@ -1118,6 +1117,7 @@ boolean tinitial, tfrom_file;
 			   value is a synonym for number_pad:1 */
 			iflags.num_pad = !negated;
 			if (iflags.num_pad) iflags.num_pad_mode = 0;
+			number_pad(iflags.num_pad);
 		    }
 		    return;
 		}
@@ -1129,9 +1129,11 @@ boolean tinitial, tfrom_file;
 			iflags.num_pad = 1;
 			if (*op == '2') iflags.num_pad_mode = 1;
 			else iflags.num_pad_mode = 0;
+			number_pad(1);
 		} else if (*op == '0') {
 			iflags.num_pad = 0;
 			iflags.num_pad_mode = 0;
+			number_pad(0);
 		} else badoption(opts);
 		return;
 	}
@@ -2795,6 +2797,7 @@ boolean setinitial,setfromfile;
 				iflags.num_pad_mode = 0;
 		}
 		free((genericptr_t)mode_pick);
+		number_pad(iflags.num_pad);
         }
 	destroy_nhwindow(tmpwin);
         retval = TRUE;

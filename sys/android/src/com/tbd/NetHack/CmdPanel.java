@@ -37,9 +37,10 @@ public class CmdPanel
 	private EditText mInput;
 	private int mItemId;
 	private CmdPanelLayout mLayout;
+	private int mOpacity;
 
 	// ____________________________________________________________________________________
-	public CmdPanel(NetHack context, NH_State state, CmdPanelLayout layout, boolean isWizard)
+	public CmdPanel(NetHack context, NH_State state, CmdPanelLayout layout, boolean isWizard, String cmds, int opacity)
 	{
 		mContext = context;
 		mState = state;
@@ -47,6 +48,8 @@ public class CmdPanel
 		mBtnPanel = new LinearLayout(context);
 		mBtnPanel.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 		mIsWizard = isWizard;
+		mOpacity = opacity;
+		loadCmds(cmds);
 	}
 
 	// ____________________________________________________________________________________
@@ -75,7 +78,7 @@ public class CmdPanel
 	}
 
 	// ____________________________________________________________________________________
-	public void loadCmds(String cmds)
+	private void loadCmds(String cmds)
 	{
 		final float density = mContext.getResources().getDisplayMetrics().density;
 		mMinBtnW = (int)(50 * density + 0.5f);
@@ -164,6 +167,9 @@ public class CmdPanel
 		btn.setTag(cmd);
 		if(cmd.hasLabel())
 			btn.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+		btn.getBackground().setAlpha(mOpacity);
+		if(mOpacity <= 127)
+			btn.setTextColor(0xffffffff);
 
 		btn.setOnClickListener(new OnClickListener()
 		{

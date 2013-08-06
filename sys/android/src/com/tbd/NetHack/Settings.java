@@ -26,7 +26,6 @@ public class Settings extends PreferenceActivity implements OnSharedPreferenceCh
 
 		mToast = Toast.makeText(Settings.this, "This will take effect the next time you start NetHack", 1000);
 
-		findPreference("wizard").setOnPreferenceChangeListener(requiresRestart);
 		findPreference("username").setOnPreferenceChangeListener(requiresRestart);
 	}
 

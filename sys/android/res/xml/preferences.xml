@@ -36,13 +36,6 @@
 			android:key="autoPickupTypes"/>
 			
 		<CheckBoxPreference
-			android:title="Wizard mode"
-			android:summary="Makes you invincible and enables cheat commands"
-			android:persistent="true"
-			android:defaultValue="false"
-			android:key="wizard"/>
-
-		<CheckBoxPreference
 			android:title="Reset command panel"
 			android:summary="Restore the command panel to its original layout"
 			android:persistent="true"
@@ -205,6 +198,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity0"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+				
 			</PreferenceScreen>
 			
 			<PreferenceScreen
@@ -259,6 +262,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity1"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+				
 			</PreferenceScreen>
 			
 			
@@ -314,6 +327,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity2"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+						
 			</PreferenceScreen>
 			
 			
@@ -369,6 +392,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity3"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+						
 			</PreferenceScreen>
 			
 			
@@ -424,6 +457,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity4"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+						
 			</PreferenceScreen>
 			
 			
@@ -479,6 +522,16 @@
 					android:entries="@array/locationNames"
 					android:entryValues="@array/locationValues"/>
 		
+				<com.tbd.NetHack.SliderPreference
+					android:title="Opacity"
+					android:summary="The opacity of the panel."
+					android:persistent="true"
+					android:key="pOpacity5"
+					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+					android:defaultValue="255"
+					android:text=""
+					android:max="255"/>
+						
 			</PreferenceScreen>
 			
 		</PreferenceScreen>

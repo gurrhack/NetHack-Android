@@ -1,9 +1,97 @@
 #	Makefile for NetHack's utility programs.
 #	SCCS Id: @(#)Makefile.utl	3.4	1997/04/19
 
+# newer makes predefine $(MAKE) to 'make' and do smarter processing of
+# recursive make calls if $(MAKE) is used
+# these makes allow $(MAKE) to be overridden by the environment if someone
+# wants to (or has to) use something other than the standard make, so we do
+# not want to unconditionally set $(MAKE) here
+#
+# unfortunately, some older makes do not predefine $(MAKE); if you have one of
+# these, uncomment the following line
+# (you will know that you have one if you get complaints about unable to
+# execute things like 'foo.o')
+# MAKE = make
+
+# if you are using gcc as your compiler,
+#	uncomment the CC definition below if it's not in your environment
+# CC = gcc
+#
+#	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
+#
+# CC = gcc -ansi -D_BULL_SOURCE -D_XOPEN_SOURCE -D_POSIX_SOURCE
+# 
+#	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
+#
+# CC = gcc -ansi
+#
+#	For HP/UX 10.20 with GCC:
+# CC = gcc -D_POSIX_SOURCE
+#
+# if your make doesn't define a default SHELL properly, you may need
+#    the line below (Atari users will need a bourne work-alike)
+# SHELL = /bin/sh
+# for Atari
+# SHELL=E:/GEMINI2/MUPFEL.TTP
+
+# flags may have to be changed as required
+# flags for 286 Xenix:
+# CFLAGS = -Ml2t16 -O -LARGE -I../include
+# LFLAGS = -Ml -F 4000 -SEG 512
+
+# flags for 286 Microport SysV-AT
+# CFLAGS = -DDUMB -Ml -I../include
+# LFLAGS = -Ml
+
+# flags for Atari GCC (3.2.1)
+# CFLAGS = -O -I../include
+# LFLAGS = -s
+# flags for Atari GCC (3.3)
+# CFLAGS = -mshort -O2 -I../include
+# LFLAGS = -mshort -s
+
+# flags for Apollos using their native cc
+# (as long as it claims to be __STDC__ but isn't)
+# CFLAGS = -DAPOLLO -O -I../include
+
+# flags for AIX 3.1 cc on IBM RS/6000 to define
+# a suitable subset of standard libraries
+# (note that there is more info regarding the "-qchars=signed"
+# switch in file Install.unx note 8)
+# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -O -I../include -qchars=signed
+# and for AIX 3.2:
+# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -D_ALL_SOURCE -O -I../include -qchars=signed
+
+# flags for A/UX 2.01 using native cc or c89
+# gcc predefines AUX so that's not needed there
+# CFLAGS = -ZS -D_POSIX_SOURCE -O -I../include -DAUX
+
+# flags for IRIX 4.0.x using native cc
+# SGI cc 3.10 will fail to compile makedefs with -O
+# CFLAGS = -I../include -D__STDC__ -woff 100,293
+
+# flags for Linux
+#   compile normally
 # CFLAGS = -O2 -fomit-frame-pointer -I../include
+# LFLAGS = -L/usr/X11R6/lib
+#   OR compile backwards compatible a.out format
+# CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include
+# LFLAGS = -b i486-linuxaout -L/usr/X11R6/lib
+
+# flags for BeOS using the command line
+# remember to uncomment flex and bison below
+#   BeOS on a Mac/BeBox:
+#CC = mwcc
+#CFLAGS = -I../include
+#   BeOS on Intel:
+# the default values are fine
+
+# flags for debugging:
+# CFLAGS = -g -I../include
+
 CFLAGS = -m32 -Wno-format  -I../include
 LFLAGS = -m32
+
 LIBS =
  
 # If you are cross-compiling, you must use this:
@@ -13,7 +101,10 @@ OBJDIR = .
 
 # yacc/lex programs to use to generate *_comp.h, *_lex.c, and *_yacc.c.
 # if, instead of yacc/lex you have bison/flex, comment/uncomment the following.
+# YACC     = yacc
+# LEX      = lex
 YACC     = bison -y
+# YACC     = byacc
 LEX      = flex
  
 # these are the names of the output files from YACC/LEX. Under MS-DOS
@@ -21,6 +112,9 @@ LEX      = flex
 YTABC = y.tab.c
 YTABH = y.tab.h
 LEXYYC = lex.yy.c
+# YTABC = y_tab.c
+# YTABH = y_tab.h
+# LEXYYC = lexyy.c
 
 
 

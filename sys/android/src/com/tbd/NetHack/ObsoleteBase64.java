@@ -2,6 +2,9 @@ package com.tbd.NetHack;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
+
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.util.Base64;
 import android.util.Base64InputStream;
 
@@ -26,6 +29,7 @@ public class ObsoleteBase64
 	}
 
 	// ____________________________________________________________________________________
+	@TargetApi(Build.VERSION_CODES.FROYO)
 	public static Object stringToObject(String str)
 	{
 		if(!mAvailable)
@@ -35,6 +39,7 @@ public class ObsoleteBase64
 			Base64InputStream b64i = new Base64InputStream(new ByteArrayInputStream(str.getBytes()), Base64.NO_PADDING | Base64.NO_WRAP);
 			ObjectInputStream ois = new ObjectInputStream(b64i);
 			Object o = ois.readObject();
+			ois.close();
 			return o;
 		}
 		catch(Exception e)

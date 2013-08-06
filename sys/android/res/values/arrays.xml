@@ -28,7 +28,7 @@
 		<item>Ctrl</item>
 		<item>Meta</item>
 		<item>Escape</item>
-    </string-array>
+	</string-array>
     <string-array name="actionValues">
     	<item>-1</item>
     	<item>-2</item>

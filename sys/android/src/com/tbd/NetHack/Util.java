@@ -1,11 +1,5 @@
 package com.tbd.NetHack;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -54,7 +48,7 @@ public class Util
 	}
 	
 	// ____________________________________________________________________________________
-	public static void showKeyboard(final Context context, final EditText input)
+	public static void showKeyboard(final Context context, final View input)
 	{
 		// Never explicitly open soft keyboard if physical keyboard is present 
 		if(!hasPhysicalKeyboard(context))

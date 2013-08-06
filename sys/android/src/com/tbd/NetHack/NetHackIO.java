@@ -163,7 +163,7 @@ public class NetHackIO implements Runnable
 		try
 		{
 			System.loadLibrary("nethack");
-			RunNetHack(mState.getDataDir(), mState.getUsername(), mState.isWizard());
+			RunNetHack(mState.getDataDir(), mState.getUsername());
 		}
 		catch(Exception e)
 		{
@@ -750,13 +750,50 @@ public class NetHackIO implements Runnable
 		{
 			public void run()
 			{
-				mState.setUsername(new String(username));
+				mState.setLastUsername(new String(username));
 			}
 		});
 	}
 
 	// ____________________________________________________________________________________
-	private native void RunNetHack(String path, String username, boolean bWizard);
+	private void setNumPadOption(final int num_pad)
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.setNumPadOption(num_pad != 0);
+			}
+		});
+	}
+	
+	// ____________________________________________________________________________________
+	private String askName(final int nMaxChars, final String[] saves)
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.askName(nMaxChars, saves);
+			}
+		});
+		return waitForLine();
+	}
+	
+	// ____________________________________________________________________________________
+	private void setWizardMode()
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.setWizardMode();
+			}
+		});
+	}
+	 
+	// ____________________________________________________________________________________
+	private native void RunNetHack(String path, String username);
 	private native void SaveNetHackState();
 	private native void SetFlags(int bAutoPickup, String pickupTypes, int bAutoMenu);
 }

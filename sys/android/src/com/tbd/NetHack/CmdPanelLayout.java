@@ -31,6 +31,7 @@ public class CmdPanelLayout extends FrameLayout
 		public String cmds;
 		public int pLoc;
 		public int lLoc;
+		public int opacity;
 	}
 
 	private ArrayList<Panel> mPanelCmds = new ArrayList<Panel>();
@@ -163,7 +164,7 @@ public class CmdPanelLayout extends FrameLayout
 	// ____________________________________________________________________________________
 	public void preferencesUpdated(SharedPreferences prefs)
 	{
-		loadPanels(prefs);
+		loadPanels(prefs, false);
 	}
 
 	// ____________________________________________________________________________________
@@ -214,7 +215,7 @@ public class CmdPanelLayout extends FrameLayout
 	}
 
 	// ____________________________________________________________________________________
-	private void loadPanels(SharedPreferences prefs)
+	private void loadPanels(SharedPreferences prefs, boolean forcePanelsChanged)
 	{
 		Editor editor = prefs.edit();
 
@@ -258,6 +259,7 @@ public class CmdPanelLayout extends FrameLayout
 			String idx = Integer.toString(iPanel);
 			boolean bPortActive = prefs.getBoolean("pPortActive" + idx, false);
 			boolean bLandActive = prefs.getBoolean("pLandActive" + idx, false);
+			int opacity = prefs.getInt("pOpacity" + idx, 255);
 			Log.print("panel" + idx + ": " + Boolean.toString(bPortActive));
 			if(bPortActive || bLandActive)
 			{
@@ -268,11 +270,12 @@ public class CmdPanelLayout extends FrameLayout
 				panel.idx = iPanel;
 				panel.portActive = bPortActive;
 				panel.landActive = bLandActive;
+				panel.opacity = opacity;
 				panelCmds.add(panel);
 			}
 		}
 
-		if(panelsChanged(mPanelCmds, panelCmds))
+		if(forcePanelsChanged || panelsChanged(mPanelCmds, panelCmds))
 		{
 			Log.print("panels were changed");
 			for(Panel p : mPanelCmds)
@@ -290,8 +293,8 @@ public class CmdPanelLayout extends FrameLayout
 					panel.landScrollView = panel.portScrollView;
 				else
 					panel.landScrollView = createScrollView(panel.lLoc);
-				panel.panel = new CmdPanel(mContext, mState, this, mIsWizard);
-				panel.panel.loadCmds(panel.cmds);
+				
+				panel.panel = new CmdPanel(mContext, mState, this, mIsWizard, panel.cmds, panel.opacity);
 				if(mPortraitMode)
 				{
 					if(mShowPanels && panel.portActive)
@@ -332,6 +335,8 @@ public class CmdPanelLayout extends FrameLayout
 			if(pa.pLoc != pb.pLoc)
 				return true;
 			if(pa.lLoc != pb.lLoc)
+				return true;
+			if(pa.opacity != pb.opacity)
 				return true;
 		}
 		return false;
@@ -422,9 +427,15 @@ public class CmdPanelLayout extends FrameLayout
 	}
 
 	// ____________________________________________________________________________________
-	public void setWizard(boolean isWizard)
+	public void wizardUpgrade(SharedPreferences prefs)
 	{
-		mIsWizard = isWizard;
+		Log.print("!!! WIZARD UPGRADE !!!");
+		
+		if(!mIsWizard)
+		{
+			mIsWizard = true;
+			loadPanels(prefs, true);
+		}
 	}
 
 	// ____________________________________________________________________________________

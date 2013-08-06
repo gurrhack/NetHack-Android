@@ -86,17 +86,14 @@ int NetHackMain(int argc, char** argv)
 	getmailstatus();
 #endif
 
-#ifdef WIZARD
-	if (wizard)
-		Strcpy(plname, "wizard");
-#endif
-
 	plnamesuffix(); /* strip suffix from name; calls askname() */
 					/* again if suffix was whole name */
 					/* accepts any suffix */
 #ifdef WIZARD
-	if(wizard)
+	if(wizard) {
 		debuglog("i'm the wiz");
+		and_set_wizard_mode();
+	}
 	if(!wizard)
 #endif
 	setUsername();
@@ -163,6 +160,8 @@ int NetHackMain(int argc, char** argv)
 			goto not_recovered;
 #ifdef WIZARD
 		if(!wizard && remember_wiz_mode) wizard = TRUE;
+		if(wizard)
+			and_set_wizard_mode();
 #endif
 		check_special_room(FALSE);
 		wd_message();

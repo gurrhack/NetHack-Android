@@ -32,7 +32,7 @@ const
 extern int errno;
 #endif
 
-#if defined(UNIX) && defined(QT_GRAPHICS)
+#if defined(UNIX) && defined(QT_GRAPHICS) || defined(ANDROID)
 #include <dirent.h>
 #endif
 
@@ -942,7 +942,7 @@ restore_saved_game()
 	return fd;
 }
 
-#if defined(UNIX) && defined(QT_GRAPHICS)
+#if defined(UNIX) && defined(QT_GRAPHICS) || defined(ANDROID)
 /*ARGSUSED*/
 static char*
 plname_from_file(filename)
@@ -969,7 +969,7 @@ const char* filename;
 
     return result;
 #else
-# if defined(UNIX) && defined(QT_GRAPHICS)
+# if defined(UNIX) && defined(QT_GRAPHICS) || defined(ANDROID)
     /* Name not stored in save file, so we have to extract it from
        the filename, which loses information
        (eg. "/", "_", and "." characters are lost. */
@@ -1024,6 +1024,45 @@ get_saved_games()
 	result[j++] = 0;
 	return result;
     } else
+#elif defined(ANDROID)
+    int myuid=getuid();
+    struct dirent **namelist;
+    struct dirent **namelist2;
+    int n1 = scandir("save", &namelist, 0, alphasort);
+    int n2 = scandir(".", &namelist2, 0, alphasort);
+    if(n1 < 0) n1 = 0;
+    if(n2 < 0) n2 = 0;
+	int i,j=0;
+    int uid;
+    char name[64]; /* more than PL_NSIZ */
+	char** result = (char**)alloc((n1+n2+1)*sizeof(char*)); /* at most */
+	for (i=0; i<n1; i++) {
+	    if ( sscanf( namelist[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
+		if ( uid == myuid ) {
+		    char filename[BUFSZ];
+		    char* r;
+		    Sprintf(filename,"save/%d%s",uid,name);
+		    r = plname_from_file(filename);
+		    if ( r )
+			result[j++] = r;
+		}
+	    }
+	}
+	for (i=0; i<n2; i++) {
+	    if ( sscanf( namelist2[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
+		if ( uid == myuid ) {
+			int len = strlen(name) - 1;
+			while(len > 0 && name[len] >= '0' && name[len] < '9')
+				len--;
+			if(name[len] == '.')
+				name[len] = 0;
+			if(j==0 || strcmp(result[j-1], name))
+				result[j++] = strdup(name);
+		}
+	    }
+	}
+	result[j++] = 0;
+	return result;
 #endif
     {
 	return 0;
