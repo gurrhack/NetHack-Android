@@ -108,10 +108,17 @@ public class NHW_Menu implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void hide()
+	private void hide()
 	{
 		mIsVisible = false;
 		mUI.hideInternal();
+	}
+
+	// ____________________________________________________________________________________
+	public void destroy()
+	{
+		mIsVisible = false;
+		mUI.closeInternal();
 	}
 
 	// ____________________________________________________________________________________
@@ -351,7 +358,7 @@ public class NHW_Menu implements NH_Window
 		// ____________________________________________________________________________________
 		public void closeInternal()
 		{
-			if(isShowing())
+			if(mRoot != null)
 			{
 				mRoot.setVisibility(View.GONE);
 				((ViewGroup)mRoot.getParent()).removeView(mRoot);

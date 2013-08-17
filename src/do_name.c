@@ -479,7 +479,7 @@ ddocall()
 				You("would never recognize another one.");
 				return 0;
 			}
-			docall(obj);
+			docall2(obj, FALSE);
 		}
 		break;
 	}
@@ -489,6 +489,14 @@ ddocall()
 void
 docall(obj)
 register struct obj *obj;
+{
+	docall2(obj, TRUE);
+}
+
+void
+docall2(obj, showlog)
+register struct obj *obj;
+boolean showlog;
 {
 	char buf[BUFSZ], qbuf[QBUFSZ];
 	struct obj otemp;
@@ -505,6 +513,11 @@ register struct obj *obj;
 		    OBJ_DESCR(objects[otemp.otyp]));
 	else
 	    Sprintf(qbuf, "Call %s:", an(xname(&otemp)));
+#ifdef ANDROID
+	if( showlog )
+		and_getlin_log(qbuf, buf);
+	else
+#endif
 	getlin(qbuf, buf);
 	if(!*buf || *buf == '\033')
 		return;

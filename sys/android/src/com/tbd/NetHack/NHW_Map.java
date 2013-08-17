@@ -37,15 +37,53 @@ public class NHW_Map implements NH_Window
 	// h- . -l
 	// / | \
 	// b j n
-	public static char LEFT = 'h';
-	public static char RIGHT = 'l';
-	public static char UP = 'k';
-	public static char DOWN = 'j';
-	public static char UL = 'y';
-	public static char UR = 'u';
-	public static char DL = 'b';
-	public static char DR = 'n';
+	
+	private char getLEFT() {
+		return mNHState.isNumPadOn() ? '4' : 'h';
+	}
+	
+	private char getRIGHT() {
+		return mNHState.isNumPadOn() ? '6' : 'l';
+	}
 
+	private char getUP() {
+		return mNHState.isNumPadOn() ? '8' : 'k';
+	}
+
+	private char getDOWN() {
+		return mNHState.isNumPadOn() ? '2' : 'j';
+	}
+
+	private char getUL() {
+		return mNHState.isNumPadOn() ? '7' : 'y';
+	}
+
+	private char getUR() {
+		return mNHState.isNumPadOn() ? '9' : 'u';
+	}
+
+	private char getDL() {
+		return mNHState.isNumPadOn() ? '1' : 'b';
+	}
+
+	private char getDR() {
+		return mNHState.isNumPadOn() ? '3' : 'n';
+	}
+	
+	private char getRunCmd(char dir) {
+		switch(dir) {
+		case '4': case 'h': return 'H';
+		case '6': case 'l': return 'L';
+		case '8': case 'k': return 'K';
+		case '2': case 'j': return 'J';
+		case '7': case 'y': return 'Y';
+		case '9': case 'u': return 'U';
+		case '1': case 'b': return 'B';
+		case '3': case 'n': return 'N';
+		}
+		return '\033';
+	}
+	
 	public static final int Corpse = 0x01;
 	public static final int Invisible = 0x02;
 	public static final int Detect = 0x04;
@@ -135,10 +173,16 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void hide()
+	private void hide()
 	{
 		mIsVisible = false;
 		mUI.hideInternal();
+	}
+
+	// ____________________________________________________________________________________
+	public void destroy()
+	{
+		hide();
 	}
 
 	// ____________________________________________________________________________________
@@ -214,13 +258,13 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public static int dxFromKey(int c)
+	public int dxFromKey(int c)
 	{
 		int d;
 		int l = Character.toLowerCase(c);
-		if(l == UL || l == LEFT || l == DL)
+		if(l == getUL() || l == getLEFT() || l == getDL())
 			d = -1;
-		else if(l == UR || l == RIGHT || l == DR)
+		else if(l == getUR() || l == getRIGHT() || l == getDR())
 			d = 1;
 		else
 			d = 0;
@@ -230,13 +274,13 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public static int dyFromKey(int c)
+	public int dyFromKey(int c)
 	{
 		int d;
 		int l = Character.toLowerCase(c);
-		if(l == UL || l == UP || l == UR)
+		if(l == getUL() || l == getUP() || l == getUR())
 			d = -1;
-		else if(l == DL || l == DOWN || l == DR)
+		else if(l == getDL() || l == getDOWN() || l == getDR())
 			d = 1;
 		else
 			d = 0;
@@ -422,7 +466,7 @@ public class NHW_Map implements NH_Window
 		int zoomLevel = prefs.getInt("zoomLevel", 0);
 		zoom(zoomLevel - mScaleCount);
 	}
-	
+
 	// ____________________________________________________________________________________ // 
 	//																						// 
 	// ____________________________________________________________________________________ // 
@@ -725,13 +769,13 @@ public class NHW_Map implements NH_Window
 				char dir = 0;
 
 				if(event.getX() >= axis0)
-					dir = event.getY() >= axis1 ? DR : event.getY() <= -axis1 ? UR : RIGHT;
+					dir = event.getY() >= axis1 ? getDR() : event.getY() <= -axis1 ? getUR() : getRIGHT();
 				else if(event.getX() <= -axis0)
-					dir = event.getY() >= axis1 ? DL : event.getY() <= -axis1 ? UL : LEFT;
+					dir = event.getY() >= axis1 ? getDL() : event.getY() <= -axis1 ? getUL() : getLEFT();
 				else if(event.getY() >= axis0)
-					dir = event.getX() >= axis1 ? DR : event.getX() <= -axis1 ? DL : DOWN;
+					dir = event.getX() >= axis1 ? getDR() : event.getX() <= -axis1 ? getDL() : getDOWN();
 				else if(event.getY() <= -axis0)
-					dir = event.getX() >= axis1 ? UR : event.getX() <= -axis1 ? UL : UP;
+					dir = event.getX() >= axis1 ? getUR() : event.getX() <= -axis1 ? getUL() : getUP();
 
 				if(dir != 0)
 					sendDirKeyCmd(dir);
@@ -1025,16 +1069,16 @@ public class NHW_Map implements NH_Window
 
 				char dir;
 				if(adx > c * ady)
-					dir = dx > 0 ? RIGHT : LEFT;
+					dir = dx > 0 ? getRIGHT() : getLEFT();
 				else if(ady > c * adx)
-					dir = dy < 0 ? UP : DOWN;
+					dir = dy < 0 ? getUP() : getDOWN();
 				else if(dx > 0)
-					dir = dy < 0 ? UR : DR;
+					dir = dy < 0 ? getUR() : getDR();
 				else
-					dir = dy < 0 ? UL : DL;
+					dir = dy < 0 ? getUL() : getDL();
 
 				if(bLongClick)
-					dir = Character.toUpperCase(dir);
+					dir = getRunCmd(dir);
 
 				Log.print("walking");
 				mNHState.sendDirKeyCmd(dir);

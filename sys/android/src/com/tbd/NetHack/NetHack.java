@@ -283,7 +283,7 @@ public class NetHack extends Activity
 		
 		char ch = (char)event.getUnicodeChar();
 		
-		int nhKey = Input.nhKeyFromKeyCode(fixedCode, ch, modifiers);
+		int nhKey = Input.nhKeyFromKeyCode(fixedCode, ch, modifiers, nhState.isNumPadOn());
 		
 		if(nhState.handleKeyDown(ch, nhKey, fixedCode, modifiers, event.getRepeatCount(), false))
 			return true;

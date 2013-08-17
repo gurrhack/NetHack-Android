@@ -136,7 +136,7 @@ public class NHW_Message implements NH_Window
 
 	// ____________________________________________________________________________________
 	private void addMessage(Spanned newMsg) 
-	{		
+	{
 		mCurrentIdx = getIndex(mCurrentIdx + 1);
 		mLog[mCurrentIdx].msg = newMsg;
 		mLog[mCurrentIdx].repeat = 1;
@@ -144,6 +144,23 @@ public class NHW_Message implements NH_Window
 		mLogCount++;
 	}
 
+	// ____________________________________________________________________________________
+	public String getLogLine( int maxLineCount ) {
+		if(mDispCount <= 0)
+			return "";
+		
+		int nLines = Math.min( mDispCount, maxLineCount );
+		
+		StringBuilder line = new StringBuilder();
+		for( int i = nLines - 1; i >= 0; i-- ) {
+			int idx = getIndex(mCurrentIdx - i);
+			line.append( mLog[idx].msg );
+			line.append(' ');
+		}
+		line.append('\n');
+		return line.toString();
+	}
+	
 	// ____________________________________________________________________________________
 	public void show(boolean bBlocking)
 	{
@@ -157,7 +174,7 @@ public class NHW_Message implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void hide()
+	public void destroy()
 	{
 		mIsVisible = false;
 		mUI.hideInternal();

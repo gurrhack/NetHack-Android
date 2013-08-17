@@ -194,7 +194,7 @@ public class NH_GetLine
 			mWizardCheck = (CheckBox)mRoot.findViewById(R.id.wizard);
 			mWizardCheck.setVisibility(showWizard ? View.VISIBLE : View.GONE);
 			
-			mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_dropdown_item_1line, mHistory);
+			mAdapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, mHistory);
 			mHistoryList.setAdapter(mAdapter);
 			
 			mHistoryList.setVisibility(View.GONE);

@@ -63,6 +63,9 @@ struct window_procs and_procs = {
 	and_preference_update
 };
 
+static void and_n_getline(const char* question, char* buf, int nMax, int showLog);
+static void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int reentry);
+
 //____________________________________________________________________________________
 // Java objects. Make sure they are not garbage collected!
 static JNIEnv* jEnv;
@@ -152,7 +155,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jSetCursorPos = (*jEnv)->GetMethodID(jEnv, jApp, "setCursorPos", "(III)V");
 	jPrintTile = (*jEnv)->GetMethodID(jEnv, jApp, "printTile", "(IIIIIII)V");
 	jYNFunction = (*jEnv)->GetMethodID(jEnv, jApp, "ynFunction", "([B[BI)V");
-	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BII)Ljava/lang/String;");
+	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BIII)Ljava/lang/String;");
 	jStartMenu = (*jEnv)->GetMethodID(jEnv, jApp, "startMenu", "(I)V");
 	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "addMenu", "(IIIIII[BI)V");
 	jEndMenu = (*jEnv)->GetMethodID(jEnv, jApp, "endMenu", "(I[B)V");
@@ -329,13 +332,6 @@ void and_init_nhwindows(int* argcp, char** argv)
 	//debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
 
-	flags.time = TRUE;
-	flags.toptenwin = TRUE;
-	iflags.runmode = RUN_STEP;
-	iflags.num_pad = 0;
-	iflags.use_color = TRUE;
-	flags.showexp = TRUE;
-    iflags.IBMgraphics = TRUE;
 	switch_graphics(IBM_GRAPHICS);
 }
 
@@ -1323,13 +1319,12 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 }
 
 //____________________________________________________________________________________
-static void and_n_getline_r(const char* question, char* buf, int nMax, int reentry);
-void and_n_getline(const char* question, char* buf, int nMax)
+void and_n_getline(const char* question, char* buf, int nMax, int showLog)
 {
-	and_n_getline_r(question, buf, nMax, 0);
+	and_n_getline_r(question, buf, nMax, showLog, 0);
 }
 
-void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
+void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int reentry)
 {
 	int i, n;
 	const jchar* pChars;
@@ -1337,7 +1332,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
 	jbyteArray jq;
 
 	jq = create_bytearray(question);
-	jstr = (jstring)JNICallO(jGetLine, jq, nMax, reentry);
+	jstr = (jstring)JNICallO(jGetLine, jq, nMax, showLog, reentry);
 	destroy_jobject(jq);
 
 	n = (*jEnv)->GetStringLength(jEnv, jstr);
@@ -1359,7 +1354,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
 			{
 				(*jEnv)->ReleaseStringChars(jEnv, jstr, pChars);
 				destroy_jobject(jstr);
-				and_n_getline_r(question, buf, nMax, 1);
+				and_n_getline_r(question, buf, nMax, showLog, 1);
 				return;
 			}
 		}
@@ -1399,7 +1394,12 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int reentry)
 void and_getlin(const char *question, char *input)
 {
 	//debuglog("and_getlin '%s'", question);
-	and_n_getline(question, input, BUFSZ);
+	and_n_getline(question, input, BUFSZ, FALSE);
+}
+
+void and_getlin_log(const char *question, char *input)
+{
+	and_n_getline(question, input, BUFSZ, TRUE);
 }
 
 //____________________________________________________________________________________

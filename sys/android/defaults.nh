@@ -1,0 +1,40 @@
+# Sample config file for Android NetHack
+# A '#' at the beginning of a line means the rest of the
+# line is a comment.
+#
+# Some options MUST be set in this file, other options can
+# be toggled while playing. The options set in this file
+# will override corresponding options in the preference
+# screen.
+#
+# Not all NetHack options are supported in the Android
+# port. Unsupported options will be silently ignored.
+#
+# To change the configuration, comment out the unwanted
+# lines, and uncomment the configuration you want.
+
+# *** OPTIONS ***
+#
+#
+# *** Personal Preferences ***
+#
+# Some options to set personal preferences. Uncomment
+# and change these to suit your personal preference.
+#
+#OPTIONS=name:Janet,role:Valkyrie,race:Human,gender:female,align:lawful
+#OPTIONS=dogname:Fido,catname:Morris,fruit:guava
+#OPTIONS=horsename:Silver
+#
+#
+# *** General options ***
+#
+#OPTIONS=autopickup,pickup_types:$"=/!?+
+#OPTIONS=packorder:")[%?+/=!(*0_`
+#OPTIONS=scores:10 top/2 around/own
+#OPTIONS=nolegacy,noverbose
+#
+#OPTIONS=!lit_corridor,rest_on_space
+#OPTIONS=hilite_pet,!toptenwin
+#OPTIONS=!splash_screen
+#
+#

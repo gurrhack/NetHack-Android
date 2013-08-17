@@ -39,7 +39,7 @@ void NDECL(and_nhbell);
 int NDECL(and_doprev_message);
 char FDECL(and_yn_function, (const char *, const char *, CHAR_P));
 void FDECL(and_getlin, (const char *,char *));
-void FDECL(and_n_getline, (const char* question, char* buf, int nMax));
+void FDECL(and_getlin_log, (const char *,char *));
 int NDECL(and_get_ext_cmd);
 void FDECL(and_number_pad, (int));
 void NDECL(and_delay_output);

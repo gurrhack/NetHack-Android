@@ -46,10 +46,10 @@
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-9" android:keyLabel="\?123" android:keyWidth="15%p" android:keyEdgeFlags="left"/>
         <Key android:codes="-10" android:keyLabel="Meta" android:keyWidth="15%p"/>
-        <Key android:codes="0" android:keyLabel=""/>
-        <Key android:codes="0" android:keyLabel=""/>
-   		<Key android:codes="0" android:keyLabel=""/>
-        <Key android:codes="0" android:keyLabel=""/>
+        <Key android:codes="33" android:keyLabel="!"/>
+        <Key android:codes="37" android:keyLabel="%"/>
+        <Key android:codes="39" android:keyLabel="'"/>
+        <Key android:codes="96" android:keyLabel="`"/>
         <Key android:codes="-11" android:keyLabel="ABC" android:keyWidth="15%p"/>
         <Key android:codes="-8" android:keyLabel="ESC" android:keyWidth="15%p" android:keyEdgeFlags="right"/>
     </Row>

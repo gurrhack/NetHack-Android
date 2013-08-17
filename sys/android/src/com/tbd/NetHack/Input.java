@@ -54,7 +54,7 @@ public class Input
 	}
 	
 	// ____________________________________________________________________________________
-	public static int nhKeyFromKeyCode(int keyCode, char ch, EnumSet<Modifier> mod)
+	public static int nhKeyFromKeyCode(int keyCode, char ch, EnumSet<Modifier> mod, boolean numPadOn)
 	{
 		int nhKey;
 		switch(keyCode)
@@ -72,16 +72,16 @@ public class Input
 			nhKey = 0x7f;
 		break;
 		case KeyEvent.KEYCODE_DPAD_LEFT:
-			nhKey = 'h';
+			nhKey = numPadOn ? '4' : 'h';
 		break;
 		case KeyEvent.KEYCODE_DPAD_RIGHT:
-			nhKey = 'l';
+			nhKey = numPadOn ? '6' : 'l';
 		break;
 		case KeyEvent.KEYCODE_DPAD_UP:
-			nhKey = 'k';
+			nhKey = numPadOn ? '8' : 'k';
 		break;
 		case KeyEvent.KEYCODE_DPAD_DOWN:
-			nhKey = 'j';
+			nhKey = numPadOn ? '2' : 'j';
 		break;
 		case KeyEvent.KEYCODE_DPAD_CENTER:
 			nhKey = '.';

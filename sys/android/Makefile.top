@@ -225,7 +225,7 @@ update: $(GAME) recover $(VARDAT) dungeon spec_levs
 # touch time-sensitive files
 	-touch -c $(VARDIR)/bones* $(VARDIR)/?lock* $(VARDIR)/wizard*
 	-touch -c $(VARDIR)/save/*
-	touch $(VARDIR)/perm $(VARDIR)/record
+#	touch $(VARDIR)/perm $(VARDIR)/record
 # and a reminder
 #	@echo You may also want to install the man pages via the doc Makefile.
 
@@ -241,11 +241,12 @@ install: $(GAME) recover $(VARDAT) dungeon spec_levs
 #	chmod $(DIRPERM) $(GAMEDIR) $(VARDIR) $(VARDIR)/save
 # set up the game files
 	( $(MAKE) dofiles )
+	( cd $(GAMEDIR) ; cp ../../defaults.nh ./ )
 # set up some additional files
-	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile
-	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile ; \
-			$(CHGRP) $(GAMEGRP) perm record logfile ; \
-			chmod $(FILEPERM) perm record logfile )
+#	touch $(VARDIR)/perm $(VARDIR)/record $(VARDIR)/logfile
+#	-( cd $(VARDIR) ; $(CHOWN) $(GAMEUID) perm record logfile ; \
+#			$(CHGRP) $(GAMEGRP) perm record logfile ; \
+#			chmod $(FILEPERM) perm record logfile )
 # and a reminder
 #	@echo You may also want to reinstall the man pages via the doc Makefile.
 

@@ -579,6 +579,15 @@ initoptions()
 # endif
 	}
 #endif /* UNIX && TTY_GRAPHICS */
+#ifdef ANDROID
+	flags.time = TRUE;
+	flags.toptenwin = TRUE;
+	iflags.runmode = RUN_STEP;
+	//iflags.num_pad = 0;
+	iflags.use_color = TRUE;
+	flags.showexp = TRUE;
+    iflags.IBMgraphics = TRUE;
+#endif
 #if defined(UNIX) || defined(VMS)
 # ifdef TTY_GRAPHICS
 	/* detect whether a "vt" terminal can handle alternate charsets */

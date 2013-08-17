@@ -485,7 +485,7 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private String getLine(final byte[] title, final int nMaxChars, int reentry)
+	private String getLine(final byte[] title, final int nMaxChars, final int showLog, int reentry)
 	{
 		if(reentry == 0)
 		{
@@ -496,7 +496,7 @@ public class NetHackIO implements Runnable
 				public void run()
 				{
 					//Log.print("uithread: getLine");
-					mState.getLine(msg, nMaxChars);
+					mState.getLine(msg, nMaxChars, showLog != 0);
 				}
 			});
 		}

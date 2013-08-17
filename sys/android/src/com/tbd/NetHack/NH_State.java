@@ -300,9 +300,12 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void getLine(String title, int nMaxChars)
+	public void getLine(String title, int nMaxChars, boolean showLog)
 	{
-		mGetLine.show(mContext, title, nMaxChars);
+		if(showLog)
+			mGetLine.show(mContext, mMessage.getLogLine(2) + title, nMaxChars);
+		else
+			mGetLine.show(mContext, title, nMaxChars);
 	}
 
 	// ____________________________________________________________________________________
@@ -406,7 +409,7 @@ public class NH_State
 	public void destroyWindow(final int wid)
 	{
 		int i = getWindowI(wid);
-		mWindows.get(i).hide();
+		mWindows.get(i).destroy();
 		mWindows.remove(i);
 	}
 
