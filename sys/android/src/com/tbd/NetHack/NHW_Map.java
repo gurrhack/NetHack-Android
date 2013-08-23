@@ -107,6 +107,7 @@ public class NHW_Map implements NH_Window
 	private UI mUI;
 	private Tile[][] mTiles;
 	private float mScale;
+	private float mDisplayDensity;
 	private int mScaleCount;
 	private int mStickyZoom;
 	private boolean mIsStickyZoom;
@@ -157,6 +158,7 @@ public class NHW_Map implements NH_Window
 		if(mContext == context)
 			return;
 		mContext = context;
+		mDisplayDensity = context.getResources().getDisplayMetrics().density;
 		mUI = new UI();
 		if(mIsVisible)
 			show(mIsBlocking);
@@ -305,15 +307,12 @@ public class NHW_Map implements NH_Window
 		float ofsY = (mViewOffset.y - mCanvasRect.top - mCanvasRect.height() * 0.5f) / mUI.getViewHeight();
 
 		mScaleCount += amount;
-		if(mScaleCount > 139)
-			mScaleCount = 139;
+		if(mScaleCount > 139 * mDisplayDensity)
+			mScaleCount = (int) (139 * mDisplayDensity);
 		if(mScaleCount < -200)
 			mScaleCount = -200;
 
 		mScale = (float)Math.pow(1.005, mScaleCount);
-
-		if(mScale > 2.0f)
-			mScale = 2.0f;
 
 		ofsX = mCanvasRect.left + ofsX * mUI.getViewWidth() + mCanvasRect.width() * 0.5f;
 		ofsY = mCanvasRect.top + ofsY * mUI.getViewHeight() + mCanvasRect.height() * 0.5f;
@@ -503,8 +502,7 @@ public class NHW_Map implements NH_Window
 			mPaint.setTypeface(mTypeface);
 			mPaint.setTextAlign(Align.LEFT);
 			mPaint.setFilterBitmap(false);
-			final float density = mContext.getResources().getDisplayMetrics().density;
-			mBaseTextSize = 24.f * density;
+			mBaseTextSize = 15.f * mDisplayDensity;
 			mPaint.setTextSize(mBaseTextSize * mScale);
 			mPointer0 = new PointF();
 			mPointer1 = new PointF();
@@ -974,7 +972,7 @@ public class NHW_Map implements NH_Window
 			float newDist = getPointerDist(event);
 			if(newDist > 5)
 			{
-				int zoomAmount = (int)(newDist - mPointerDist);
+				int zoomAmount = (int)(1.5f * (newDist - mPointerDist) / mDisplayDensity);
 				int newScale = mScaleCount + zoomAmount;
 
 				if(zoomAmount != 0)
