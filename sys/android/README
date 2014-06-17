@@ -19,14 +19,13 @@ work. If you're running Windows you're on your own.
  - Install 'bison' and 'flex'
  
  - Check out the source
-     svn checkout http://android-nethack-port.googlecode.com/svn/trunk/\
-     android-nethack-port-read-only'
+     git clone https://github.com/gurrhack/NetHack-Android.git
 
 
 
 === Building NetHack ===
 
-1. cd <android-nethack-dir>/sys/android
+1. cd <NetHack-Android>/sys/android
 2. Open Makefile.src and change NDK to the appropriate path
 3. sh ./setup.sh
 4. cd ../..
@@ -39,7 +38,7 @@ work. If you're running Windows you're on your own.
 
 1. Start Eclipse
 2. Create New Android Project -> "Create project from existing source"
-3. Point the location to: <android-nethack-dir>/sys/android
+3. Point the location to: <NetHack-Android>/sys/android
 4. Build and Run!
 
 

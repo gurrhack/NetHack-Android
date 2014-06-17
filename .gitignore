@@ -1,10 +1,79 @@
-*.o
-*.lev
-*.class
-nethackdir/
-gen/
-.idea/
-out/
-bin/
-libs/
+*.swp
+*.swo
+compile
+.idea
+out
 
+# /
+/Makefile
+/config.log
+/config.status
+/tags
+/TAGS
+/.svn
+
+# /dat/
+/dat/Makefile
+/dat/*.lev
+/dat/data
+/dat/dungeon.pdf
+/dat/dungeon
+/dat/nhdat
+/dat/options
+/dat/oracles
+/dat/quest.dat
+/dat/quest_levs
+/dat/rumors
+/dat/spec_levs
+/dat/vaults.dat
+
+# /doc/
+/doc/Makefile
+/doc/Guidebook.txt
+
+# /include/
+/include/autoconf.h
+/include/autoconf_paths.h
+/include/date.h
+/include/dgn_comp.h
+/include/lev_comp.h
+/include/onames.h
+/include/pm.h
+/include/vis_tab.h
+/include/win32api.h
+
+# /src/
+/src/*.o
+/src/nhwin.a
+/src/nethack
+/src/Makefile
+/src/Sysunix
+/src/config.h-t
+/src/hack.h-t
+/src/vis_tab.c
+/src/monstr.c
+/src/tile.c
+/src/Sysandroid
+
+# /util/
+/util/*.o
+/util/Makefile
+/util/dgn_comp
+/util/dgn_lex.c
+/util/dgn_yacc.c
+/util/dlb
+/util/lev_comp
+/util/lev_lex.c
+/util/lev_yacc.c
+/util/makedefs
+/util/recover
+/util/tilemap
+
+# /win/
+/win/*/*.o
+
+
+/sys/android/bin
+/sys/android/libs
+/sys/android/assets/nethackdir
+/sys/android/gen
