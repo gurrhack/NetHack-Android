@@ -164,7 +164,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jDelayOutput = (*jEnv)->GetMethodID(jEnv, jApp, "delayOutput", "()V");
 	jShowDPad = (*jEnv)->GetMethodID(jEnv, jApp, "askDirection", "()V");
 	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "showPrevMessage", "()V");
-	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "()V");
+	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "(I)V");
 	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
 	jSetNumPadOption = (*jEnv)->GetMethodID(jEnv, jApp, "setNumPadOption", "(I)V");
 	jAskName = (*jEnv)->GetMethodID(jEnv, jApp, "askName", "(I[Ljava/lang/String;)Ljava/lang/String;");
@@ -1000,6 +1000,12 @@ int and_nhgetch()
 	return c;
 }
 
+void and_you_die()
+{
+	JNICallV(jShowLog, 1);
+	and_nhgetch();
+}
+
 //____________________________________________________________________________________
 //int nh_poskey(int *x, int *y, int *mod)
 //		-- Returns a single character input from the user or a
@@ -1679,7 +1685,7 @@ void and_preference_update(const char *pref)
 
 int doshowlog()
 {
-	JNICallV(jShowLog);
+	JNICallV(jShowLog, 0);
 	return 0;
 }
 

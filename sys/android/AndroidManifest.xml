@@ -2,11 +2,12 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
-	android:versionCode="132"
-	android:versionName="1.3.2"
+	android:versionCode="135"
+	android:versionName="1.3.5"
 	android:installLocation="auto">
 	<uses-sdk
-		android:minSdkVersion="7"/>
+		android:minSdkVersion="7"
+		android:targetSdkVersion="19"/>
 	<uses-permission
 		android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
@@ -14,13 +15,15 @@
 		android:label="NetHack"
 		android:icon="@drawable/icon"
 		android:debuggable="false"
+		android:theme="@android:style/Theme"
 		android:allowBackup="true">
 		<activity
 			android:name=".NetHack"
 			android:label="NetHack"
 			android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
 			android:launchMode="singleTask"
-			android:configChanges="mcc|mnc|locale|keyboard|keyboardHidden|orientation|screenLayout|fontScale"> <!-- Prevent activity from restarting when configuration changes -->
+			android:configChanges="mcc|mnc|locale|keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|fontScale">
+			<!-- Prevent activity from restarting when configuration changes -->
 			<intent-filter>
 				<action
 					android:name="android.intent.action.MAIN"/>
@@ -37,4 +40,4 @@
 			android:label="NetHack Instructions">
 		</activity>
 	</application>
-</manifest> 
+</manifest>

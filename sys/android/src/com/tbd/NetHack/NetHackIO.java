@@ -720,13 +720,13 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private void showLog()
+	private void showLog(final int bBlocking)
 	{
 		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				mState.showLog();
+				mState.showLog(bBlocking);
 			}
 		});
 	}

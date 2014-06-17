@@ -186,6 +186,9 @@ register struct monst *mtmp;
 	boolean distorted = (boolean)(Hallucination && canspotmon(mtmp));
 
 	You("die...");
+#ifdef ANDROID
+	and_you_die();
+#endif
 	mark_synch();	/* flush buffered screen output */
 	buf[0] = '\0';
 	killer_format = KILLED_BY_AN;

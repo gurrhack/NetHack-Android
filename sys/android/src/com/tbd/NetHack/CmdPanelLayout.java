@@ -83,7 +83,7 @@ public class CmdPanelLayout extends FrameLayout
 				if(mViewRect.left != parentLeft || mViewRect.right != parentRight || mViewRect.top != parentTop || mViewRect.bottom != parentBottom)
 				{
 					mViewRect.set(parentLeft, parentTop, parentRight, parentBottom);
-					mState.viewAreaCanged(mViewRect);
+					mState.viewAreaChanged(mViewRect);
 				}
 			}
 
@@ -369,7 +369,7 @@ public class CmdPanelLayout extends FrameLayout
 			FrameLayout.LayoutParams params = generateDefaultLayoutParams();
 			params.gravity = (location == 0 ? Gravity.LEFT : Gravity.RIGHT) | Gravity.FILL_VERTICAL;
 			params.width = LayoutParams.WRAP_CONTENT;
-			params.height = LayoutParams.FILL_PARENT;
+			params.height = LayoutParams.MATCH_PARENT;
 			v.setLayoutParams(params);
 		}
 		else
@@ -377,7 +377,7 @@ public class CmdPanelLayout extends FrameLayout
 			v = new HorizontalScrollView(mContext);
 			FrameLayout.LayoutParams params = generateDefaultLayoutParams();
 			params.gravity = (location == 2 ? Gravity.TOP : Gravity.BOTTOM) | Gravity.FILL_HORIZONTAL;
-			params.width = LayoutParams.FILL_PARENT;
+			params.width = LayoutParams.MATCH_PARENT;
 			params.height = LayoutParams.WRAP_CONTENT;
 			v.setLayoutParams(params);
 		}

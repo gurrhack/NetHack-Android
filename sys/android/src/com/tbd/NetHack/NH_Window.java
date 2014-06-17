@@ -10,7 +10,7 @@ public interface NH_Window
 	public void destroy();
 	public void clear();
 	public void printString(TextAttr attr, String str, int append);
-	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput);
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput);
 	public void setContext(Activity context);
 	public boolean isBlocking();
 	public String getTitle();

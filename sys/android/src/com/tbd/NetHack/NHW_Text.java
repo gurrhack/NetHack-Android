@@ -118,9 +118,12 @@ public class NHW_Text implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	@Override
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
-		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput) ? 1 : 0;
+		if(isVisible())
+			return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput);
+		return KeyEventResult.IGNORED;
 	}
 
 	// ____________________________________________________________________________________
@@ -195,34 +198,44 @@ public class NHW_Text implements NH_Window
 		}
 
 		// ____________________________________________________________________________________
-		public boolean handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
+		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
 		{
+			if(ch == '<')
+				keyCode = KeyEvent.KEYCODE_PAGE_UP;
+			else if(ch == '>')
+				keyCode = KeyEvent.KEYCODE_PAGE_DOWN;
+
 			switch(keyCode)
 			{
 			case KeyEvent.KEYCODE_ENTER:
 			case KeyEvent.KEYCODE_BACK:
+			//case KeyEvent.KEYCODE_ESCAPE:
 			case KeyEvent.KEYCODE_DPAD_CENTER:
-				if(isVisible())
-				{
-					close();
-					return true;
-				}
+				close();
+			break;
 
 			case KeyEvent.KEYCODE_DPAD_UP:
+			case KeyEvent.KEYCODE_VOLUME_UP:
 				mScroll.scrollBy(0, -mTextView.getLineHeight());
-				return true;
+			break;
+
 			case KeyEvent.KEYCODE_DPAD_DOWN:
+			case KeyEvent.KEYCODE_VOLUME_DOWN:
 				mScroll.scrollBy(0, mTextView.getLineHeight());
-				return true;
+			break;
+
 			case KeyEvent.KEYCODE_DPAD_LEFT:
+			case KeyEvent.KEYCODE_PAGE_UP:
 				mScroll.pageScroll(View.FOCUS_UP);
-				return true;
+			break;
+
 			case KeyEvent.KEYCODE_SPACE:
 			case KeyEvent.KEYCODE_DPAD_RIGHT:
+			case KeyEvent.KEYCODE_PAGE_DOWN:
 				mScroll.pageScroll(View.FOCUS_DOWN);
-				return true;
+			break;
 			}
-			return false;
+			return KeyEventResult.HANDLED;
 		}
 	}
 }

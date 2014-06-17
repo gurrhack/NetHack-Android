@@ -61,12 +61,13 @@ public class NHW_Message implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	@Override
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
-		int ret;
-		if(isLogShowing() && (ret = mLogView.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput)) > 0)
+		KeyEventResult ret;
+		if(isLogShowing() && (ret = mLogView.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput)) != KeyEventResult.IGNORED)
 			return ret;
-		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput) ? 1 : 0;
+		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput);
 	}
 
 	// ____________________________________________________________________________________
@@ -199,7 +200,7 @@ public class NHW_Message implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void showLog()
+	public void showLog(boolean bBlocking)
 	{
 		if(mLogView == null)
 			mLogView = new NHW_Text(0, mContext, mIO);
@@ -218,7 +219,7 @@ public class NHW_Message implements NH_Window
 					mLogView.printString(s);
 			}
 		}
-		mLogView.show(false);
+		mLogView.show(bBlocking);
 		mLogView.scrollToEnd();
 		int disp = mDispCount < 3 ? mDispCount : 3;
 		clear();
@@ -268,7 +269,7 @@ public class NHW_Message implements NH_Window
 			{
 				public void onClick(View v)
 				{
-					showLog();
+					showLog(false);
 				}
 			});
 		}
@@ -309,14 +310,14 @@ public class NHW_Message implements NH_Window
 		}
 
 		// ____________________________________________________________________________________
-		public boolean handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
+		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
 		{
 			if(m_more.getVisibility() == View.VISIBLE && ch == ' ' && !isLogShowing())
 			{
-				showLog();
-				return true;
+				showLog(false);
+				return KeyEventResult.HANDLED;
 			}
-			return false;
+			return KeyEventResult.IGNORED;
 		}
 
 		// ____________________________________________________________________________________

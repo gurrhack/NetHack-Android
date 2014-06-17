@@ -86,7 +86,7 @@ SYSOBJ = ioctl.o androidmain.o unixtty.o androidunix.o
 # For cross-compiling with Android NDK
 NDK = /path/to/android-ndk-r8d
 SYSROOT=$(NDK)/platforms/android-9/arch-arm
-CC = $(NDK)/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-gcc --sysroot=$(SYSROOT)
+CC = $(NDK)/toolchains/arm-linux-androideabi-4.6/prebuilt/linux-x86_64/bin/arm-linux-androideabi-gcc --sysroot=$(SYSROOT)
 
 # arm-none-linux-gnueabi-gcc
 
@@ -418,6 +418,7 @@ Sysunix:	$(HOBJ) Makefile
 
 Sysandroid:	$(HOBJ) Makefile
 	@echo "Loading ..."
+	mkdir -p ../sys/android/libs/armeabi
 	$(LINK) $(LFLAGS) -o ../sys/android/libs/armeabi/lib$(GAME).so $(HOBJ) $(LIBS)
 	@touch Sysandroid
 

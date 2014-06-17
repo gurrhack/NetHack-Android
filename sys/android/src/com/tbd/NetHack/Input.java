@@ -25,10 +25,11 @@ public class Input
 		// so I don't dare use it as a modifier for meta keys ¤
 		//if(event.isAltPressed())
 		//	mod.add(Modifiers.Meta);
-		
-		// The CTRL key is not supported until API level 11 which I can't require yet
-		//if(event.isCtrlPressed())
-		//	mod.add(Modifiers.Control);
+
+		// The CTRL key is not supported until API level 11
+		int metaCtrlMask = 0x00007000; // KeyEvent.META_CTRL_LEFT_ON | KeyEvent.META_CTRL_RIGHT_ON | KeyEvent.META_CTRL_ON;
+		if((event.getMetaState() & metaCtrlMask) != 0)
+			mod.add(Modifier.Control);
 		
 		// Some users have reported that they can't use the hardware shift key. I suspect
 		// that the "isShiftPressed" function is broken on those devices. Checking for
@@ -52,7 +53,7 @@ public class Input
 			return Character.toUpperCase(ch);
 		return ch;
 	}
-	
+
 	// ____________________________________________________________________________________
 	public static int nhKeyFromKeyCode(int keyCode, char ch, EnumSet<Modifier> mod, boolean numPadOn)
 	{

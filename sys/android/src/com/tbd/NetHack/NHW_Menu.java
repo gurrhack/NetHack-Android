@@ -192,7 +192,8 @@ public class NHW_Menu implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	@Override
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
 		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 	}
@@ -242,48 +243,73 @@ public class NHW_Menu implements NH_Window
 			mContext = context;
 		}
 
-		public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Modifier> modifiers, int repeatCount, boolean bSoftInput)
+		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Modifier> modifiers, int repeatCount, boolean bSoftInput)
 		{
 			if(mAmountSelector != null)
 				return mAmountSelector.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
-			
+
+			if(ch == '<')
+				keyCode = KeyEvent.KEYCODE_PAGE_UP;
+			else if(ch == '>')
+				keyCode = KeyEvent.KEYCODE_PAGE_DOWN;
+
 			if(!isShowing() || keyCode < 0)
-				return 0;
+				return KeyEventResult.IGNORED;
 
 			if(mType == Type.Text)
 			{
 				switch(keyCode)
 				{
-				case 111 /*KeyEvent.KEYCODE_ESC*/:
+				case KeyEvent.KEYCODE_ESCAPE:
 				case KeyEvent.KEYCODE_ENTER:
 				case KeyEvent.KEYCODE_BACK:
 					closeInternal();
 				break;
 
 				case KeyEvent.KEYCODE_SPACE:
+				case KeyEvent.KEYCODE_PAGE_DOWN:
 					((ScrollView)mRoot.findViewById(R.id.scrollview)).pageScroll(ScrollView.FOCUS_DOWN);
 				break;
-				
+
+				case KeyEvent.KEYCODE_PAGE_UP:
+					((ScrollView)mRoot.findViewById(R.id.scrollview)).pageScroll(ScrollView.FOCUS_UP);
+				break;
+
 				default:
-					return 2;
+					return KeyEventResult.RETURN_TO_SYSTEM;
 				}
-				return 1;
+				return KeyEventResult.HANDLED;
 			}
+
 			if(mType == Type.Menu)
 			{
 				// mListView.onKeyDown(keyCode, event);
 				switch(keyCode)
 				{
-				case 111: // KeyEvent.KEYCODE_ESC
+				case KeyEvent.KEYCODE_ESCAPE:
 				case KeyEvent.KEYCODE_BACK:
 					sendCancelSelect();
 				break;
+
+				case KeyEvent.KEYCODE_PAGE_DOWN:
+					mListView.setSelection(mListView.getLastVisiblePosition());
+					break;
+
+				case KeyEvent.KEYCODE_PAGE_UP:
+					if(mListView.getSelectedItemPosition() == mListView.getFirstVisiblePosition())
+					{
+						int newPos = Math.max(0, 2 * mListView.getFirstVisiblePosition() - mListView.getLastVisiblePosition());
+						mListView.setSelection(newPos);
+					}
+					else
+						mListView.setSelection(mListView.getFirstVisiblePosition());
+					break;
 
 				case KeyEvent.KEYCODE_ENTER:
 					if(bSoftInput)
 						menuOk();
 					else
-						return 2;// let system handle
+						return KeyEventResult.RETURN_TO_SYSTEM;
 				break;
 					
 				case KeyEvent.KEYCODE_SPACE:
@@ -295,7 +321,7 @@ public class NHW_Menu implements NH_Window
 							toggleItemAt(mListView.getSelectedItemPosition());
 					}
 					else
-						return 2;// let system handle
+						return KeyEventResult.RETURN_TO_SYSTEM;
 				break;
 
 				default:
@@ -304,17 +330,17 @@ public class NHW_Menu implements NH_Window
 						if(getAccelerator(ch) >= 0)
 						{
 							menuOk();
-							return 1;
+							return KeyEventResult.HANDLED;
 						}
-						return 2;// let system handle
+						return KeyEventResult.RETURN_TO_SYSTEM;
 					}
 					else if(menuSelect(ch))
-						return 1;
-					return 2;
+						return KeyEventResult.HANDLED;
+					return KeyEventResult.RETURN_TO_SYSTEM;
 				}
-				return 1;
+				return KeyEventResult.HANDLED;
 			}
-			return 0;
+			return KeyEventResult.IGNORED;
 		}
 
 		// ____________________________________________________________________________________

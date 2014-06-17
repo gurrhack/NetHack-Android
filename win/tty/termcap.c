@@ -1154,9 +1154,6 @@ int
 has_color(color)
 int color;
 {
-#ifdef ANDROID_GRAPHICS
-	return TRUE;
-#endif
 #ifdef X11_GRAPHICS
 	/* XXX has_color() should be added to windowprocs */
 	if (windowprocs.name != NULL &&

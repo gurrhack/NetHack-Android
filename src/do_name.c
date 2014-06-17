@@ -479,7 +479,7 @@ ddocall()
 				You("would never recognize another one.");
 				return 0;
 			}
-			docall2(obj, FALSE);
+			docall_ext(obj, FALSE);
 		}
 		break;
 	}
@@ -490,11 +490,11 @@ void
 docall(obj)
 register struct obj *obj;
 {
-	docall2(obj, TRUE);
+	docall_ext(obj, TRUE);
 }
 
 void
-docall2(obj, showlog)
+docall_ext(obj, showlog)
 register struct obj *obj;
 boolean showlog;
 {

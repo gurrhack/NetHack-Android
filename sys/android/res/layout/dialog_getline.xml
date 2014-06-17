@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@android:drawable/screen_background_dark_transparent"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:background="@android:drawable/screen_background_dark_transparent"
     android:clickable="true"
     android:focusableInTouchMode="true"
     android:nextFocusDown="@+id/input"

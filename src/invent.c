@@ -2277,8 +2277,14 @@ boolean picked_some;
 	    if (dfeature) pline(fbuf);
 	    read_engr_at(u.ux, u.uy); /* Eric Backus */
 	    There("are %s%s objects here.",
-		  (obj_cnt <= 10) ? "several" : "many",
-		  picked_some ? " more" : "");
+#ifdef ANDROID
+	      (obj_cnt == 2) ? "two" : (
+#endif
+		  (obj_cnt <= 10) ? "several" : "many"
+#ifdef ANDROID
+				  )
+#endif
+		  , picked_some ? " more" : "");
 	} else if (!otmp->nexthere) {
 	    /* only one object */
 	    if (dfeature) pline(fbuf);

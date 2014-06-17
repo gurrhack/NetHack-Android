@@ -408,7 +408,8 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public int handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	@Override
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
 		if(keyCode == KeyAction.ZoomIn || keyCode == KeyAction.ZoomOut)
 		{
@@ -417,10 +418,10 @@ public class NHW_Map implements NH_Window
 			if(mScaleCount == scale && repeatCount == 0)
 				resetZoom();
 			saveZoomLevel();
-			return 1;
+			return KeyEventResult.HANDLED;
 		}
 
-		return mUI.handleKeyDown(nhKey, keyCode) ? 1 : 0;
+		return mUI.handleKeyDown(nhKey, keyCode) ? KeyEventResult.HANDLED : KeyEventResult.IGNORED;
 	}
 
 	// ____________________________________________________________________________________
@@ -579,7 +580,7 @@ public class NHW_Map implements NH_Window
 
 			for(int tileY = minTileY; tileY <= maxTileY; tileY++)
 			{
-				for(int tileX = minTileX; tileX < maxTileX; tileX++)
+				for(int tileX = minTileX; tileX <= maxTileX; tileX++)
 				{
 					Tile tile = mTiles[tileY][tileX];
 					if(tile.glyph >= 0)
@@ -664,7 +665,7 @@ public class NHW_Map implements NH_Window
 
 			for(int tileY = minTileY; tileY <= maxTileY; tileY++)
 			{
-				for(int tileX = minTileX; tileX < maxTileX; tileX++)
+				for(int tileX = minTileX; tileX <= maxTileX; tileX++)
 				{
 					Tile tile = mTiles[tileY][tileX];
 					int fgColor = tile.color;

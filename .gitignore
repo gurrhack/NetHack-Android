@@ -1,0 +1,10 @@
+*.o
+*.lev
+*.class
+nethackdir/
+gen/
+.idea/
+out/
+bin/
+libs/
+

@@ -168,20 +168,20 @@ public class NH_State
 			return true;
 		}
 		
-		int ret = mQuestion.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
+		KeyEventResult ret = mQuestion.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 
-		for(int i = mWindows.size() - 1; ret == 0 && i >= 0; i--)
+		for(int i = mWindows.size() - 1; ret == KeyEventResult.IGNORED && i >= 0; i--)
 		{
 			NH_Window w = mWindows.get(i);
 			ret = w.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 		}
 
-		if(ret == 0)
+		if(ret == KeyEventResult.IGNORED)
 			ret = mGetLine.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 
-		if(ret == 1)
+		if(ret == KeyEventResult.HANDLED)
 			return true;
-		if(ret == 2)// let system handle
+		if(ret == KeyEventResult.RETURN_TO_SYSTEM)
 			return false;
 				
 		if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_HOME)
@@ -456,9 +456,9 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void showLog()
+	public void showLog(final int bBlocking)
 	{
-		mMessage.showLog();
+		mMessage.showLog(bBlocking != 0);
 	}
 
 	// ____________________________________________________________________________________
@@ -656,7 +656,7 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void viewAreaCanged(Rect viewRect)
+	public void viewAreaChanged(Rect viewRect)
 	{
 		mMap.viewAreaChanged(viewRect);
 	}

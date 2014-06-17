@@ -41,7 +41,7 @@ public class SoftKeyboard implements OnKeyboardActionListener
 		mKeyboardFrame = (ViewGroup)mContext.findViewById(R.id.kbd_frame);
 
 		mKeyboardView = (KeyboardView)Util.inflate(mContext, R.layout.input);
-		mKeyboardView.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+		mKeyboardView.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
 		mKeyboardFrame.addView(mKeyboardView);
 		mKeyboardView.setOnKeyboardActionListener(this);
 	}
@@ -144,7 +144,7 @@ public class SoftKeyboard implements OnKeyboardActionListener
 		break;
 
 		case KEYCODE_ESC:
-			mState.handleKeyDown('\033', '\033', 111 /*KeyEvent.KEYCODE_ESC*/, Input.modifiers(), 0, true);
+			mState.handleKeyDown('\033', '\033', KeyEvent.KEYCODE_ESCAPE, Input.modifiers(), 0, true);
 		break;
 
 		case Keyboard.KEYCODE_DELETE:

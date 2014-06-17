@@ -981,7 +981,11 @@ const char* filename;
 #else
 #define EXTSTR ""
 #endif
+#ifdef ANDROID
+    if ( sscanf( filename, "%*[^/]/%63[^.]" EXTSTR, name ) == 1 ) {
+#else
     if ( sscanf( filename, "%*[^/]/%d%63[^.]" EXTSTR, &uid, name ) == 2 ) {
+#endif
 #undef EXTSTR
     /* "_" most likely means " ", which certainly looks nicer */
 	for (k=0; name[k]; k++)
@@ -996,6 +1000,27 @@ const char* filename;
 #endif
 }
 #endif /* defined(UNIX) && defined(QT_GRAPHICS) */
+
+#ifdef ANDROID
+static char*
+strip_uid(name, uid)
+char *name;
+int uid;
+{
+	char suid[10];
+	int i = 0;
+	while(uid > 0) {
+		suid[i] = '0'+uid%10;
+		uid /= 10;
+		i++;
+	}
+	while(i > 0 && *name == suid[--i])
+		name++;
+	if(i == 0)
+		return name;
+	return 0;
+}
+#endif
 
 char**
 get_saved_games()
@@ -1033,15 +1058,15 @@ get_saved_games()
     if(n1 < 0) n1 = 0;
     if(n2 < 0) n2 = 0;
 	int i,j=0;
-    int uid;
     char name[64]; /* more than PL_NSIZ */
+    char* uname;
 	char** result = (char**)alloc((n1+n2+1)*sizeof(char*)); /* at most */
 	for (i=0; i<n1; i++) {
-	    if ( sscanf( namelist[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
-		if ( uid == myuid ) {
+	    if ( sscanf( namelist[i]->d_name, "%63s", name ) == 1 ) {
+		if ( (uname=strip_uid(name, myuid)) ) {
 		    char filename[BUFSZ];
 		    char* r;
-		    Sprintf(filename,"save/%d%s",uid,name);
+		    Sprintf(filename,"save/%s",uname);
 		    r = plname_from_file(filename);
 		    if ( r )
 			result[j++] = r;
@@ -1049,15 +1074,10 @@ get_saved_games()
 	    }
 	}
 	for (i=0; i<n2; i++) {
-	    if ( sscanf( namelist2[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
-		if ( uid == myuid ) {
-			int len = strlen(name) - 1;
-			while(len > 0 && name[len] >= '0' && name[len] < '9')
-				len--;
-			if(name[len] == '.')
-				name[len] = 0;
-			if(j==0 || strcmp(result[j-1], name))
-				result[j++] = strdup(name);
+	    if ( sscanf( namelist2[i]->d_name, "%63[^.]", name ) == 1 ) {
+		if ( (uname=strip_uid(name, myuid)) ) {
+			if(j==0 || strcmp(result[j-1], uname))
+				result[j++] = strdup(uname);
 		}
 	    }
 	}
@@ -2447,7 +2467,8 @@ recover_savefile()
 #ifdef ANDROID
 	/* if the new savefile isn't compressed 
 	 * it will be overwritten when the old 
-	 * savefile is restored in restore_saved_game() */
+	 * savefile is restored in restore_saved_game()
+	 */
 	compress(fqname(SAVEF, SAVEPREFIX, 0));
 #endif
 	
