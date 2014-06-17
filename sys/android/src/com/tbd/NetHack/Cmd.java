@@ -1,6 +1,7 @@
 package com.tbd.NetHack;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import android.os.Handler;
 import com.tbd.NetHack.Input.Modifier;
@@ -126,6 +127,8 @@ public interface Cmd
 				return;
 			if(mSeq.isEmpty())
 				rebuildSequence();
+			if(mSeq.isEmpty())
+				return;
 
 			mExecuting = true;
 
