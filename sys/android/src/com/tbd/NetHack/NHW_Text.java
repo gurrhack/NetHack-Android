@@ -97,12 +97,6 @@ public class NHW_Text implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public boolean isBlocking()
-	{
-		return mIsBlocking;
-	}
-
-	// ____________________________________________________________________________________
 	private void close()
 	{
 		if(mIsBlocking)

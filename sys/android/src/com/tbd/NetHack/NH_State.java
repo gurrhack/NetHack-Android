@@ -148,9 +148,9 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	public void onCreateContextMenu(ContextMenu menu, View v)
 	{
-		mCmdPanelLayout.onCreateContextMenu(menu, v, menuInfo);
+		mCmdPanelLayout.onCreateContextMenu(menu, v);
 	}
 
 	// ____________________________________________________________________________________

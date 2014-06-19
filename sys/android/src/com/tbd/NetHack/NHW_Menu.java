@@ -128,12 +128,6 @@ public class NHW_Menu implements NH_Window
 	}
 	
 	// ____________________________________________________________________________________
-	public boolean isBlocking()
-	{
-		return mIsBlocking;
-	}
-
-	// ____________________________________________________________________________________
 	private void close()
 	{
 		if(mIsBlocking)

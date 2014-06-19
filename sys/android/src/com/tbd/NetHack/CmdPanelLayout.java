@@ -439,10 +439,10 @@ public class CmdPanelLayout extends FrameLayout
 	}
 
 	// ____________________________________________________________________________________
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	public void onCreateContextMenu(ContextMenu menu, View v)
 	{
 		for(Panel p : mPanelCmds)
-			p.panel.onCreateContextMenu(menu, v, menuInfo);
+			p.panel.onCreateContextMenu(menu, v);
 	}
 
 	// ____________________________________________________________________________________

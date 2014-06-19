@@ -53,27 +53,11 @@ public class CmdPanel
 	}
 
 	// ____________________________________________________________________________________
-	public int getHeight()
-	{
-		if(mBtnPanel.getOrientation() == LinearLayout.VERTICAL)
-			return 0;
-		return mBtnPanel.getHeight();
-	}
-
-	// ____________________________________________________________________________________
-	int getWidth()
-	{
-		if(mBtnPanel.getOrientation() == LinearLayout.HORIZONTAL)
-			return 0;
-		return mBtnPanel.getWidth();
-	}
-
-	// ____________________________________________________________________________________
 	public boolean isWizCmd(String cmd)
 	{
 		if(cmd.length() != 2 || cmd.charAt(0) != '^')
 			return false;
-		char c1 = cmd.charAt(1);
+		char c1 = Character.toLowerCase(cmd.charAt(1));
 		return c1 == 'e' || c1 == 'f' || c1 == 'g' || c1 == 'i' || c1 == 'o' || c1 == 'v' || c1 == 'w';
 	}
 
@@ -140,8 +124,7 @@ public class CmdPanel
 		}
 
 		KeySequnece cmd = new Cmd.KeySequnece(mState, chars, label);
-		Button btn = createCmdButtonFromCmd(cmd);
-		return btn;
+		return createCmdButtonFromCmd(cmd);
 	}
 
 	// ____________________________________________________________________________________
@@ -182,7 +165,7 @@ public class CmdPanel
 	}
 
 	// ____________________________________________________________________________________
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	public void onCreateContextMenu(ContextMenu menu, View v)
 	{
 		if(v.getParent() != mBtnPanel)
 			return;

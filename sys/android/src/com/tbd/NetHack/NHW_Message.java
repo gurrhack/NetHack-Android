@@ -182,12 +182,6 @@ public class NHW_Message implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public boolean isBlocking()
-	{
-		return false;
-	}
-
-	// ____________________________________________________________________________________
 	public void showPrev()
 	{
 		if(mCurrentIdx == getOldestIndex())

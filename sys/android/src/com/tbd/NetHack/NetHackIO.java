@@ -173,9 +173,9 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	public void onCreateContextMenu(ContextMenu menu, View v)
 	{
-		mState.onCreateContextMenu(menu, v, menuInfo);
+		mState.onCreateContextMenu(menu, v);
 	}
 
 	// ____________________________________________________________________________________
