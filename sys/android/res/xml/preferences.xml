@@ -88,7 +88,14 @@
 			android:defaultValue="false"
 			android:key="groupLog"/>
 
-	</PreferenceCategory>
+        <CheckBoxPreference
+                android:title="Lock View"
+                android:summary="Do not move the view with the character when the entire map can fit the screen"
+                android:persistent="true"
+                android:defaultValue="true"
+                android:key="lockView"/>
+
+    </PreferenceCategory>
 
 	<PreferenceCategory
 		android:title="Advanced">

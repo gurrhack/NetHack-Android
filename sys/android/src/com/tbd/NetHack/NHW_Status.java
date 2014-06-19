@@ -79,12 +79,6 @@ public class NHW_Status implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public boolean isBlocking()
-	{
-		return false;
-	}
-
-	// ____________________________________________________________________________________
 	public void clear()
 	{
 		mRows[0] = null;
@@ -112,19 +106,24 @@ public class NHW_Status implements NH_Window
 		return KeyEventResult.IGNORED;
 	}
 
+	public float getHeight()
+	{
+		return mUI.getHeight();
+	}
+
 	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
 	private class UI
 	{
-		private TextView[] mViews;
+		private AutoFitTextView[] mViews;
 
 		// ____________________________________________________________________________________
 		public UI(Activity context)
 		{
-			mViews = new TextView[2];
-			mViews[0] = (TextView)context.findViewById(R.id.nh_stat0);
-			mViews[1] = (TextView)context.findViewById(R.id.nh_stat1);
+			mViews = new AutoFitTextView[2];
+			mViews[0] = (AutoFitTextView)context.findViewById(R.id.nh_stat0);
+			mViews[1] = (AutoFitTextView)context.findViewById(R.id.nh_stat1);
 		}
 
 		// ____________________________________________________________________________________
@@ -147,6 +146,12 @@ public class NHW_Status implements NH_Window
 		{
 			mViews[0].setText(mRows[0]);
 			mViews[1].setText(mRows[1]);
+		}
+
+		// ____________________________________________________________________________________
+		public float getHeight()
+		{
+			return mViews[0].getMinTextSize() * 2;
 		}
 	}
 }

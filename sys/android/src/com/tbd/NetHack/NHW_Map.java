@@ -84,12 +84,6 @@ public class NHW_Map implements NH_Window
 		return '\033';
 	}
 	
-	public static final int Corpse = 0x01;
-	public static final int Invisible = 0x02;
-	public static final int Detect = 0x04;
-	public static final int Pet = 0x08;
-	public static final int Ridden = 0x10;
-
 	private enum ZoomPanMode
 	{
 		Idle, Pressed, Panning, Zooming,
@@ -109,6 +103,9 @@ public class NHW_Map implements NH_Window
 	private float mScale;
 	private float mDisplayDensity;
 	private int mScaleCount;
+	private int mMinScaleCount;
+	private int mMaxScaleCount;
+	private float mLockTopMargin;
 	private int mStickyZoom;
 	private boolean mIsStickyZoom;
 	private Tileset mTileset;
@@ -159,6 +156,9 @@ public class NHW_Map implements NH_Window
 			return;
 		mContext = context;
 		mDisplayDensity = context.getResources().getDisplayMetrics().density;
+		mMinScaleCount = -200;
+		mMaxScaleCount = (int) (139 * mDisplayDensity);
+		mLockTopMargin = mStatus.getHeight();
 		mUI = new UI();
 		if(mIsVisible)
 			show(mIsBlocking);
@@ -200,12 +200,6 @@ public class NHW_Map implements NH_Window
 	}
 	
 	// ____________________________________________________________________________________
-	public boolean isBlocking()
-	{
-		return mIsBlocking;
-	}
-
-	// ____________________________________________________________________________________
 	public void printString(TextAttr attr, String str, int append)
 	{
 	}
@@ -235,14 +229,42 @@ public class NHW_Map implements NH_Window
 		float tileW = mUI.getScaledTileWidth();
 		float tileH = mUI.getScaledTileHeight();
 
-		float ofsX = mCanvasRect.left + (mCanvasRect.width() - tileW) * .5f - tileW * tileX;
-		float ofsY = mCanvasRect.top + (mCanvasRect.height() - tileH) * .5f - tileH * tileY;
+		float ofsX, ofsY;
+		if(shouldLockView(tileW, tileH))
+		{
+			ofsX = mCanvasRect.left + (mCanvasRect.width() - tileW * TileCols) * .5f;
 
-		if(mViewOffset.x != ofsX || mViewOffset.y != ofsY)
+			float hDiff = mCanvasRect.height() - tileH * TileRows;
+			float margin = Math.min(mLockTopMargin, hDiff);
+			ofsY = mCanvasRect.top + (hDiff + margin) * .5f;
+		}
+		else
+		{
+			ofsX = mCanvasRect.left + (mCanvasRect.width() - tileW) * .5f - tileW * tileX;
+			ofsY = mCanvasRect.top + (mCanvasRect.height() - tileH) * .5f - tileH * tileY;
+		}
+
+		if (mViewOffset.x != ofsX || mViewOffset.y != ofsY)
 		{
 			mViewOffset.set(ofsX, ofsY);
 			mUI.invalidate();
 		}
+	}
+
+	// ____________________________________________________________________________________
+	private boolean shouldLockView()
+	{
+		return shouldLockView(mUI.getScaledTileWidth(), mUI.getScaledTileHeight());
+	}
+
+	// ____________________________________________________________________________________
+	private boolean shouldLockView(float tileW, float tileH)
+	{
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		if(!prefs.getBoolean("lockView", true))
+			return false;
+
+		return tileW * TileCols	<= mCanvasRect.width() && tileH * TileRows <= mCanvasRect.height();
 	}
 
 	// ____________________________________________________________________________________
@@ -306,18 +328,21 @@ public class NHW_Map implements NH_Window
 		float ofsX = (mViewOffset.x - mCanvasRect.left - mCanvasRect.width() * 0.5f) / mUI.getViewWidth();
 		float ofsY = (mViewOffset.y - mCanvasRect.top - mCanvasRect.height() * 0.5f) / mUI.getViewHeight();
 
-		mScaleCount += amount;
-		if(mScaleCount > 139 * mDisplayDensity)
-			mScaleCount = (int) (139 * mDisplayDensity);
-		if(mScaleCount < -200)
-			mScaleCount = -200;
+		mScaleCount = Math.min(Math.max(mScaleCount + amount, mMinScaleCount), mMaxScaleCount);
 
-		mScale = (float)Math.pow(1.005, mScaleCount);
+		mScale = (float) Math.pow(1.005, mScaleCount);
 
-		ofsX = mCanvasRect.left + ofsX * mUI.getViewWidth() + mCanvasRect.width() * 0.5f;
-		ofsY = mCanvasRect.top + ofsY * mUI.getViewHeight() + mCanvasRect.height() * 0.5f;
+		if(canPan())
+		{
+			ofsX = mCanvasRect.left + ofsX * mUI.getViewWidth() + mCanvasRect.width() * 0.5f;
+			ofsY = mCanvasRect.top + ofsY * mUI.getViewHeight() + mCanvasRect.height() * 0.5f;
 
-		mViewOffset.set(ofsX, ofsY);
+			mViewOffset.set(ofsX, ofsY);
+		}
+		else
+		{
+			centerView(0, 0);
+		}
 		mUI.invalidate();
 	}
 
@@ -331,8 +356,24 @@ public class NHW_Map implements NH_Window
 	// ____________________________________________________________________________________
 	public void pan(float dx, float dy)
 	{
-		mViewOffset.offset(dx, dy);
-		mUI.invalidate();
+		if(canPan())
+		{
+			mViewOffset.offset(dx, dy);
+			mUI.invalidate();
+		}
+	}
+
+	// ____________________________________________________________________________________
+	private boolean canPan()
+	{
+		return travelAfterPan() || !shouldLockView();
+	}
+
+	// ____________________________________________________________________________________
+	private boolean travelAfterPan()
+	{
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+		return prefs.getBoolean("travelAfterPan", true);
 	}
 
 	// ____________________________________________________________________________________
@@ -487,7 +528,7 @@ public class NHW_Map implements NH_Window
 		private List<Character> mPickChars = Arrays.asList('.', ',', ';', ':');
 		private List<Character> mCancelKeys = Arrays.asList('\033', (char)0x80);
 		private Typeface mTypeface;
-		private float mBaseTextSize;
+		private final float mBaseTextSize;
 
 		// ____________________________________________________________________________________
 		public UI()
@@ -1114,8 +1155,7 @@ public class NHW_Map implements NH_Window
 			if(!mIsViewPanned)
 				return false;
 
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-			if(!prefs.getBoolean("travelAfterPan", true))
+			if(!travelAfterPan())
 				return false;
 
 			// Don't send pos command if clicking within a few tiles from the player

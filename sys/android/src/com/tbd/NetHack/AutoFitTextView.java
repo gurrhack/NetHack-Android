@@ -115,4 +115,10 @@ public class AutoFitTextView extends TextView
 			measureText();
 		super.onDraw(canvas);
 	}
+
+	// ____________________________________________________________________________________
+	public float getMinTextSize()
+	{
+		return minSize;
+	}
 }
