@@ -12,7 +12,6 @@ import android.os.Debug;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -50,7 +49,7 @@ public class NH_State
 	public NH_State(NetHack context)
 	{
 		mIO = new NetHackIO(this);
-		mTileset = new Tileset();
+		mTileset = new Tileset(context);
 		mWindows = new ArrayList<NH_Window>();
 		mGetLine = new NH_GetLine(mIO, this);
 		mQuestion = new NH_Question(mIO, this);
@@ -78,6 +77,7 @@ public class NH_State
 		mCmdPanelLayout.setContext(context, this);
 		mDPad.setContext(context);
 		mMap.setContext(context);
+		mTileset.setContext(context);
 	}
 
 	// ____________________________________________________________________________________
@@ -135,8 +135,8 @@ public class NH_State
 		if(mMode == CmdMode.Panel)
 			mCmdPanelLayout.show();
 
-		String tilesetName = prefs.getString("tileset", "default_32");
-		mTileset.updateTileset(tilesetName, mContext.getResources());
+		mTileset.updateTileset(prefs, mContext.getResources());
+		mMap.updateZoomLimits();
 
 		String pickupTypes = prefs.getString("autoPickupTypes", "");
 		boolean bAutoPickup = prefs.getBoolean("autoPickup", false);

@@ -11,15 +11,18 @@
 			android:singleLine="true"
 			android:key="username"/>
 
-		<ListPreference
+		<PreferenceScreen
 			android:title="Tileset"
-			android:summary="The visual style of the game world"
-			android:persistent="true"
-			android:key="tileset"
-			android:defaultValue="default_32"
-			android:entries="@array/tileNames"
-			android:entryValues="@array/tileValues"/>
-			
+			android:summary="The visual style of the game world">
+
+			<com.tbd.NetHack.TilesetPreference
+				android:title="Tileset"
+				android:key="tilesetPreference"
+				android:summary="The visual style of the game world"
+				android:layout="@layout/tileset_select_menu"/>
+
+		</PreferenceScreen>
+
 		<CheckBoxPreference
 			android:title="Autopickup"
 			android:summary="Automatically pick up items from the floor when you step on them"

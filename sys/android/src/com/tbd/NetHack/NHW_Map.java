@@ -31,6 +31,7 @@ public class NHW_Map implements NH_Window
 {
 	public static final int TileCols = 80;
 	public static final int TileRows = 21;
+	private static final double ZOOM_BASE = 1.005;
 
 	// y k u
 	// \ | /
@@ -41,7 +42,7 @@ public class NHW_Map implements NH_Window
 	private char getLEFT() {
 		return mNHState.isNumPadOn() ? '4' : 'h';
 	}
-	
+
 	private char getRIGHT() {
 		return mNHState.isNumPadOn() ? '6' : 'l';
 	}
@@ -102,13 +103,16 @@ public class NHW_Map implements NH_Window
 	private Tile[][] mTiles;
 	private float mScale;
 	private float mDisplayDensity;
-	private int mScaleCount;
-	private int mMinScaleCount;
-	private int mMaxScaleCount;
+	private float mMinTileH;
+	private float mMaxTileH;
+	private float mScaleCount;
+	private float mMinScaleCount;
+	private float mMaxScaleCount;
+	private float mZoomStep;
 	private float mLockTopMargin;
 	private int mStickyZoom;
 	private boolean mIsStickyZoom;
-	private Tileset mTileset;
+	private final Tileset mTileset;
 	private PointF mViewOffset;
 	private boolean mIsMouseLocked;
 	private RectF mCanvasRect;
@@ -156,14 +160,15 @@ public class NHW_Map implements NH_Window
 			return;
 		mContext = context;
 		mDisplayDensity = context.getResources().getDisplayMetrics().density;
-		mMinScaleCount = -200;
-		mMaxScaleCount = (int) (139 * mDisplayDensity);
+		mMinTileH = 5 * mDisplayDensity;
+		mMaxTileH = 100 * mDisplayDensity;
 		mLockTopMargin = mStatus.getHeight();
 		mUI = new UI();
 		if(mIsVisible)
 			show(mIsBlocking);
 		else
 			hide();
+		updateZoomLimits();
 	}
 
 	// ____________________________________________________________________________________
@@ -320,9 +325,17 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void zoom(int amount)
+	public void zoom(float amount)
 	{
-		if(amount == 0 || mUI == null)
+		if(amount == 0)
+			return;
+		zoomForced(amount);
+	}
+
+	// ____________________________________________________________________________________
+	public void zoomForced(float amount)
+	{
+		if(mUI == null)
 			return;
 
 		float ofsX = (mViewOffset.x - mCanvasRect.left - mCanvasRect.width() * 0.5f) / mUI.getViewWidth();
@@ -330,7 +343,7 @@ public class NHW_Map implements NH_Window
 
 		mScaleCount = Math.min(Math.max(mScaleCount + amount, mMinScaleCount), mMaxScaleCount);
 
-		mScale = (float) Math.pow(1.005, mScaleCount);
+		mScale = (float) Math.pow(ZOOM_BASE, mScaleCount);
 
 		if(canPan())
 		{
@@ -351,6 +364,27 @@ public class NHW_Map implements NH_Window
 	{
 		zoom(-mScaleCount);
 		centerView(mCursorPos.x, mCursorPos.y);
+	}
+
+	// ____________________________________________________________________________________
+	public void updateZoomLimits()
+	{
+		float minScale = mMinTileH / mUI.getBaseTileHeight();
+		float maxScale = mMaxTileH / mUI.getBaseTileHeight();
+
+		float amount;
+		if(mMaxScaleCount - mMinScaleCount < 1)
+			amount = 0.5f;
+		else
+			amount = (mScaleCount - mMinScaleCount) / (mMaxScaleCount - mMinScaleCount);
+
+		mMinScaleCount = (float)(Math.log(minScale) / Math.log(ZOOM_BASE));
+		mMaxScaleCount = (float)(Math.log(maxScale) / Math.log(ZOOM_BASE));
+
+		mZoomStep = (mMaxScaleCount - mMinScaleCount) / 20;
+		mScaleCount = mMinScaleCount + amount * (mMaxScaleCount - mMinScaleCount);
+
+		zoomForced(0);
 	}
 
 	// ____________________________________________________________________________________
@@ -385,13 +419,17 @@ public class NHW_Map implements NH_Window
 	// ____________________________________________________________________________________
 	public void setRogueLevel(boolean bIsRogueLevel)
 	{
-		mIsRogue = bIsRogueLevel;
+		if(mIsRogue != bIsRogueLevel)
+		{
+			mIsRogue = bIsRogueLevel;
+			updateZoomLimits();
+		}
 	}
 
 	// ____________________________________________________________________________________
 	public boolean isTTY()
 	{
-		return mIsRogue || !mTileset.hasTiles() || mTileset == null;
+		return mIsRogue || !mTileset.hasTiles();
 	}
 
 	// ____________________________________________________________________________________
@@ -454,9 +492,9 @@ public class NHW_Map implements NH_Window
 	{
 		if(keyCode == KeyAction.ZoomIn || keyCode == KeyAction.ZoomOut)
 		{
-			int scale = mScaleCount;
-			zoom(keyCode == KeyAction.ZoomIn ? 20 : -20);
-			if(mScaleCount == scale && repeatCount == 0)
+			float scale = mScaleCount;
+			zoom(keyCode == KeyAction.ZoomIn ? mZoomStep : -mZoomStep);
+			if(Math.abs(mScaleCount - scale) < 0.1 && repeatCount == 0)
 				resetZoom();
 			saveZoomLevel();
 			return KeyEventResult.HANDLED;
@@ -498,13 +536,20 @@ public class NHW_Map implements NH_Window
 	// ____________________________________________________________________________________
 	public void saveZoomLevel() {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		prefs.edit().putInt("zoomLevel", mScaleCount).commit();
+		prefs.edit().putFloat("zoomLevel", mScaleCount).commit();
 	}
 	
 	// ____________________________________________________________________________________
 	public void loadZoomLevel() {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		int zoomLevel = prefs.getInt("zoomLevel", 0);
+		float zoomLevel = 0;
+		try
+		{
+			zoomLevel = prefs.getFloat("zoomLevel", 0.f);
+		}
+		catch(Exception e)
+		{
+		}
 		zoom(zoomLevel - mScaleCount);
 	}
 
@@ -544,8 +589,7 @@ public class NHW_Map implements NH_Window
 			mPaint.setTypeface(mTypeface);
 			mPaint.setTextAlign(Align.LEFT);
 			mPaint.setFilterBitmap(false);
-			mBaseTextSize = 15.f * mDisplayDensity;
-			mPaint.setTextSize(mBaseTextSize * mScale);
+			mBaseTextSize = 32.f;
 			mPointer0 = new PointF();
 			mPointer1 = new PointF();
 			mPointerId0 = -1;
@@ -593,9 +637,6 @@ public class NHW_Map implements NH_Window
 		// ____________________________________________________________________________________
 		protected void drawTiles(Canvas canvas)
 		{			
-			if(mTileset == null)
-				return;
-			
 			Rect src = new Rect();
 			RectF dst = new RectF();
 
@@ -1014,12 +1055,12 @@ public class NHW_Map implements NH_Window
 			float newDist = getPointerDist(event);
 			if(newDist > 5)
 			{
-				int zoomAmount = (int)(1.5f * (newDist - mPointerDist) / mDisplayDensity);
-				int newScale = mScaleCount + zoomAmount;
+				float zoomAmount = (int)(1.5f * (newDist - mPointerDist) / mDisplayDensity);
+				int newScale = (int)(mScaleCount + zoomAmount);
 
 				if(zoomAmount != 0)
 				{
-					if(mIsStickyZoom && (mScaleCount ^ newScale) < 0 && mStickyZoom == 0 || mStickyZoom != 0 && (mStickyZoom ^ zoomAmount) >= 0)
+					if(mIsStickyZoom && ((int)mScaleCount ^ newScale) < 0 && mStickyZoom == 0 || mStickyZoom != 0 && (mStickyZoom ^ (int)zoomAmount) >= 0)
 					{
 						mStickyZoom += zoomAmount;
 						if(Math.abs(mStickyZoom) < 50)
@@ -1267,6 +1308,14 @@ public class NHW_Map implements NH_Window
 			}
 
 			return mTileset.getTileHeight() * mScale;
+		}
+
+		// ____________________________________________________________________________________
+		private float getBaseTileHeight()
+		{
+			if(isTTY())
+				return mBaseTextSize;
+			return mTileset.getTileHeight();
 		}
 
 	}

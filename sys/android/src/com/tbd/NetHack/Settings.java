@@ -1,5 +1,6 @@
 package com.tbd.NetHack;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
@@ -12,6 +13,8 @@ import android.widget.Toast;
 public class Settings extends PreferenceActivity implements OnSharedPreferenceChangeListener
 {
 	private Toast mToast;
+	private TilesetPreference mTilesetPref;
+
 
 	// ____________________________________________________________________________________
 	@Override
@@ -51,6 +54,17 @@ public class Settings extends PreferenceActivity implements OnSharedPreferenceCh
 		}
 
 		sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+
+		mTilesetPref = (TilesetPreference)findPreference("tilesetPreference");
+		mTilesetPref.setActivity(this);
+	}
+
+	// ____________________________________________________________________________________
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		super.onActivityResult(requestCode, resultCode, data);
+		mTilesetPref.onActivityResult(requestCode, resultCode, data);
 	}
 
 	// ____________________________________________________________________________________
