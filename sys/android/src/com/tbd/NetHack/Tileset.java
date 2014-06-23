@@ -212,9 +212,6 @@ public class Tileset
 		}
 		else
 		{
-			//int maxH = canvas.getMaximumBitmapHeight();
-			//int maxW = canvas.getMaximumBitmapWidth();
-
 			int ofs = getTileBitmapOffset(glyph);
 			src.left = (ofs >> 16) & 0xffff;
 			src.top = ofs & 0xffff;
