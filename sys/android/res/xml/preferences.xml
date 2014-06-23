@@ -24,6 +24,13 @@
 		</PreferenceScreen>
 
 		<CheckBoxPreference
+			android:title="Fallback Renderer"
+			android:summary="Check this if you experience rendering problems"
+			android:persistent="true"
+			android:defaultValue="false"
+			android:key="fallbackRenderer"/>
+
+		<CheckBoxPreference
 			android:title="Autopickup"
 			android:summary="Automatically pick up items from the floor when you step on them"
 			android:persistent="true"

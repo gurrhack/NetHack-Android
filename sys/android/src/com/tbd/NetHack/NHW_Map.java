@@ -637,8 +637,7 @@ public class NHW_Map implements NH_Window
 		// ____________________________________________________________________________________
 		protected void drawTiles(Canvas canvas)
 		{			
-			Rect src = new Rect();
-			RectF dst = new RectF();
+			Rect dst = new Rect();
 
 			float tileW = getScaledTileWidth();
 			float tileH = getScaledTileHeight();
@@ -647,16 +646,15 @@ public class NHW_Map implements NH_Window
 			if (!canvas.getClipBounds(clipRect)) {
 				clipRect.set(0, 0, canvas.getWidth(), canvas.getHeight());
 			}
-			
+
 			int minTileX = clamp((int) ((clipRect.left - mViewOffset.x) / tileW), 0, TileCols - 1);
 			int maxTileX = clamp((int) FloatMath.ceil((clipRect.right - mViewOffset.x) / tileW), minTileX, TileCols - 1);
 			int minTileY = clamp((int) ((clipRect.top - mViewOffset.y) / tileH), 0, TileRows - 1);
 			int maxTileY = clamp((int) FloatMath.ceil((clipRect.bottom - mViewOffset.y) / tileH), minTileY, TileRows - 1);
-			
-			float x = FloatMath.floor(mViewOffset.x + minTileX * tileW);
-			float y = FloatMath.floor(mViewOffset.y + minTileY * tileH);
 
-			dst.set(x, y, x + tileW, y + tileH);
+			float left = FloatMath.floor(mViewOffset.x + minTileX * tileW);
+			float x = left;
+			float y = FloatMath.floor(mViewOffset.y + minTileY * tileH);
 
 			mPaint.setAntiAlias(false);
 
@@ -664,16 +662,12 @@ public class NHW_Map implements NH_Window
 			{
 				for(int tileX = minTileX; tileX <= maxTileX; tileX++)
 				{
+					dst.set((int)x, (int)y, (int)(x + tileW), (int)(y + tileH));
 					Tile tile = mTiles[tileY][tileX];
 					if(tile.glyph >= 0)
 					{
-						int ofs = mTileset.getTileBitmapOffset(tile.glyph);
-						src.left = (ofs >> 16) & 0xffff;
-						src.top = ofs & 0xffff;
-						src.right = src.left + mTileset.getTileWidth();
-						src.bottom = src.top + mTileset.getTileHeight();
 						mPaint.setColor(0xffffffff);
-						canvas.drawBitmap(mTileset.getBitmap(), src, dst, mPaint);
+						mTileset.drawTile(canvas, tile.glyph, dst, mPaint);
 						Bitmap ovl = mTileset.getTileOverlay(tile.overlay);
 						if(ovl != null)
 							canvas.drawBitmap(ovl, mTileset.getOverlayRect(tile.overlay), dst, mPaint);
@@ -684,16 +678,16 @@ public class NHW_Map implements NH_Window
 						canvas.drawRect(dst, mPaint);
 					}
 
-					dst.offset(tileW, 0);
+					x += tileW;
 				}
-				dst.left = x;
-				dst.right = x + tileW;
-				dst.offset(0, tileH);
+				x = left;
+				y += tileH;
 			}
 
 			drawCursor(canvas, tileW, tileH);
 		}
 
+		// ____________________________________________________________________________________
 		protected void drawCursor(Canvas canvas, float tileW, float tileH)
 		{
 			float x = FloatMath.floor(mViewOffset.x);
