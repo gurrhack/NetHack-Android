@@ -3,11 +3,13 @@ package com.tbd.NetHack;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Rect;
+import android.graphics.*;
 import android.graphics.drawable.BitmapDrawable;
+import android.text.TextPaint;
 import android.widget.Toast;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class Tileset
 {
@@ -18,6 +20,8 @@ public class Tileset
 	private String mTilesetName = "";
 	private int mnCols;
 	private Context mContext;
+	private boolean mFallbackRenderer;
+	private final Map<Integer, Bitmap> mTileCache = new HashMap<Integer, Bitmap>();
 
 	// ____________________________________________________________________________________
 	public Tileset(NetHack context)
@@ -34,6 +38,8 @@ public class Tileset
 	// ____________________________________________________________________________________
 	public void updateTileset(SharedPreferences prefs, Resources r)
 	{
+		mFallbackRenderer = prefs.getBoolean("fallbackRenderer", false);
+
 		String tilesetName = prefs.getString("tileset", "TTY");
 
 		boolean TTY = tilesetName.equals("TTY");
@@ -77,6 +83,9 @@ public class Tileset
 	{
 		if(mBitmap != null)
 			mBitmap.recycle();
+		for(Bitmap bitmap : mTileCache.values())
+			bitmap.recycle();
+		mTileCache.clear();
 		mBitmap = null;
 	}
 
@@ -114,7 +123,7 @@ public class Tileset
 	}
 
 	// ____________________________________________________________________________________
-	public int getTileBitmapOffset(int iTile)
+	private int getTileBitmapOffset(int iTile)
 	{
 		if(mBitmap == null)
 			return 0;
@@ -127,7 +136,33 @@ public class Tileset
 		
 		return (x << 16) | y;
 	}
-	
+
+	// ____________________________________________________________________________________
+	private Bitmap getTile(int iTile)
+	{
+		if(mBitmap == null)
+			return null;
+		Bitmap bitmap = mTileCache.get(iTile);
+		if(bitmap == null)
+		{
+			int ofs = getTileBitmapOffset(iTile);
+
+			int x = ofs >> 16;
+			int y = ofs & 0xffff;
+
+			try
+			{
+				bitmap = Bitmap.createBitmap(mBitmap, x, y, mTileW, mTileH);
+			}
+			catch(Exception e)
+			{
+				bitmap = Bitmap.createBitmap(mBitmap, 0, 0, 1, 1);
+			}
+			mTileCache.put(iTile, bitmap);
+		}
+		return bitmap;
+	}
+
 	// ____________________________________________________________________________________
 	public int getTileWidth()
 	{
@@ -140,12 +175,6 @@ public class Tileset
 		return mTileH;
 	}
 	
-	// ____________________________________________________________________________________
-	public Bitmap getBitmap()
-	{
-		return mBitmap;
-	}
-
 	// ____________________________________________________________________________________
 	public Rect getOverlayRect(short overlay)
 	{
@@ -164,5 +193,39 @@ public class Tileset
 	public boolean hasTiles()
 	{
 		return mBitmap != null;
+	}
+
+	// ____________________________________________________________________________________
+	public void drawTile(Canvas canvas, int glyph, Rect dst, TextPaint paint)
+	{
+/*		dst = new RectF(
+			Math.round(dst.left), Math.round(dst.top),
+			Math.round(dst.right), Math.round(dst.bottom)
+		);*/
+
+		if(mBitmap == null)
+			return;
+		Rect src = new Rect();
+		if(mFallbackRenderer)
+		{
+			Bitmap bitmap = getTile(glyph);
+			src.left = 0;
+			src.top = 0;
+			src.right = getTileWidth();
+			src.bottom = getTileHeight();
+			canvas.drawBitmap(bitmap, src, dst, paint);
+		}
+		else
+		{
+			//int maxH = canvas.getMaximumBitmapHeight();
+			//int maxW = canvas.getMaximumBitmapWidth();
+
+			int ofs = getTileBitmapOffset(glyph);
+			src.left = (ofs >> 16) & 0xffff;
+			src.top = ofs & 0xffff;
+			src.right = src.left + getTileWidth();
+			src.bottom = src.top + getTileHeight();
+			canvas.drawBitmap(mBitmap, src, dst, paint);
+		}
 	}
 }
