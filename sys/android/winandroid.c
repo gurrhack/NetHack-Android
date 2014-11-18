@@ -109,8 +109,7 @@ jbyteArray create_bytearray(const char* str)
 	int len = str ? strlen(str) : 0;
 	jbyteArray a = (*jEnv)->NewByteArray(jEnv, len);
 	jbyte* e = (*jEnv)->GetByteArrayElements(jEnv, a, 0);
-	while(len--)
-		*e++ = *str++;
+	memcpy(e, str, len);
 	(*jEnv)->ReleaseByteArrayElements(jEnv, a, e, 0);
 	return a;
 	// return (*jEnv)->NewStringUTF(jEnv, str);
@@ -785,6 +784,7 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	int i, n;
 	jintArray a;
 	jint* p;
+	jint* q;
 
 	//debuglog("and_select_menu");
 
@@ -802,14 +802,14 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	{
 		n >>= 1;
 
-		p = (*jEnv)->GetIntArrayElements(jEnv, a, 0);
+		q = p = (*jEnv)->GetIntArrayElements(jEnv, a, 0);
 		*selected = (MENU_ITEM_P*)malloc(sizeof(MENU_ITEM_P) * n);
 		for(i = 0; i < n; i++)
 		{
 			(*selected)[i].item.a_int = *p++;
 			(*selected)[i].count = *p++;
 		}
-		(*jEnv)->ReleaseIntArrayElements(jEnv, a, p, 0);
+		(*jEnv)->ReleaseIntArrayElements(jEnv, a, q, 0);
 	}
 	else if(n == 1)
 	{
