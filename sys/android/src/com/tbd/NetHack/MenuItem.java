@@ -43,8 +43,8 @@ public class MenuItem
 		mAttr = attr == TextAttr.Bold ? TextAttr.Inverse : attr;
 
 		String text = str;
-		int lp = text.indexOf('(');
-		int rp = text.indexOf(')');
+		int lp = text.lastIndexOf('(');
+		int rp = text.lastIndexOf(')');
 		if(accelerator != 0 && lp > 0 && lp != rp && rp == text.length() - 1)
 		{
 			mName = text.substring(0, lp);
