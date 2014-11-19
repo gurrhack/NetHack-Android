@@ -4,12 +4,15 @@
 
 #include "hack.h"
 #include "dlb.h"
+#include <setjmp.h>
 
 #include <sys/stat.h>
 #include <pwd.h>
 #ifndef O_RDONLY
 #include <fcntl.h>
 #endif
+
+static jmp_buf env;
 
 extern struct passwd *FDECL( getpwuid, ( uid_t));
 extern struct passwd *FDECL( getpwnam, (const char *));
@@ -43,9 +46,24 @@ void remove_lock_file(const char *filename)
 	unlink(lockname);
 }
 
+void nethack_exit(int code)
+{
+	longjmp(env, code);
+}
+
 int NetHackMain(int argc, char** argv)
 {
 	debuglog("Starting NetHack!");
+
+	int val;
+
+	val = setjmp(env);
+	if(val)
+	{
+		debuglog("exiting...");
+		return;
+	}
+
 
 	register int fd;
 	boolean exact_username;

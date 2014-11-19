@@ -170,6 +170,7 @@ public class NetHackIO implements Runnable
 			Log.print("EXCEPTED");
 		}
 		Log.print("native process finished");
+		System.exit(0);
 	}
 
 	// ____________________________________________________________________________________
