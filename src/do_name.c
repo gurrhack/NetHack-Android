@@ -60,7 +60,7 @@ const char *goal;
     }
     cx = cc->x;
     cy = cc->y;
-#ifdef CLIPPING
+#if defined(CLIPPING) && !defined(ANDROID)
     cliparound(cx, cy);
 #endif
     curs(WIN_MAP, cx,cy);
