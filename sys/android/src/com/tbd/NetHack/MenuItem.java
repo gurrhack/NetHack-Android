@@ -1,6 +1,7 @@
 package com.tbd.NetHack;
 
 import android.text.Spanned;
+import android.view.View;
 
 public class MenuItem
 {
@@ -16,6 +17,7 @@ public class MenuItem
 	private int mCount;
 	private int mMaxCount;
 	private boolean mIsSelected;
+	private View mView;
 
 	public MenuItem(MenuItem item)
 	{
@@ -196,6 +198,16 @@ public class MenuItem
 	public boolean isSelectable()
 	{
 		return mIdent != 0;
+	}
+
+	public void setView(View view)
+	{
+		mView = view;
+	}
+
+	public View getView()
+	{
+		return mView;
 	}
 
 }

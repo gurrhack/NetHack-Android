@@ -290,13 +290,22 @@ public class NHW_Menu implements NH_Window
 					break;
 
 				case KeyEvent.KEYCODE_PAGE_UP:
-					if(mListView.getSelectedItemPosition() == mListView.getFirstVisiblePosition())
+					if(mListView.getFirstVisiblePosition() == 0)
 					{
-						int newPos = Math.max(0, 2 * mListView.getFirstVisiblePosition() - mListView.getLastVisiblePosition());
-						mListView.setSelection(newPos);
+						mListView.setSelection(0);
 					}
 					else
-						mListView.setSelection(mListView.getFirstVisiblePosition());
+					{
+						MenuItem item = (MenuItem)mListView.getItemAtPosition(mListView.getFirstVisiblePosition());
+						View itemView = item.getView();
+						// itemView can't really be null here, but just in case
+						int itemHeight = itemView != null ? itemView.getHeight() : 0;
+						// Make sure we don't get stuck on items that are taller than the entire view
+						int margin = mListView.getDividerHeight() + 1;
+						if(itemHeight > mListView.getHeight() - margin)
+							itemHeight = mListView.getHeight() - margin;
+						mListView.setSelectionFromTop(mListView.getFirstVisiblePosition(), mListView.getHeight() - itemHeight);
+					}
 					break;
 
 				case KeyEvent.KEYCODE_ENTER:
