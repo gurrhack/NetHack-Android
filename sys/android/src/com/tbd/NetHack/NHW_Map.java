@@ -877,16 +877,16 @@ public class NHW_Map implements NH_Window
 				{
 					@Override
 					public void onTick(long millisUntilFinished)
-				{
-				}
+					{
+					}
 
 					@Override
 					public void onFinish()
-				{
-					if(mZoomPanMode == ZoomPanMode.Pressed)
-						onTouched(mPointer0.x, mPointer0.y, true);
-					setZoomPanMode(ZoomPanMode.Idle);
-				}
+					{
+						if(mZoomPanMode == ZoomPanMode.Pressed)
+							onTouched(mPointer0.x, mPointer0.y, true);
+						setZoomPanMode(ZoomPanMode.Idle);
+					}
 				}.start();
 
 				idx = getActionIndex(event);
@@ -1152,11 +1152,16 @@ public class NHW_Map implements NH_Window
 				else
 					dir = dy < 0 ? getUL() : getDL();
 
-				if(bLongClick)
+				if(bLongClick && !mNHState.expectsDirection())
+				{
 					dir = getRunCmd(dir);
-
-				Log.print("walking");
-				mNHState.sendDirKeyCmd(dir);
+					mNHState.sendKeyCmd('G');
+					mNHState.sendKeyCmd(dir);
+				}
+				else
+				{
+					mNHState.sendDirKeyCmd(dir);
+				}
 			}
 			mIsViewPanned = false;
 		}

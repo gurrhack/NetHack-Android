@@ -444,12 +444,6 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void askDirection()
-	{
-		showDPad();
-	}
-
-	// ____________________________________________________________________________________
 	public void showPrevMessage()
 	{
 		mMessage.showPrev();
@@ -513,7 +507,6 @@ public class NH_State
 	{
 		if(key <= 0 || key > 0xff)
 			return false;
-		hideDPad();
 		mIO.sendKeyCmd((char)key);
 		return true;
 	}
@@ -527,14 +520,12 @@ public class NH_State
 			mIO.sendKeyCmd((char)key);
 		else
 			mIO.sendDirKeyCmd((char)key);
-		hideDPad();
 		return true;
 	}
 
 	// ____________________________________________________________________________________
 	public void sendPosCmd(int x, int y)
 	{
-		hideDPad();
 		mIO.sendPosCmd(x, y);
 	}
 
@@ -543,6 +534,12 @@ public class NH_State
 	public void clickCursorPos()
 	{
 		mMap.onCursorPosClicked();
+	}
+
+	// ____________________________________________________________________________________
+	public boolean expectsDirection()
+	{
+		return mIsDPadActive;
 	}
 
 	// ____________________________________________________________________________________
