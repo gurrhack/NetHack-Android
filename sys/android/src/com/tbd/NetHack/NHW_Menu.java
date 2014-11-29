@@ -321,7 +321,7 @@ public class NHW_Menu implements NH_Window
 						if(mHow == SelectMode.PickNone)
 							menuOk();
 						else
-							toggleItemAt(mListView.getSelectedItemPosition());
+							toggleItemOrGroupAt(mListView.getSelectedItemPosition());
 					}
 					else
 						return KeyEventResult.RETURN_TO_SYSTEM;
@@ -444,6 +444,60 @@ public class NHW_Menu implements NH_Window
 			{
 				mIO.sendCancelSelectCmd();
 				hideInternal();
+			}
+		}
+
+		// ____________________________________________________________________________________
+		private void toggleItemOrGroupAt(int itemPos)
+		{
+			if(mHow != SelectMode.PickMany)
+				return;
+
+			if(itemPos < 0 || itemPos >= mItems.size())
+				return;
+
+			MenuItem item = mItems.get(itemPos);
+			if(item.isHeader())
+				toggleGroupAt(itemPos);
+			else
+				toggleItemAt(itemPos);
+		}
+
+		// ____________________________________________________________________________________
+		private void toggleGroupAt(int itemPos)
+		{
+			if(mHow != SelectMode.PickMany)
+				return;
+
+			if(itemPos < 0 || itemPos >= mItems.size())
+				return;
+
+			MenuItem item = mItems.get(itemPos);
+			if(!item.isHeader())
+				return;
+
+			boolean select = false;
+
+			itemPos++;
+			int lastItem = itemPos;
+			for(; lastItem < mItems.size(); lastItem++)
+			{
+				item = mItems.get(lastItem);
+				if(item.isHeader())
+					break;
+				if(item.isSelectable() && !item.isSelected())
+					select = true;
+			}
+
+			for(; itemPos < lastItem; itemPos++)
+			{
+				item = mItems.get(itemPos);
+
+				if(item.isHeader() || !item.isSelectable())
+					continue;
+
+				if(select ^ item.isSelected())
+					toggleItemAt(itemPos);
 			}
 		}
 
@@ -693,7 +747,7 @@ public class NHW_Menu implements NH_Window
 							sendSelectOne(item.getId(), -1);
 					break;
 					case PickMany:
-						toggleItemAt(position);
+						toggleItemOrGroupAt(position);
 					break;
 					}
 				}
