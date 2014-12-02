@@ -24,7 +24,7 @@
 		</PreferenceScreen>
 
 		<CheckBoxPreference
-			android:title="Fallback Renderer"
+			android:title="Use fallback renderer"
 			android:summary="Check this if you experience rendering problems"
 			android:persistent="true"
 			android:defaultValue="false"
@@ -67,7 +67,7 @@
 			android:key="fullscreen"/>
 
 		<ListPreference
-			android:title="Volume Up Action"
+			android:title="Volume up action"
 			android:summary="The action performed when pressing the volume up key"
 			android:persistent="true"
 			android:key="volup"
@@ -76,7 +76,7 @@
 			android:entryValues="@array/actionValues"/>
 			
 		<ListPreference
-			android:title="Volume Down Action"
+			android:title="Volume down action"
 			android:summary="The action performed when pressing the volume down key"
 			android:persistent="true"
 			android:key="voldown"
@@ -99,7 +99,7 @@
 			android:key="groupLog"/>
 
         <CheckBoxPreference
-                android:title="Lock View"
+                android:title="Lock view"
                 android:summary="Do not move the view with the character when the entire map can fit the screen"
                 android:persistent="true"
                 android:defaultValue="true"

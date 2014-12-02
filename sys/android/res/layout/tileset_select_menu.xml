@@ -26,7 +26,7 @@
 				android:layout_width="fill_parent"
 				android:layout_height="fill_parent"
 				android:textAppearance="?android:attr/textAppearanceMedium"
-				android:text="Tileset Image"/>
+				android:text="Tileset image"/>
 
 			<LinearLayout
 				android:orientation="horizontal"
@@ -58,7 +58,7 @@
 				android:layout_height="fill_parent"
 				android:layout_marginTop="15dip"
 				android:textAppearance="?android:attr/textAppearanceMedium"
-				android:text="Tile Dimensions"/>
+				android:text="Individual tile dimensions"/>
 
 			<LinearLayout
 				android:orientation="horizontal"
