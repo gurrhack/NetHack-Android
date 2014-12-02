@@ -118,18 +118,29 @@ public class Input
 		
 		if(prefs == null)
 			return keyCode;
-	
+
+		int action;
 		switch(keyCode)
 		{
-		case KeyEvent.KEYCODE_VOLUME_UP: return Util.parseInt(prefs.getString("volup", ""), KeyAction.ZoomIn);		
-		case KeyEvent.KEYCODE_VOLUME_DOWN: return Util.parseInt(prefs.getString("voldown", ""), KeyAction.ZoomOut);
-		case /*KeyEvent.KEYCODE_CTRL_LEFT*/ 113: return KeyAction.Control;
-		case /*KeyEvent.KEYCODE_CTRL_RIGHT*/ 114: return KeyAction.Control;
-		case /*KeyEvent.KEYCODE_ZOOM_IN*/ 168: return KeyAction.ZoomIn;
-		case /*KeyEvent.KEYCODE_ZOOM_OUT*/ 169: return KeyAction.ZoomOut;
+		case KeyEvent.KEYCODE_VOLUME_UP:
+			action = Util.parseInt(prefs.getString("volup", ""), KeyAction.SystemDefault);
+			if(action == KeyAction.SystemDefault)
+				action = keyCode;
+		break;
+		case KeyEvent.KEYCODE_VOLUME_DOWN:
+			action = Util.parseInt(prefs.getString("voldown", ""), KeyAction.SystemDefault);
+			if(action == KeyAction.SystemDefault)
+				action = keyCode;
+		break;
+		case /*KeyEvent.KEYCODE_CTRL_LEFT*/ 113: action = KeyAction.Control; break;
+		case /*KeyEvent.KEYCODE_CTRL_RIGHT*/ 114: action = KeyAction.Control; break;
+		case /*KeyEvent.KEYCODE_ZOOM_IN*/ 168: action = KeyAction.ZoomIn; break;
+		case /*KeyEvent.KEYCODE_ZOOM_OUT*/ 169: action = KeyAction.ZoomOut; break;
+		default:
+			action = keyCode;
 		}
 
-		return keyCode;
+		return action;
 	}
 	
 	public static int toKeyCode(char primaryCode)

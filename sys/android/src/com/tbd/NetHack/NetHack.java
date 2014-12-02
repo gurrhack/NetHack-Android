@@ -248,7 +248,6 @@ public class NetHack extends Activity
 	{
 		if(event.getAction() == KeyEvent.ACTION_DOWN)
 		{
-			Log.print("dispatchKeyEvent: " + Integer.toString(event.getKeyCode()));
 			if(handleKeyDown(event))
 				return true;
 		}
@@ -259,7 +258,6 @@ public class NetHack extends Activity
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event)
 	{
-		Log.print("onKeyDown: " + Integer.toString(keyCode));
 		return super.onKeyDown(keyCode, event);
 	}
 	
@@ -269,7 +267,10 @@ public class NetHack extends Activity
 		int keyCode = event.getKeyCode();
 		
 		int fixedCode = Input.keyCodeToAction(keyCode, this);
-		
+
+		if(fixedCode == KeyEvent.KEYCODE_VOLUME_DOWN || fixedCode == KeyEvent.KEYCODE_VOLUME_UP)
+			return false;
+
 		if(fixedCode == KeyAction.Control)
 			mCtrlDown = true;
 		else if(fixedCode == KeyAction.Meta)
@@ -301,7 +302,10 @@ public class NetHack extends Activity
 	public boolean onKeyUp(int keyCode, KeyEvent event)
 	{
 		int fixedCode = Input.keyCodeToAction(keyCode, this);
-		
+
+		if(fixedCode == KeyEvent.KEYCODE_VOLUME_DOWN || fixedCode == KeyEvent.KEYCODE_VOLUME_UP)
+			return false;
+
 		if(fixedCode == KeyAction.Control)
 			mCtrlDown = false;
 		else if(fixedCode == KeyAction.Meta)

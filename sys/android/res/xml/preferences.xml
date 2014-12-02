@@ -71,7 +71,7 @@
 			android:summary="The action performed when pressing the volume up key"
 			android:persistent="true"
 			android:key="volup"
-			android:defaultValue="-1"
+			android:defaultValue="0"
 			android:entries="@array/actionNames"
 			android:entryValues="@array/actionValues"/>
 			
@@ -80,7 +80,7 @@
 			android:summary="The action performed when pressing the volume down key"
 			android:persistent="true"
 			android:key="voldown"
-			android:defaultValue="-2"
+			android:defaultValue="0"
 			android:entries="@array/actionNames"
 			android:entryValues="@array/actionValues"/>
 			
