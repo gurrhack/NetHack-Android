@@ -50,6 +50,13 @@ public class Tileset
 			return;
 		mTilesetName = tilesetName;
 
+		if(!TTY && (tileW <= 0 || tileH <= 0))
+		{
+			Toast.makeText(mContext, "Invalid tile dimensions (" + mTileW + "x" + mTileH + ")", Toast.LENGTH_LONG).show();
+			TTY = true;
+
+		}
+
 		if(!TTY)
 		{
 			mTileW = tileW;
@@ -67,6 +74,12 @@ public class Tileset
 				TTY = true;
 			else
 				mnCols = mBitmap.getWidth() / mTileW;
+
+			if(mnCols <= 0)
+			{
+				Toast.makeText(mContext, "Invalid tileset settings '" + tilesetName + "' (" + mTileW + "x" + mTileH + ")", Toast.LENGTH_LONG).show();
+				TTY = true;
+			}
 		}
 
 		if(TTY)
