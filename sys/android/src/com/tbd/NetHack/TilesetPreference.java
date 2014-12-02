@@ -310,7 +310,7 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			BitmapDrawable drawable = new BitmapDrawable(getContext().getResources(), tile);
 			drawable.setBounds(0, 0, tile.getWidth(), tile.getHeight());
 			mBrowse.setImageDrawable(drawable);
-			if(mCustomTile != null)
+			if(mCustomTile != null && mCustomTile != mCustomTileset)
 				mCustomTile.recycle();
 			mCustomTile = tile;
 		}
@@ -330,7 +330,6 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		}
 		catch(IllegalArgumentException e)
 		{
-			Toast.makeText(getContext(), "Invalid tile or tileset dimensions", Toast.LENGTH_SHORT);
 		}
 		return null;
 	}
