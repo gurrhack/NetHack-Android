@@ -20,6 +20,14 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	private static final int KEYCODE_META = -10;
 	private static final int KEYCODE_ABC = -11;
 
+	enum KEYBOARD
+	{
+		QWERTY,
+		SYMBOLS,
+		CTRL,
+		META,
+	}
+
 	private NetHack mContext;
 	private ViewGroup mKeyboardFrame;
 	private KeyboardView mKeyboardView;
@@ -28,15 +36,15 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	private Keyboard mMetaKeyboard;
 	private Keyboard mCtrlKeyboard;
 	private NH_State mState;
-	private int mCurrent;
+	private KEYBOARD mCurrent;
 	private boolean mIsShifted;
-	
+
 	// ____________________________________________________________________________________
 	public SoftKeyboard(NetHack context, NH_State state)
 	{
 		mContext = context;
 		mState = state;
-		mCurrent = 0;
+		mCurrent = KEYBOARD.QWERTY;
 
 		mKeyboardFrame = (ViewGroup)mContext.findViewById(R.id.kbd_frame);
 
@@ -58,17 +66,23 @@ public class SoftKeyboard implements OnKeyboardActionListener
 
 			mKeyboardView.setKeyboard(mQwertyKeyboard);
 			mKeyboardView.setShifted(mIsShifted);
-			
-			if(mCurrent == 1)
-				setKeyboard(mSymbolsKeyboard);
-			else if(mCurrent == 2)
-				setKeyboard(mCtrlKeyboard);
-			else if(mCurrent == 3)
-				setKeyboard(mMetaKeyboard);
+
+			switch(mCurrent)
+			{
+				case SYMBOLS:
+					setKeyboard(KEYBOARD.SYMBOLS);
+				break;
+				case CTRL:
+					setKeyboard(KEYBOARD.CTRL);
+				break;
+				case META:
+					setKeyboard(KEYBOARD.META);
+				break;
+			}
 			mKeyboardFrame.setVisibility(View.VISIBLE);
 		}
 	}
-	
+
 	// ____________________________________________________________________________________
 	public void hide()
 	{
@@ -86,21 +100,21 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	// ____________________________________________________________________________________
 	public void setMetaKeyboard()
 	{
-		setKeyboard(mMetaKeyboard);
+		setKeyboard(KEYBOARD.META);
 	}
-	
+
 	// ____________________________________________________________________________________
 	public void setQwertyKeyboard()
 	{
-		setKeyboard(mQwertyKeyboard);
+		setKeyboard(KEYBOARD.QWERTY);
 	}
 
 	// ____________________________________________________________________________________
 	public void setCtrlKeyboard()
 	{
-		setKeyboard(mCtrlKeyboard);
+		setKeyboard(KEYBOARD.CTRL);
 	}
-	
+
 	// ____________________________________________________________________________________
 	public void onPress(int primaryCode)
 	{
@@ -117,34 +131,34 @@ public class SoftKeyboard implements OnKeyboardActionListener
 		switch(primaryCode)
 		{
 		case KEYCODE_META:
-			setKeyboard(mMetaKeyboard);
+			setKeyboard(KEYBOARD.META);
 		break;
 
 		case KEYCODE_CTRL:
-			setKeyboard(mCtrlKeyboard);
+			setKeyboard(KEYBOARD.CTRL);
 		break;
-		
+
 		case KEYCODE_ABC:
-			setKeyboard(mQwertyKeyboard);
+			setKeyboard(KEYBOARD.QWERTY);
 		break;
-		
+
 		case KEYCODE_SYMBOLS:
-			setKeyboard(mSymbolsKeyboard);
+			setKeyboard(KEYBOARD.SYMBOLS);
 		break;
 
 		case Keyboard.KEYCODE_SHIFT:
-			mCurrent = 0;
+			mCurrent = KEYBOARD.QWERTY;
 			mKeyboardView.setKeyboard(mQwertyKeyboard);
 			mIsShifted = !mIsShifted;
 			mKeyboardView.setShifted(mIsShifted);
 		break;
 
-		case Keyboard.KEYCODE_CANCEL:			
+		case Keyboard.KEYCODE_CANCEL:
 			handleClose();
 		break;
 
 		case KEYCODE_ESC:
-			mState.handleKeyDown('\033', '\033', KeyEvent.KEYCODE_ESCAPE, Input.modifiers(), 0, true);
+			mState.handleKeyDown('\033', '\033', 111 /*KeyEvent.KEYCODE_ESC*/, Input.modifiers(), 0, true);
 		break;
 
 		case Keyboard.KEYCODE_DELETE:
@@ -164,20 +178,32 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	}
 
 	// ____________________________________________________________________________________
-	private void setKeyboard(Keyboard keyboard)
+	private void setKeyboard(KEYBOARD name)
 	{
-		setShift(keyboard, mIsShifted);
-		mKeyboardView.setKeyboard(keyboard);
-		if(keyboard == mQwertyKeyboard)
-			mCurrent = 0;
-		else if(keyboard == mSymbolsKeyboard)
-			mCurrent = 1;
-		else if(keyboard == mCtrlKeyboard)
-			mCurrent = 2;
-		else if(keyboard == mMetaKeyboard)
-			mCurrent = 3;
+		mCurrent = name;
+		Keyboard keyboard = null;
+		switch(mCurrent)
+		{
+		case QWERTY:
+			keyboard = mQwertyKeyboard;
+		break;
+		case SYMBOLS:
+			keyboard = mSymbolsKeyboard;
+		break;
+		case CTRL:
+			keyboard = mCtrlKeyboard;
+		break;
+		case META:
+			keyboard = mMetaKeyboard;
+		break;
+		}
+		if(keyboard != null)
+		{
+			setShift(keyboard, mIsShifted);
+			mKeyboardView.setKeyboard(keyboard);
+		}
 	}
-	
+
 	// ____________________________________________________________________________________
 	private void setShift(Keyboard keyboard, boolean on)
 	{
