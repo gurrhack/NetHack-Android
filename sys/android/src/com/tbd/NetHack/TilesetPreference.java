@@ -16,8 +16,10 @@ import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 
 public class TilesetPreference extends Preference implements PreferenceManager.OnActivityResultListener
@@ -36,6 +38,8 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 	private Bitmap mCustomTileset;
 	private ImageButton mBrowse;
 	private Bitmap mCustomTile;
+	private boolean mTileWFocus;
+	private boolean mTileHFocus;
 
 	public TilesetPreference(Context context, AttributeSet attrs)
 	{
@@ -74,6 +78,49 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		});
 		mTilesetPath = (TextView)mRoot.findViewById(R.id.image_path);
 
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////
+		// Workaround for weird focus problem
+		// When the keyboard is opened because an input field receive focus the entire view is recreated,
+		// which makes the field lose focus again
+		mTileW.setSelectAllOnFocus(true);
+		mTileH.setSelectAllOnFocus(true);
+
+		TextView.OnEditorActionListener onEditorActionListener = new TextView.OnEditorActionListener()
+		{
+			@Override
+			public boolean onEditorAction(TextView v, int actionId, KeyEvent event)
+			{
+				if(actionId == EditorInfo.IME_ACTION_DONE)
+				{
+					mTileWFocus = false;
+					mTileHFocus = false;
+				}
+				return false;
+			}
+		};
+		mTileW.setOnEditorActionListener(onEditorActionListener);
+		mTileH.setOnEditorActionListener(onEditorActionListener);
+
+		mTileW.setOnFocusChangeListener(new View.OnFocusChangeListener()
+		{
+			@Override
+			public void onFocusChange(View v, boolean hasFocus)
+			{
+				mTileWFocus = hasFocus;
+			}
+		});
+
+		mTileH.setOnFocusChangeListener(new View.OnFocusChangeListener()
+		{
+			@Override
+			public void onFocusChange(View v, boolean hasFocus)
+			{
+				mTileHFocus = hasFocus;
+			}
+		});
+		///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		return mRoot;
 	}
 
@@ -102,6 +149,14 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		mTileW.addTextChangedListener(updateCustom);
 		mTileH.addTextChangedListener(updateCustom);
 		mTilesetPath.addTextChangedListener(updateCustom);
+
+		if(mTileWFocus)
+			mTileW.requestFocus();
+		else if(mTileHFocus)
+			mTileH.requestFocus();
+
+		mTileWFocus = false;
+		mTileHFocus = false;
 	}
 
 	private void choseCustomTilesetImage()
@@ -148,6 +203,14 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			persistCustom();
 		setTreeEnabled(mTilesetUI, enabled);
 		mTilesetPath.setEnabled(false);
+
+		if(!enabled)
+		{
+			mTileW.clearFocus();
+			mTileH.clearFocus();
+			mTileWFocus = false;
+			mTileHFocus = false;
+		}
 	}
 
 	private void setTreeEnabled(View view, boolean enabled)
