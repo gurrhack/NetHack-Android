@@ -15,8 +15,6 @@
  */
 package com.tbd.NetHack;
 
-import java.io.File;
-import java.util.EnumSet;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -31,7 +29,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+
+import com.tbd.NetHack.Hearse.Hearse;
 import com.tbd.NetHack.Input.Modifier;
+
+import java.io.File;
+import java.util.EnumSet;
 
 public class NetHack extends Activity
 {
@@ -65,6 +68,15 @@ public class NetHack extends Activity
 			Log.print("restoring state");
 			nhState.setContext(this);
 		}
+
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if(prefs.getBoolean("hearseEnable",false)) {
+
+            // I have preferences already, might as well pass them in...
+            Hearse h = new Hearse(this,prefs);
+            h.start();
+        }
 	}
 
 	// ____________________________________________________________________________________
@@ -87,7 +99,7 @@ public class NetHack extends Activity
 			nhSaveDir.mkdir();
 
 		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		SharedPreferences prefs = this.getPreferences(Activity.MODE_PRIVATE);
 		if(prefs.getBoolean("firsttime", true))
 		{
 			prefs.edit().putBoolean("firsttime", false).commit();
@@ -153,8 +165,9 @@ public class NetHack extends Activity
 		mMetaDown = false;
 		
 		Log.print("onDestroy()");
-		if(nhState != null)
-			nhState.saveAndQuit();
+		if(nhState != null) {
+            nhState.saveAndQuit();
+        }
 		
 		super.onDestroy();
 	}

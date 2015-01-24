@@ -443,4 +443,7 @@ Please visit www.nethack.org or nethackwiki.com for more information, or press
 <h4><br/>Happy hacking!</h4>
 ]]>
 	</string>
+    <string name="HearseDescription">Hearse enables you to share Bones files from your dead characters with other Nethack players over the Internet. You will also encounter theirs as you play.</string>
+    <string name="HearseDeleteBonesDesc">By default, Hearse deletes your bones after uploading.</string>
+    <string name="HearseIDDescription">Hearse ID (This is generated the first time you send data to Hearse. You can copy it to keep the same identity on multiple machines.)</string>
 </resources>

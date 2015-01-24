@@ -108,6 +108,48 @@
     </PreferenceCategory>
 
 	<PreferenceCategory
+        android:title="Hearse">
+        <CheckBoxPreference
+            android:title="Enable Hearse"
+            android:summary="Share bones files over the internet"
+            android:persistent="true"
+            android:key="hearseEnable"
+            android:defaultValue="false"/>
+
+        <EditTextPreference
+            android:title="Hearse Email (Required)"
+            android:summary="How Hearse admins can contact you if needed (Don't upload Wizard Mode bones)"
+            android:persistent="true"
+            android:defaultValue=""
+            android:singleLine="true"
+            android:key="hearseMail"/>
+
+        <EditTextPreference
+            android:title="Hearse Nickname"
+            android:summary="The name displayed on Hearse website"
+            android:persistent="true"
+            android:defaultValue=""
+            android:singleLine="true"
+            android:key="hearseName"/>
+
+        <EditTextPreference
+            android:title="Hearse userToken"
+            android:summary="Hearse Identifier - you can copy this to keep your identity across multiple devices."
+            android:persistent="true"
+            android:defaultValue=""
+            android:singleLine="true"
+            android:key="hearseID"/>
+
+        <CheckBoxPreference
+            android:title="Keep my Bones"
+            android:summary="Default is to delete bones after upload"
+            android:persistent="true"
+            android:defaultValue="false"
+            android:key="hearseKeepUploaded"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
 		android:title="Advanced">
 
 		<PreferenceScreen
