@@ -15,6 +15,7 @@ import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import com.tbd.NetHack.Hearse.Hearse;
 
 public class NH_State
 {
@@ -93,6 +94,12 @@ public class NH_State
 		updateVisibleState();
 
 		mMap.loadZoomLevel();
+
+		if(prefs.getBoolean("hearseEnable",false)) {
+
+			// I have preferences already, might as well pass them in...
+			new Hearse(mContext, prefs, path);
+		}
 	}
 
 	// ____________________________________________________________________________________

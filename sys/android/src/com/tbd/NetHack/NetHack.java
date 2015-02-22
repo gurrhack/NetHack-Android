@@ -30,7 +30,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 
-import com.tbd.NetHack.Hearse.Hearse;
 import com.tbd.NetHack.Input.Modifier;
 
 import java.io.File;
@@ -68,15 +67,6 @@ public class NetHack extends Activity
 			Log.print("restoring state");
 			nhState.setContext(this);
 		}
-
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if(prefs.getBoolean("hearseEnable",false)) {
-
-            // I have preferences already, might as well pass them in...
-            Hearse h = new Hearse(this,prefs);
-            h.start();
-        }
 	}
 
 	// ____________________________________________________________________________________
