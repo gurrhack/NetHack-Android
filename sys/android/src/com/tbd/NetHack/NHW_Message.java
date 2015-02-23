@@ -328,6 +328,8 @@ public class NHW_Message implements NH_Window
 					for(int i = 0; i < mDispCount && i < 3; i++)
 					{
 						LogEntry e = mLog[getIndex(iStart + i)];
+						if(e.msg == null)
+							break;
 						if(i > 0)
 							m_view.append("\n");
 						if(e.repeat > 1)
