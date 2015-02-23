@@ -135,7 +135,9 @@ public class Hearse implements SharedPreferences.OnSharedPreferenceChangeListene
 
 		prefs.registerOnSharedPreferenceChangeListener(this);
 
-		hearseThread.start();
+		if(prefs.getBoolean(PREFS_HEARSE_ENABLE, false)) {
+			hearseThread.start();
+		}
 	}
 
 	private static boolean checkMD5(String md5, File updateFile) {

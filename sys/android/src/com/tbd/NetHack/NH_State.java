@@ -45,7 +45,8 @@ public class NH_State
 	private SoftKeyboard mKeyboard;
 	private boolean mControlsVisible;
 	private boolean mNumPad;
-	
+	private Hearse mHearse;
+
 	// ____________________________________________________________________________________
 	public NH_State(NetHack context)
 	{
@@ -95,11 +96,8 @@ public class NH_State
 
 		mMap.loadZoomLevel();
 
-		if(prefs.getBoolean("hearseEnable",false)) {
-
-			// I have preferences already, might as well pass them in...
-			new Hearse(mContext, prefs, path);
-		}
+		// I have preferences already, might as well pass them in...
+		mHearse = new Hearse(mContext, prefs, path);
 	}
 
 	// ____________________________________________________________________________________
