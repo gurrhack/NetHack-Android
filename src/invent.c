@@ -1755,7 +1755,11 @@ boolean allownone;
 	an issue if empty checks are done before hand and the call
 	to here is short circuited away.
 	*/
-	if (!invent && !(flags.perm_invent && !lets && !want_reply)) {
+	if (!invent && !(flags.perm_invent && !lets && !want_reply)
+#ifdef ANDROID
+		&& iflags.automenu && !allownone
+#endif
+	) {
 #ifndef GOLDOBJ
 	    pline("Not carrying anything%s.", u.ugold ? " except gold" : "");
 #else
