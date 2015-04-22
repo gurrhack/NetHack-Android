@@ -330,8 +330,6 @@ void and_init_nhwindows(int* argcp, char** argv)
 {
 	//debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
-
-	switch_graphics(IBM_GRAPHICS);
 }
 
 //____________________________________________________________________________________

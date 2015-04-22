@@ -586,7 +586,7 @@ initoptions()
 	//iflags.num_pad = 0;
 	iflags.use_color = TRUE;
 	flags.showexp = TRUE;
-    iflags.IBMgraphics = TRUE;
+	switch_graphics(IBM_GRAPHICS);
 #endif
 #if defined(UNIX) || defined(VMS)
 # ifdef TTY_GRAPHICS
