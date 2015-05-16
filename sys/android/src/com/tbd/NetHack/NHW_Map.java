@@ -71,20 +71,6 @@ public class NHW_Map implements NH_Window
 		return mNHState.isNumPadOn() ? '3' : 'n';
 	}
 	
-	private char getRunCmd(char dir) {
-		switch(dir) {
-		case '4': case 'h': return 'H';
-		case '6': case 'l': return 'L';
-		case '8': case 'k': return 'K';
-		case '2': case 'j': return 'J';
-		case '7': case 'y': return 'Y';
-		case '9': case 'u': return 'U';
-		case '1': case 'b': return 'B';
-		case '3': case 'n': return 'N';
-		}
-		return '\033';
-	}
-	
 	private enum ZoomPanMode
 	{
 		Idle, Pressed, Panning, Zooming,
@@ -1160,8 +1146,7 @@ public class NHW_Map implements NH_Window
 
 				if(bLongClick)
 				{
-					dir = getRunCmd(dir);
-					mNHState.sendKeyCmd('G');
+					mNHState.sendKeyCmd('g');
 					mNHState.sendKeyCmd(dir);
 				}
 				else
