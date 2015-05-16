@@ -1118,6 +1118,12 @@ public class NHW_Map implements NH_Window
 				return;
 			}
 
+			// Ignore touches when dpad is open
+			if(mNHState.isDPadVisible())
+			{
+				return;
+			}
+
 			float tileW = getScaledTileWidth();
 			float tileH = getScaledTileHeight();
 
@@ -1152,7 +1158,7 @@ public class NHW_Map implements NH_Window
 				else
 					dir = dy < 0 ? getUL() : getDL();
 
-				if(bLongClick && !mNHState.expectsDirection())
+				if(bLongClick)
 				{
 					dir = getRunCmd(dir);
 					mNHState.sendKeyCmd('G');

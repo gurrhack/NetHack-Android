@@ -49,6 +49,12 @@ public class DPadOverlay
 	}
 
 	// ____________________________________________________________________________________
+	public boolean isVisible()
+	{
+		return mUI.isVisible();
+	}
+
+	// ____________________________________________________________________________________
 	public void forceHide()
 	{
 		mHideForced = true;
@@ -97,7 +103,7 @@ public class DPadOverlay
 	{
 		mUI.updateNumPadState();
 	}
-	
+
 	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
@@ -191,9 +197,7 @@ public class DPadOverlay
 		// ____________________________________________________________________________________
 		private void updateVisibleState()
 		{
-			if(mHideForced)
-				mDPad.setVisibility(View.GONE);
-			else if(mAlwaysShow || mIsVisible)
+			if(isVisible())
 			{
 				if(mIsVisible)
 					setDirMode();
@@ -204,7 +208,13 @@ public class DPadOverlay
 			else
 				mDPad.setVisibility(View.GONE);
 		}
-		
+
+		// ____________________________________________________________________________________
+		private boolean isVisible()
+		{
+			return (mAlwaysShow || mIsVisible) && !mHideForced;
+		}
+
 		// ____________________________________________________________________________________
 		private void setNormalMode()
 		{
