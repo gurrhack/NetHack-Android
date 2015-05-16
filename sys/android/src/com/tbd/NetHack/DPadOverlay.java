@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -114,6 +115,7 @@ public class DPadOverlay
 		private Button[] mButtons;
 		private Activity mContext;
 		private ColorStateList mDefaultTextColor;
+		private boolean mLongClick;
 
 		public UI(Activity context)
 		{
@@ -143,7 +145,17 @@ public class DPadOverlay
 				b.setOnTouchListener(onDPadTouch);
 				b.setOnClickListener(onDPad);
 			}
-			
+
+			// g<dir> on long press
+			mButtons[0].setOnLongClickListener(onDPadLong);
+			mButtons[1].setOnLongClickListener(onDPadLong);
+			mButtons[2].setOnLongClickListener(onDPadLong);
+			mButtons[3].setOnLongClickListener(onDPadLong);
+			mButtons[5].setOnLongClickListener(onDPadLong);
+			mButtons[6].setOnLongClickListener(onDPadLong);
+			mButtons[7].setOnLongClickListener(onDPadLong);
+			mButtons[8].setOnLongClickListener(onDPadLong);
+
 			setTransparent();
 			updateNumPadState();
 		}
@@ -216,6 +228,12 @@ public class DPadOverlay
 		}
 
 		// ____________________________________________________________________________________
+		private boolean isNormalMode()
+		{
+			return mAlwaysShow && !mIsVisible;
+		}
+
+		// ____________________________________________________________________________________
 		private void setNormalMode()
 		{
 			mExtra.setVisibility(View.GONE);
@@ -238,24 +256,26 @@ public class DPadOverlay
 			public boolean onTouch(View v, MotionEvent event)
 			{
 				int action = event.getAction() & MotionEvent.ACTION_MASK;
-				
+
+				if(action == MotionEvent.ACTION_DOWN)
+					mLongClick = false;
+
 				final float density = mContext.getResources().getDisplayMetrics().density;
 				float margin = density * 18;
 				float x = event.getX();
 				float y = event.getY();
 				boolean outside = x < -margin || y < -margin || x > v.getWidth() + margin || y > v.getHeight() + margin;
 				
-				Log.print((int)margin);
-				
-				if(action == MotionEvent.ACTION_DOWN) 
+				if(action == MotionEvent.ACTION_DOWN)
 					v.getBackground().setAlpha(OPAQUE);
 				else if(action == MotionEvent.ACTION_UP || outside) 
 					v.getBackground().setAlpha(mOpacity);
 				v.invalidate();
+
 				return false;
 			}
 		};
-		
+
 		// ____________________________________________________________________________________
 		private OnClickListener onDPad = new OnClickListener()
 		{
@@ -267,11 +287,29 @@ public class DPadOverlay
 				else if(v.getId() == R.id.dpad_esc)
 					mNHState.sendKeyCmd('\033');
 				else
+				{
+					if(mLongClick)
+						mNHState.sendKeyCmd('g');
 					mNHState.sendKeyCmd(k);
+				}
+				mLongClick = false;
 				v.getBackground().setAlpha(mOpacity);
 			}
 		};
-		
+
+		// ____________________________________________________________________________________
+		private View.OnLongClickListener onDPadLong = new View.OnLongClickListener() {
+			@Override
+			public boolean onLongClick(View v) {
+				if(isNormalMode())
+				{
+					mLongClick = true;
+					v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+				}
+				return false;
+			}
+		};
+
 		// ____________________________________________________________________________________
 		private void setTransparent()
 		{
