@@ -382,10 +382,38 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
+	enum Travel
+	{
+		Never,
+		AfterPan,
+		Always
+	}
+
+	// ____________________________________________________________________________________
 	private boolean travelAfterPan()
 	{
+		return getTravelOption() == Travel.AfterPan;
+	}
+
+	// ____________________________________________________________________________________
+	private Travel getTravelOption()
+	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		return prefs.getBoolean("travelAfterPan", true);
+		// Convert old option
+		if(prefs.contains("travelAfterPan"))
+		{
+			boolean oldValue = prefs.getBoolean("travelAfterPan", true);
+			SharedPreferences.Editor editor = prefs.edit();
+			editor.remove("travelAfterPan");
+			editor.putString("travelOnClick", oldValue ? "1" : "0");
+			editor.commit();
+		}
+		int setting = Util.parseInt(prefs.getString("travelOnClick", "1"), 1);
+		if(setting == 0)
+			return Travel.Never;
+		if(setting == 1)
+			return Travel.AfterPan;
+		return Travel.Always;
 	}
 
 	// ____________________________________________________________________________________
@@ -1130,7 +1158,7 @@ public class NHW_Map implements NH_Window
 				else
 					dir = dy < 0 ? getUL() : getDL();
 
-				if(bLongClick)
+				if(bLongClick && !mNHState.expectsDirection())
 				{
 					mNHState.sendKeyCmd('g');
 					mNHState.sendKeyCmd(dir);
@@ -1166,13 +1194,21 @@ public class NHW_Map implements NH_Window
 			if(mNHState.isMouseLocked())
 				return true;
 
+			if(mNHState.expectsDirection())
+				return false;
+
 			if(mPlayerPos.equals(tileX, tileY))
 				return true;
 
-			if(!mIsViewPanned)
+			Travel travelOption = getTravelOption();
+
+			if(travelOption == Travel.Never)
 				return false;
 
-			if(!travelAfterPan())
+			if(travelOption == Travel.Always)
+				return true;
+
+			if(!mIsViewPanned)
 				return false;
 
 			// Don't send pos command if clicking within a few tiles from the player

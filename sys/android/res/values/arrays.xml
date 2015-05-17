@@ -69,5 +69,16 @@
         <item>2</item>
         <item>3</item>
     </string-array>
-    
+
+	<string-array name="travelNames">
+		<item>Never</item>
+		<item>After map is panned</item>
+		<item>Always</item>
+	</string-array>
+	<string-array name="travelValues">
+		<item>0</item>
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+
 </resources>

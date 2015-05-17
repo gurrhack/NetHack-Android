@@ -83,13 +83,15 @@
 			android:defaultValue="0"
 			android:entries="@array/actionNames"
 			android:entryValues="@array/actionValues"/>
-			
-		<CheckBoxPreference
-			android:title="Travel after pan"
-			android:summary="Invoke the Travel command when a position is clicked after the map has been panned"
+
+		<ListPreference
+			android:title="Travel command"
+			android:summary="When to invoke the Travel command if a position is clicked"
 			android:persistent="true"
-			android:defaultValue="true"
-			android:key="travelAfterPan"/>
+			android:key="travelOnClick"
+			android:defaultValue="1"
+			android:entries="@array/travelNames"
+			android:entryValues="@array/travelValues"/>
 
 		<CheckBoxPreference
 			android:title="Group log messages"

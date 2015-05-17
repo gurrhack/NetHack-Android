@@ -16,7 +16,7 @@ import android.widget.FrameLayout;
 public class DPadOverlay
 {
 	private NH_State mNHState;
-	private boolean mIsVisible;
+	private boolean mShowDirectional;
 	private boolean mHideForced;
 	private boolean mAlwaysShow;
 	private boolean mPortAlwaysShow;
@@ -42,9 +42,9 @@ public class DPadOverlay
 	}
 
 	// ____________________________________________________________________________________
-	public void setVisible(boolean bVisible)
+	public void showDirectional(boolean showDirectional)
 	{
-		mIsVisible = bVisible;
+		mShowDirectional = showDirectional;
 		mHideForced = false;
 		mUI.updateVisibleState();
 	}
@@ -52,7 +52,13 @@ public class DPadOverlay
 	// ____________________________________________________________________________________
 	public boolean isVisible()
 	{
-		return mUI.isVisible();
+		return (mAlwaysShow || mShowDirectional) && !mHideForced;
+	}
+
+	// ____________________________________________________________________________________
+	private boolean isNormalMode()
+	{
+		return mAlwaysShow && !mShowDirectional;
 	}
 
 	// ____________________________________________________________________________________
@@ -211,26 +217,14 @@ public class DPadOverlay
 		{
 			if(isVisible())
 			{
-				if(mIsVisible)
-					setDirMode();
+				if(mShowDirectional)
+					setDirectionalMode();
 				else
 					setNormalMode();
 				mDPad.setVisibility(View.VISIBLE);
 			}
 			else
 				mDPad.setVisibility(View.GONE);
-		}
-
-		// ____________________________________________________________________________________
-		private boolean isVisible()
-		{
-			return (mAlwaysShow || mIsVisible) && !mHideForced;
-		}
-
-		// ____________________________________________________________________________________
-		private boolean isNormalMode()
-		{
-			return mAlwaysShow && !mIsVisible;
 		}
 
 		// ____________________________________________________________________________________
@@ -241,7 +235,7 @@ public class DPadOverlay
 		}
 
 		// ____________________________________________________________________________________
-		private void setDirMode()
+		private void setDirectionalMode()
 		{
 			mExtra.setVisibility(View.VISIBLE);
 			mButtons[4].setText(".");
