@@ -298,11 +298,39 @@ public class DPadOverlay
 		};
 
 		// ____________________________________________________________________________________
-		private View.OnLongClickListener onDPadLong = new View.OnLongClickListener() {
+		private int getRunCmd(int dir)
+		{
+			switch(dir) {
+				case '4': case 'h': return 'H';
+				case '6': case 'l': return 'L';
+				case '8': case 'k': return 'K';
+				case '2': case 'j': return 'J';
+				case '7': case 'y': return 'Y';
+				case '9': case 'u': return 'U';
+				case '1': case 'b': return 'B';
+				case '3': case 'n': return 'N';
+			}
+			return '\033';
+		}
+
+		// ____________________________________________________________________________________
+		private View.OnLongClickListener onDPadLong = new View.OnLongClickListener()
+		{
 			@Override
-			public boolean onLongClick(View v) {
+			public boolean onLongClick(View v)
+			{
 				if(isNormalMode())
 				{
+					if(mNHState.isMouseLocked())
+					{
+						// Only cursor will be moved. Execute immediately
+						int k = ((Button)v).getText().charAt(0);
+						k = getRunCmd(k);
+						mNHState.sendKeyCmd(k);
+						return true;
+					}
+
+					// Don't execute run command until button is released. Gives the player a chance to abort
 					mLongClick = true;
 					v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
 				}

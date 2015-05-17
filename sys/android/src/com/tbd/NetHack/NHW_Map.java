@@ -100,7 +100,6 @@ public class NHW_Map implements NH_Window
 	private boolean mIsStickyZoom;
 	private final Tileset mTileset;
 	private PointF mViewOffset;
-	private boolean mIsMouseLocked;
 	private RectF mCanvasRect;
 	private Point mPlayerPos;
 	private Point mCursorPos;
@@ -269,7 +268,6 @@ public class NHW_Map implements NH_Window
 
 		Log.print(String.format("cursor pos clicked: %dx%d", mCursorPos.x, mCursorPos.y));
 		mNHState.sendPosCmd(mCursorPos.x, mCursorPos.y);
-		mIsMouseLocked = false;
 	}
 
 	// ____________________________________________________________________________________
@@ -302,12 +300,6 @@ public class NHW_Map implements NH_Window
 		if(l != c)
 			return d * 8;
 		return d;
-	}
-
-	// ____________________________________________________________________________________
-	public void lockMouse()
-	{
-		mIsMouseLocked = true;
 	}
 
 	// ____________________________________________________________________________________
@@ -1104,12 +1096,6 @@ public class NHW_Map implements NH_Window
 				return;
 			}
 
-			// Ignore touches when dpad is open
-			if(mNHState.isDPadVisible())
-			{
-				return;
-			}
-
 			float tileW = getScaledTileWidth();
 			float tileH = getScaledTileHeight();
 
@@ -1120,12 +1106,12 @@ public class NHW_Map implements NH_Window
 			{
 				tileX = clamp(tileX, 0, TileCols - 1);
 				tileY = clamp(tileY, 0, TileRows - 1);
-				if(mIsMouseLocked)
+				if(mNHState.isMouseLocked())
 					setCursorPos(tileX, tileY);
 				mNHState.sendPosCmd(tileX, tileY);
-				mIsMouseLocked = false;
 			}
-			else
+			// Allow position touches when dpad is open, but not directional touches
+			else if(!mNHState.isDPadVisible())
 			{
 				int dx = tileX - mPlayerPos.x;
 				int dy = tileY - mPlayerPos.y;
@@ -1160,7 +1146,7 @@ public class NHW_Map implements NH_Window
 		// ____________________________________________________________________________________
 		private void sendDirKeyCmd(int c)
 		{
-			if(mIsBlocking || mIsMouseLocked || mIsdPadCenterDown || mIsTrackBallDown)
+			if(mIsBlocking || mNHState.isMouseLocked() || mIsdPadCenterDown || mIsTrackBallDown)
 			{
 				// Log.print("pan with cursor");
 				mIsPannedSinceDown = true;
@@ -1177,7 +1163,7 @@ public class NHW_Map implements NH_Window
 		// ____________________________________________________________________________________
 		private boolean shouldSendPosOnTouch(int tileX, int tileY)
 		{
-			if(mIsMouseLocked)
+			if(mNHState.isMouseLocked())
 				return true;
 
 			if(mPlayerPos.equals(tileX, tileY))
@@ -1225,7 +1211,7 @@ public class NHW_Map implements NH_Window
 				return true;
 			}
 
-			if(mIsMouseLocked)
+			if(mNHState.isMouseLocked())
 			{
 				if(mPickChars.contains((char)nhKey))
 				{
@@ -1235,7 +1221,6 @@ public class NHW_Map implements NH_Window
 				if(mCancelKeys.contains((char)nhKey))
 				{
 					mNHState.sendDirKeyCmd(nhKey);
-					mIsMouseLocked = false;
 					return true;
 				}
 			}

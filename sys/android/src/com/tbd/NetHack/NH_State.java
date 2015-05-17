@@ -45,6 +45,7 @@ public class NH_State
 	private SoftKeyboard mKeyboard;
 	private boolean mControlsVisible;
 	private boolean mNumPad;
+	private boolean mIsMouseLocked;
 	private Hearse mHearse;
 
 	// ____________________________________________________________________________________
@@ -468,7 +469,13 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void lockMouse()
 	{
-		mMap.lockMouse();
+		mIsMouseLocked = true;
+	}
+
+	// ____________________________________________________________________________________
+	public boolean isMouseLocked()
+	{
+		return mIsMouseLocked;
 	}
 
 	// ____________________________________________________________________________________
@@ -521,6 +528,8 @@ public class NH_State
 	{
 		if(key <= 0 || key > 0xff)
 			return false;
+		if(key == 0x80 || key == '\033')
+			mIsMouseLocked = false;
 		if(mIsDPadActive)
 			mIO.sendKeyCmd((char)key);
 		else
@@ -531,9 +540,9 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void sendPosCmd(int x, int y)
 	{
+		mIsMouseLocked = false;
 		mIO.sendPosCmd(x, y);
 	}
-
 
 	// ____________________________________________________________________________________
 	public void clickCursorPos()
