@@ -249,9 +249,10 @@ public class NetHack extends Activity
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent event)
 	{
-		if(event.getAction() == KeyEvent.ACTION_DOWN)
+		if(event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() != KeyEvent.KEYCODE_BACK)
 		{
-			if(handleKeyDown(event))
+			EnumSet<Modifier> modifiers = Input.modifiersFromKeyEvent(event);
+			if(handleKeyDown(event.getKeyCode(), event.getUnicodeChar(), event.getRepeatCount(), modifiers))
 				return true;
 		}
 		return super.dispatchKeyEvent(event);
@@ -263,12 +264,17 @@ public class NetHack extends Activity
 	{
 		return super.onKeyDown(keyCode, event);
 	}
-	
+
 	// ____________________________________________________________________________________
-	public boolean handleKeyDown(KeyEvent event)
+	@Override
+	public void onBackPressed() {
+		if(!handleKeyDown(KeyEvent.KEYCODE_BACK, 0, 0, EnumSet.noneOf(Modifier.class)))
+			super.onBackPressed();
+	}
+
+	// ____________________________________________________________________________________
+	public boolean handleKeyDown(int keyCode, int unicodeChar, int repeatCount, EnumSet<Modifier> modifiers)
 	{
-		int keyCode = event.getKeyCode();
-		
 		int fixedCode = Input.keyCodeToAction(keyCode, this);
 
 		if(fixedCode == KeyEvent.KEYCODE_VOLUME_DOWN || fixedCode == KeyEvent.KEYCODE_VOLUME_UP)
@@ -279,17 +285,16 @@ public class NetHack extends Activity
 		else if(fixedCode == KeyAction.Meta)
 			mMetaDown = true;
 		
-		EnumSet<Modifier> modifiers = Input.modifiersFromKeyEvent(event);
 		if(mCtrlDown)
 			modifiers.add(Input.Modifier.Control);
 		else if(mMetaDown)
 			modifiers.add(Input.Modifier.Meta);
 		
-		char ch = (char)event.getUnicodeChar();
+		char ch = (char)unicodeChar;
 		
 		int nhKey = Input.nhKeyFromKeyCode(fixedCode, ch, modifiers, nhState.isNumPadOn());
 		
-		if(nhState.handleKeyDown(ch, nhKey, fixedCode, modifiers, event.getRepeatCount(), false))
+		if(nhState.handleKeyDown(ch, nhKey, fixedCode, modifiers, repeatCount, false))
 			return true;
 
 		if(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
