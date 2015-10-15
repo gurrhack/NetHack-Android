@@ -2,8 +2,8 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
-	android:versionCode="139"
-	android:versionName="1.3.9"
+	android:versionCode="140"
+	android:versionName="1.4.0"
 	android:installLocation="auto">
 	<uses-sdk
 		android:minSdkVersion="7"/>
