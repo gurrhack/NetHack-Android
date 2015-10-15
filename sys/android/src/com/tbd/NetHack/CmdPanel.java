@@ -123,6 +123,12 @@ public class CmdPanel
 			return createCmdButtonFromCmd(new Cmd.ToggleKeyboard(mState, label));
 		}
 
+		// special case for menu
+		if(chars.equalsIgnoreCase("menu"))
+		{
+			return createCmdButtonFromCmd(new Cmd.OpenMenu(mContext, label));
+		}
+
 		KeySequnece cmd = new Cmd.KeySequnece(mState, chars, label);
 		return createCmdButtonFromCmd(cmd);
 	}
@@ -197,6 +203,13 @@ public class CmdPanel
 		{
 			int idx = mBtnPanel.indexOfChild(mContextView);
 			mBtnPanel.addView(createCmdButtonFromString("...", ""), idx);
+			mLayout.savePanelCmds(this);
+			mContextView = null;
+		}
+		else if(mItemId == R.id.add_settings)
+		{
+			int idx = mBtnPanel.indexOfChild(mContextView);
+			mBtnPanel.addView(createCmdButtonFromString("menu", ""), idx);
 			mLayout.savePanelCmds(this);
 			mContextView = null;
 		}

@@ -3,6 +3,9 @@ package com.tbd.NetHack;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Handler;
 import com.tbd.NetHack.Input.Modifier;
 
@@ -56,6 +59,57 @@ public interface Cmd
 		public String getCommand()
 		{
 			return "...";
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getLabel()
+		{
+			return mLabel;
+		}
+	}
+
+	// ____________________________________________________________________________________
+	public class OpenMenu implements Cmd
+	{
+		private Activity mContext;
+		private String mLabel = "";
+
+		// ____________________________________________________________________________________
+		public OpenMenu(Activity context, String label)
+		{
+			mContext = context;
+			mLabel = label;
+		}
+
+		// ____________________________________________________________________________________
+		public void execute()
+		{
+			Intent prefsActivity = new Intent(mContext.getBaseContext(), Settings.class);
+			mContext.startActivityForResult(prefsActivity, 42);
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String toString()
+		{
+			if(mLabel.length() > 0)
+				return mLabel;
+			return "menu";
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public boolean hasLabel()
+		{
+			return mLabel.length() > 0;
+		}
+
+		// ____________________________________________________________________________________
+		@Override
+		public String getCommand()
+		{
+			return "menu";
 		}
 
 		// ____________________________________________________________________________________
