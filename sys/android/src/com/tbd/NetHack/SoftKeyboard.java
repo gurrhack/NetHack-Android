@@ -104,12 +104,6 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	}
 
 	// ____________________________________________________________________________________
-	public void setQwertyKeyboard()
-	{
-		setKeyboard(KEYBOARD.QWERTY);
-	}
-
-	// ____________________________________________________________________________________
 	public void setCtrlKeyboard()
 	{
 		setKeyboard(KEYBOARD.CTRL);
@@ -147,10 +141,13 @@ public class SoftKeyboard implements OnKeyboardActionListener
 		break;
 
 		case Keyboard.KEYCODE_SHIFT:
-			mCurrent = KEYBOARD.QWERTY;
-			mKeyboardView.setKeyboard(mQwertyKeyboard);
-			mIsShifted = !mIsShifted;
-			mKeyboardView.setShifted(mIsShifted);
+			if(mQwertyKeyboard != null)
+			{
+				mCurrent = KEYBOARD.QWERTY;
+				mKeyboardView.setKeyboard(mQwertyKeyboard);
+				mIsShifted = !mIsShifted;
+				mKeyboardView.setShifted(mIsShifted);
+			}
 		break;
 
 		case Keyboard.KEYCODE_CANCEL:
@@ -178,7 +175,7 @@ public class SoftKeyboard implements OnKeyboardActionListener
 	}
 
 	// ____________________________________________________________________________________
-	private void setKeyboard(KEYBOARD name)
+	public void setKeyboard(KEYBOARD name)
 	{
 		mCurrent = name;
 		Keyboard keyboard = null;
@@ -202,6 +199,12 @@ public class SoftKeyboard implements OnKeyboardActionListener
 			setShift(keyboard, mIsShifted);
 			mKeyboardView.setKeyboard(keyboard);
 		}
+	}
+
+	// ____________________________________________________________________________________
+	public KEYBOARD getKeyboard()
+	{
+		return mCurrent;
 	}
 
 	// ____________________________________________________________________________________
