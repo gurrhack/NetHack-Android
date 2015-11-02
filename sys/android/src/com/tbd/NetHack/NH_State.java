@@ -618,9 +618,9 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public boolean isKeyboardMode()
+	private boolean isKeyboardMode()
 	{
-		return mMode == CmdMode.Keyboard;
+		return mMode == CmdMode.Keyboard && mControlsVisible;
 	}
 	
 	// ____________________________________________________________________________________
