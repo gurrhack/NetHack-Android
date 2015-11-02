@@ -35,9 +35,5 @@
 			android:name="Settings"
 			android:label="NetHack Settings">
 		</activity>
-		<activity
-			android:name="Instructions"
-			android:label="NetHack Instructions">
-		</activity>
 	</application>
 </manifest>
