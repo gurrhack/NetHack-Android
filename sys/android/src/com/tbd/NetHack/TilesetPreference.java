@@ -37,7 +37,6 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 	private String mCustomTilesetPath;
 	private Bitmap mCustomTileset;
 	private ImageButton mBrowse;
-	private Bitmap mCustomTile;
 	private boolean mTileWFocus;
 	private boolean mTileHFocus;
 
@@ -326,8 +325,6 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		if(!newPath.equals(mCustomTilesetPath))
 		{
 			mCustomTilesetPath = newPath;
-			if(mCustomTileset != null)
-				mCustomTileset.recycle();
 			if(newPath.length() > 0)
 			{
 				try
@@ -366,9 +363,6 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			BitmapDrawable drawable = new BitmapDrawable(getContext().getResources(), tile);
 			drawable.setBounds(0, 0, tile.getWidth(), tile.getHeight());
 			mBrowse.setImageDrawable(drawable);
-			if(mCustomTile != null && mCustomTile != mCustomTileset)
-				mCustomTile.recycle();
-			mCustomTile = tile;
 		}
 	}
 

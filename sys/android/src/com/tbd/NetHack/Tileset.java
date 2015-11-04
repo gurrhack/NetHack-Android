@@ -94,10 +94,6 @@ public class Tileset
 	// ____________________________________________________________________________________
 	private void clearBitmap()
 	{
-		if(mBitmap != null)
-			mBitmap.recycle();
-		for(Bitmap bitmap : mTileCache.values())
-			bitmap.recycle();
 		mTileCache.clear();
 		mBitmap = null;
 	}
