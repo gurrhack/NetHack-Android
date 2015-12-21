@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 public class Hearse implements SharedPreferences.OnSharedPreferenceChangeListener {
 
 	private static final String CLIENT_NAME = "Gurr Android Nethack";
-	private static final String CLIENT_VERSION = "1.0.0";
+	private static final String CLIENT_VERSION = "3.6.0";
 	private static final String CLIENT_ID = CLIENT_NAME + " " + CLIENT_VERSION;
 	private static final String HEARSE_CRC = getStringMD5(CLIENT_ID);
 	private static final String HOST = "hearse.krollmark.com";
@@ -613,10 +613,10 @@ public class Hearse implements SharedPreferences.OnSharedPreferenceChangeListene
 			ByteBuffer buf = ByteBuffer.wrap(data);
 			// realized don't want to do this as it masks platform differences
 //            buf.order(ByteOrder.LITTLE_ENDIAN);
-			results.incarnation = buf.getLong();
-			results.feature_set = buf.getLong();
-			results.entity_count = buf.getLong();
-			results.struct_sizes = buf.getLong();
+			results.incarnation = ((long)buf.getInt()) & 0xffffffffL;
+			results.feature_set = ((long)buf.getInt()) & 0xffffffffL;
+			results.entity_count = ((long)buf.getInt()) & 0xffffffffL;
+			results.struct_sizes = ((long)buf.getInt()) & 0xffffffffL;
 
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
