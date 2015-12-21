@@ -62,18 +62,26 @@ getlock()
 	fq_lock = fqname(lock, LEVELPREFIX, 0);
 	if((fd = open(fq_lock, 0)) == -1)
 	{
-		if(errno == ENOENT) goto gotlock;    /* no such file */
+		if(errno == ENOENT)
+			goto gotlock;    /* no such file */
 		perror(fq_lock);
 		unlock_file(HLOCK);
 		error("Cannot open %s", fq_lock);
 	}
 	(void) close(fd);
 
-	if(!recover_savefile())
+	c = yn("There is already a game in progress under that name. Recover?");
+
+	if(c == 'y')
 	{
-		(void) eraseoldlocks();
+		if(!recover_savefile())
+		{
+			(void) eraseoldlocks();
+			unlock_file(HLOCK);
+			error("Couldn't recover old game.");
+		}
+	} else {
 		unlock_file(HLOCK);
-		error("Couldn't recover old game.");
 	}
 
 gotlock:
