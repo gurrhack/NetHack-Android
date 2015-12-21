@@ -71,6 +71,8 @@ int NetHackMain(int argc, char** argv)
 
     boolean resuming = FALSE; /* assume new game */
 
+    sys_early_init();
+
 	hname = argv[0];
 	hackpid = getpid();
 	(void)umask(0777 & ~FCMASK);
