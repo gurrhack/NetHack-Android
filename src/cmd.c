@@ -3120,13 +3120,12 @@ wiz_migrate_mons()
 #define unctrl(c) ((c) <= C('z') ? (0x60 | (c)) : (c))
 #define unmeta(c) (0x7f & (c))
 
-const char sdir[] = "hykulnjb><";
 /* called at startup and after number_pad is twiddled */
 void
 reset_commands(initial)
 boolean initial;
 {
-    static const char /*sdir[] = "hykulnjb><",*/
+    static const char sdir[] = "hykulnjb><",
                       sdir_swap_yz[] = "hzkulnjb><",
                       ndir[] = "47896321><",
                       ndir_phone_layout[] = "41236987><";

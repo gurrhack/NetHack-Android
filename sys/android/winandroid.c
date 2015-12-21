@@ -8,7 +8,6 @@
 #include "dlb.h"
 
 extern short glyph2tile[];
-const char sdir[];
 
 struct window_procs and_procs = {
 	"and",
@@ -1254,7 +1253,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		strcat(message, " ");
 	}
 
-	if(choices == sdir || strstr(question, "what direction"))
+	if(strstr(question, "what direction"))
 	{
 		// directional choice
 		and_clear_nhwindow(WIN_MESSAGE);
