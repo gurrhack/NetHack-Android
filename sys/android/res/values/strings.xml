@@ -3,7 +3,7 @@
 	<string
 		name="history">
 <![CDATA[
-<p>NetHack History file for release 3.4</p>
+<p>NetHack History file for release 3.6</p>
 
 <p>Behold, mortal, the origins of NetHack...</p>
 
@@ -16,15 +16,16 @@ UNIX(tm) machines to the Usenet.</p>
 
 <p>Don G. Kneller ported Hack 1.0.3 to Microsoft(tm) C and MS-DOS(tm), producing<br/>
 PC HACK 1.01e, added support for DEC Rainbow graphics in version 1.03g, and<br/>
-went on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6).</p>
+went on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6;<br/>
+note that these are old Hack version numbers, not contemporary NetHack ones).</p>
 
 <p>R. Black ported PC HACK 3.51 to Lattice(tm) C and the Atari 520/1040ST,<br/>
 producing ST Hack 1.03.</p>
 
 <p>Mike Stephenson merged these various versions back together, incorporating<br/>
-many of the added features, and produced NetHack version 1.4.  He then<br/>
-coordinated a cast of thousands in enhancing and debugging NetHack 1.4 and<br/>
-released NetHack versions 2.2 and 2.3.</p>
+many of the added features, and produced NetHack version 1.4 in 1987.  He<br/>
+then coordinated a cast of thousands in enhancing and debugging NetHack 1.4<br/>
+and released NetHack versions 2.2 and 2.3.</p>
 
 <p>Later, Mike coordinated a major rewrite of the game, heading a team which<br/>
 included Ken Arromdee, Jean-Christophe Collet, Steve Creps, Eric Hendrickson,<br/>
@@ -108,17 +109,17 @@ DevTeam and incorporated the best of these ideas in NetHack 3.3.</p>
 <p>The final update to 3.2 was the bug fix release 3.2.3, which was released<br/>
 simultaneously with 3.3.0 in December 1999 just in time for the Year 2000.</p>
 
-<p>The 3.3 development team, consisting of Michael Allison, Ken Arromdee, <br/>
-David Cohrs, Jessie Collet, Steve Creps, Kevin Darcy, Timo Hakulinen, <br/>
-Kevin Hugo, Steve Linhart, Ken Lorber, Dean Luick, Pat Rankin, Eric Smith, <br/>
-Mike Stephenson, Janet Walz, and Paul Winner, released 3.3.0 in <br/>
+<p>The 3.3 development team, consisting of Michael Allison, Ken Arromdee,<br/>
+David Cohrs, Jessie Collet, Steve Creps, Kevin Darcy, Timo Hakulinen,<br/>
+Kevin Hugo, Steve Linhart, Ken Lorber, Dean Luick, Pat Rankin, Eric Smith,<br/>
+Mike Stephenson, Janet Walz, and Paul Winner, released 3.3.0 in<br/>
 December 1999 and 3.3.1 in August of 2000.</p>
 
-<p>Version 3.3 offered many firsts. It was the first version to separate race<br/> 
-and profession. The Elf class was removed in preference to an elf race,<br/> 
-and the races of dwarves, gnomes, and orcs made their first appearance in <br/>
-the game alongside the familiar human race.  Monk and Ranger roles joined <br/>
-Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues, <br/>
+<p>Version 3.3 offered many firsts. It was the first version to separate race<br/>
+and profession. The Elf class was removed in preference to an elf race,<br/>
+and the races of dwarves, gnomes, and orcs made their first appearance in<br/>
+the game alongside the familiar human race.  Monk and Ranger roles joined<br/>
+Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues,<br/>
 Samurai, Tourists, Valkyries and of course, Wizards.  It was also the first<br/>
 version to allow you to ride a steed, and was the first version to have a<br/>
 publicly available web-site listing all the bugs that had been discovered.<br/>
@@ -135,71 +136,141 @@ well as supporting ports on the different platforms that NetHack runs on:</p>
 
 <p>Pat Rankin maintained 3.4 for VMS.</p>
 
-<p>Michael Allison maintained NetHack 3.4 for the MS-DOS platform.  <br/>
+<p>Michael Allison maintained NetHack 3.4 for the MS-DOS platform.<br/>
 Paul Winner and Yitzhak Sapir provided encouragement.</p>
 
 <p>Dean Luick, Mark Modrall, and Kevin Hugo maintained and enhanced the<br/>
 Macintosh port of 3.4.</p>
 
-<p>Michael Allison, David Cohrs, Alex Kompel, Dion Nicolaas, and Yitzhak Sapir<br/> 
-maintained and enhanced 3.4 for the Microsoft Windows platform. Alex Kompel <br/>
-contributed a new graphical interface for the Windows port. Alex Kompel also<br/>
+<p>Michael Allison, David Cohrs, Alex Kompel, Dion Nicolaas, and Yitzhak Sapir<br/>
+maintained and enhanced 3.4 for the Microsoft Windows platform.  Alex Kompel<br/>
+contributed a new graphical interface for the Windows port.  Alex Kompel also<br/>
 contributed a Windows CE port for 3.4.1.</p>
 
 <p>Ron Van Iwaarden maintained 3.4 for OS/2.</p>
 
-<p>Janne Salmijarvi and Teemu Suikki maintained and enhanced the<br/> 
-Amiga port of 3.4 after Janne Salmijarvi resurrected it for 3.3.1.</p>
+<p>Janne Salmijarvi and Teemu Suikki maintained and enhanced the<br/>
+Amiga port of 3.5 after Janne Salmijarvi resurrected it for 3.3.1.</p>
 
-<p>Christian `Marvin\' Bressler maintained 3.4 for the Atari after he<br/>
+<p>Christian `Marvin\' Bressler maintained 3.5 for the Atari after he<br/>
 resurrected it for 3.3.1.</p>
 
-<p>There is a NetHack web site maintained by Ken Lorber at http://www.nethack.org</p>
+<p>The release of NetHack 3.4.3 in December 2003 marked the beginning of a<br/>
+long release hiatus.  3.4.3 proved to be a remarkably stable version that<br/>
+provided continued enjoyment by the community for more than a decade.  The<br/>
+devteam slowly and quietly continued to work on the game behind the scenes<br/>
+during the tenure of 3.4.3.  It was during that same period that several<br/>
+new variants emerged within the NetHack community.  Notably sporkhack by<br/>
+Derek S. Ray, unnethack by Patric Mueller, nitrohack and its successors<br/>
+originally by Daniel Thaler and then by Alex Smith, and<br/>
+Dynahack by Tung Nguyen.  Some of those variants continue to be developed,<br/>
+maintained, and enjoyed by the community to this day.</p>
 
-<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- - - - - - - - - -</p>
+<p>In September 2014, an interim snapshot of the code under development was<br/>
+released publicly by other parties.  Since that code was a work-in-progress<br/>
+and had not gone through a period of debugging, it was decided that the<br/>
+version numbers present on that code snapshot would be retired and never<br/>
+used in an official NetHack release.  An announcement was posted on the<br/>
+devteam\'s official nethack.org website to that effect, stating that there<br/>
+would never be a 3.4.4, 3.5, or 3.5.0 official release version.</p>
+
+<p>In January 2015, preparation began for the release of NetHack 3.6.</p>
+
+<p>At the beginning of development for what would eventually get released<br/>
+as 3.6.0, the development team consisted of Michael Allison,<br/>
+Warwick Allison, Ken Arromdee, David Cohrs, Jessie Collet, Ken Lorber,<br/>
+Dean Luick, Pat Rankin, Mike Stephenson, Janet Walz, and Paul Winner.<br/>
+Leading up to the release of 3.6.0 in early 2015, new members Sean Hunt,<br/>
+Pasi Kallinen, and Derek S. Ray joined the NetHack development team.</p>
+
+<p>In January 2015, preparation began for the release of NetHack 3.6.  The 3.6<br/>
+version merges work done by the development team since the previous release<br/>
+with some of the beloved community patches.  Many bugs were fixed and some<br/>
+code was restructured.</p>
+
+<p>The development team, as well as Steve VanDevender and Kevin Smolkowski<br/>
+ensured that NetHack 3.6.0 continued to operate on various Unix flavors<br/>
+as well as maintaining the X11 interface.</p>
+
+<p>Ken Lorber, Haoyang Wang, Pat Rankin, and Dean Luick maintained the port<br/>
+of NetHack 3.6.0 for Mac.</p>
+
+<p>Michael Allison, Derek S. Ray, Yitzhak Sapir, Alex Kompel, Dion Nicolaas,<br/>
+and David Cohrs maintained the port of NetHack 3.6.0 for Microsoft Windows.</p>
+
+<p>Pat Rankin attempted to keep the VMS port running for NetHack 3.6.0,<br/>
+hindered by limited access.  Kevin Smolkowski has updated and tested it<br/>
+for the most recent version of OpenVMS (V8.4 as of this writing) on Alpha<br/>
+and Integrity (aka Itanium aka IA64) but not VAX.</p>
+
+<p>This version of the game is special in a particular way.  Near the end of<br/>
+the development of 3.6, one of the significant inspirations for many of<br/>
+the humorous and fun features found in the game, author Terry Pratchett,<br/>
+passed away.  This version of the game includes a tribute to him.</p>
+
+
+<p>An official NetHack web site continues to be maintained by Ken Lorber at<br/>
+http://www.nethack.org/.</p>
+
+<p>--
+SHOUT-OUTS</p>
+
+<p>The devteam would like to give a special "shout-out" to thank the generous<br/>
+people primarily responsible for the public NetHack servers available for<br/>
+playing the game at nethack.alt.org and devnull.net.  In addition to<br/>
+providing a way for the public to play a game of NetHack from almost<br/>
+anywhere, they have hosted annual NetHack tournaments for many, many years.</p>
+
+<p>On behalf of the NetHack community, thank you very much to<br/>
+M. Drew Streib, Pasi Kallinen and Robin Bandy.</p>
+
+<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- - - - - - - - - -</p>
 
 <p>From time to time, some depraved individual out there in netland sends a<br/>
 particularly intriguing modification to help out with the game.  The Gods of<br/>
 the Dungeon sometimes make note of the names of the worst of these miscreants<br/>
 in this, the list of Dungeoneers:</p>
 
-<p>Adam Aronow                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Izchak Miller                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Stephenson<br/>
-Alex Kompel                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;J. Ali Harlow                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Norm Meluch<br/>
-Andreas Dorn                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Janet Walz        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Olaf Seibert<br/>
-Andy Church                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Janne Salmijarvi                                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pasi Kallinen<br/>
-Andy Swanson                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jean-Christophe Collet                                                                    Pat Rankin<br/>
-Ari Huttunen                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jochen Erwied                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Paul Winner<br/>
-Barton House                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;John Kallen             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pierre Martineau<br/>
-Benson I. Margulies                                                                John Rupley             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ralf Brown<br/>
-Bill Dyer              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;John S. Bien                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ray Chason<br/>
-Boudewijn Waijers                                                      &nbsp;&nbsp;Johnny Lee        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard Addison<br/>
-Bruce Cox              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jon W{tte   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard Beigel<br/>
-Bruce Holloway                                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jonathan Handler                                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard P. Hughey<br/>
-Bruce Mewborne                                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Joshua Delahunty                                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rob Menke<br/>
-Carl Schelin                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Keizo Yamamoto                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Robin Johnson<br/>
-Chris Russo                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Arnold        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Roderick Schertler<br/>
-David Cohrs                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Arromdee                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Roland McGrath<br/>
-David Damerell                                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Lorber        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ron Van Iwaarden<br/>
-David Gentzel                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Washikita                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ronnen Miller<br/>
-David Hairston                                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Darcy             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ross Brown<br/>
-Dean Luick                   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Hugo        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sascha Wostmann<br/>
-Del Lamb         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Sitze             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scott Bigham<br/>
-Deron Meranda                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Smolkowski                                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scott R. Turner<br/>
-Dion Nicolaas                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Sweet             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stephen Spackman<br/>
-Dylan O\'Donnell                                           &nbsp;&nbsp;&nbsp;&nbsp;Lars Huttar             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stephen White<br/>
-Eric Backus                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Malcolm Ryan                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve Creps<br/>
-Eric Hendrickson                                                 &nbsp;&nbsp;&nbsp;Mark Gooderum                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve Linhart<br/>
-Eric R. Smith                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mark Modrall                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve VanDevender<br/>
-Eric S. Raymond                                            &nbsp;&nbsp;&nbsp;&nbsp;Marvin Bressler                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Teemu Suikki<br/>
-Erik Andersen                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Matthew Day             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tim Lennan<br/>
-Frederick Roeber                                                 &nbsp;&nbsp;&nbsp;Merlyn LeRoy                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Timo Hakulinen<br/>
-Gil Neiger                   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Allison                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tom Almy<br/>
-Greg Laskin                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Feir                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tom West<br/>
-Greg Olson                   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Hamel                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Warren Cheung<br/>
-Gregg Wonderly                                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Sokolov                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Warwick Allison<br/>
-Hao-yang Wang                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Engber             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yitzhak Sapir<br/>
-Helge Hafting                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Gallop<br/>
-Mike Passaretti                                            &nbsp;&nbsp;&nbsp;&nbsp;Irina Rempt-Drijfhout</p>
+Adam Aronow&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Janet Walz&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Nathan Eady<br/>
+Alex Kompel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Janne Salmijarvi&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Norm Meluch<br/>
+Andreas Dorn&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jean-Christophe Collet&nbsp;&nbsp;Olaf Seibert<br/>
+Andy Church&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jeff Bailey&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pasi Kallinen<br/>
+Andy Swanson&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jochen Erwied&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pat Rankin<br/>
+Ari Huttunen&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;John Kallen&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Paul Winner<br/>
+Barton House&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;John Rupley&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Pierre Martineau<br/>
+Benson I. Margulies&nbsp;&nbsp;&nbsp;&nbsp;John S. Bien&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ralf Brown<br/>
+Bill Dyer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Johnny Lee&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ray Chason<br/>
+Boudewijn Waijers&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jon W{tte&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard Addison<br/>
+Bruce Cox&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jonathan Handler&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard Beigel<br/>
+Bruce Holloway&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Joshua Delahunty&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Richard P. Hughey<br/>
+Bruce Mewborne&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Keizo Yamamoto&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rob Menke<br/>
+Carl Schelin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Arnold&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Robin Bandy<br/>
+Chris Russo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Arromdee&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Robin Johnson<br/>
+David Cohrs&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Lorber&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Roderick Schertler<br/>
+David Damerell&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ken Washikita&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Roland McGrath<br/>
+David Gentzel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Darcy&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ron Van Iwaarden<br/>
+David Hairston&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Hugo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ronnen Miller<br/>
+Dean Luick&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Sitze&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ross Brown<br/>
+Del Lamb&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Smolkowski&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sascha Wostmann<br/>
+Derek S. Ray&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin Sweet&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scott Bigham<br/>
+Deron Meranda&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Lars Huttar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scott R. Turner<br/>
+Dion Nicolaas&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Leon Arnott&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sean Hunt<br/>
+Dylan O\'Donnell&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;M. Drew Streib&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stephen Spackman<br/>
+Eric Backus&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Malcolm Ryan&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stefan Thielscher<br/>
+Eric Hendrickson&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mark Gooderum&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Stephen White<br/>
+Eric R. Smith&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mark Modrall&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve Creps<br/>
+Eric S. Raymond&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Marvin Bressler&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve Linhart<br/>
+Erik Andersen&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Matthew Day&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Steve VanDevender<br/>
+Frederick Roeber&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Merlyn LeRoy&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Teemu Suikki<br/>
+Gil Neiger&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Allison&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tim Lennan<br/>
+Greg Laskin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Feir&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Timo Hakulinen<br/>
+Greg Olson&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Hamel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tom Almy<br/>
+Gregg Wonderly&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Michael Sokolov&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tom West<br/>
+Hao-yang Wang&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Engber&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Warren Cheung<br/>
+Helge Hafting&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Gallop&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Warwick Allison<br/>
+Irina Rempt-Drijfhout&nbsp;&nbsp;Mike Passaretti&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yitzhak Sapir<br/>
+Izchak Miller&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mike Stephenson<br/>
+J. Ali Harlow&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mikko Juola<br/>
 ]]>
 	</string>
 	<string
@@ -207,7 +278,7 @@ Mike Passaretti                                            &nbsp;&nbsp;&nbsp;&nb
 <![CDATA[
 
 <p><h1>NetHack Android Port</h1><br/>
-Based on NetHack 3.4.3<br/>
+Based on NetHack 3.6.0<br/>
 <a href="http://www.nethack.org">http://www.nethack.org</a></p>
 <p><small>Inspired by NetHack iPhone Port by <a href="http://code.google.com/p/iNetHack/">Dirk Zimmermann</a></small></p>
 
@@ -237,20 +308,17 @@ domain roguelike tileset "RLTiles".</p>
 <i>by Dan Anthony F. Alcantara</i><br/>
 <a href="http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112>http://lagged.deviantart.com/art/12x20-NetHack-tileset-1308112</a></p>
 
-<p><br/><br/><h2>Other</h2>
-An icon by <a href="http://p.yusukekamiyamane.com/">Yusuke Kamiyamane</a>.</p>
-
-<p><br/><small>&copy; 2011 Martin Gustafsson</small></p> 
+<p><br/><small>&copy; 2015 Martin Gustafsson</small></p>
 ]]>
 	</string>
 	<string
 		name="license">
 <![CDATA[
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NetHack GENERAL PUBLIC LICENSE<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Copyright 1989 M. Stephenson)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;NetHack GENERAL PUBLIC LICENSE<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(Copyright 1989 M. Stephenson)<br/>
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Based on the BISON general public license,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copyright 1988 Richard M. Stallman)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Based on the BISON general public license,<br/>
+&nbsp;&nbsp;&nbsp;copyright 1988 Richard M. Stallman)<br/>
 <br/>
 &nbsp;Everyone is permitted to copy and distribute verbatim copies of this<br/>
 &nbsp;license, but changing it is not allowed.  You can also use this wording to<br/>
@@ -284,7 +352,7 @@ the following terms which say what you must do to be allowed to distribute or<br
 change NetHack.<br/>
 <br/>
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;COPYING POLICIES<br/>
+COPYING POLICIES<br/>
 <br/>
 &nbsp;&nbsp;1. You may copy and distribute verbatim copies of NetHack source code as<br/>
 you receive it, in any medium, provided that you keep intact the notices on<br/>

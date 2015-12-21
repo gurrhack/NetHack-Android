@@ -70,7 +70,7 @@ public class MenuItemAdapter extends ArrayAdapter<MenuItem>
 				st.setVisibility(View.GONE);
 
 			TextView ic = (TextView)v.findViewById(R.id.item_count);
-			if(item.isSelected() && item.getCount() > 0 && item.getCount() < item.getMaxCount())
+			if(item.getCount() > 0)
 				ic.setText(Integer.toString(item.getCount()));
 			else
 				ic.setText("");

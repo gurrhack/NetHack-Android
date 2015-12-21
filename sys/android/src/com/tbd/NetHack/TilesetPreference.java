@@ -22,6 +22,8 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 
+import java.io.*;
+
 public class TilesetPreference extends Preference implements PreferenceManager.OnActivityResultListener
 {
 	private static final int GET_IMAGE_REQUEST = 342;
@@ -76,7 +78,6 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			}
 		});
 		mTilesetPath = (TextView)mRoot.findViewById(R.id.image_path);
-
 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Workaround for weird focus problem
@@ -171,10 +172,34 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 	{
 		if(resultCode == Activity.RESULT_OK && requestCode == GET_IMAGE_REQUEST)
 		{
+			if(createCustomTilesetLocalCopy(data.getData()))
+			{
 			String path = queryPath(data.getData());
 			mTilesetPath.setText(path);
 		}
+		}
 		return requestCode == GET_IMAGE_REQUEST;
+	}
+
+	private boolean createCustomTilesetLocalCopy(Uri from)
+	{
+		InputStream inputStream = null;
+		OutputStream outputStream = null;
+		try {
+			inputStream = getContext().getContentResolver().openInputStream(from);
+			File file = Tileset.getLocalTilesetFile();
+			outputStream = new FileOutputStream(file, false);
+			Util.copy(inputStream, outputStream);
+			return true;
+		} catch(Exception e) {
+			Toast.makeText(getContext(), "Error loading tileset", Toast.LENGTH_LONG).show();
+		} finally {
+			if(inputStream != null)
+				try { inputStream.close(); } catch(IOException e) {}
+			if(outputStream != null)
+				try { inputStream.close(); } catch(IOException e) {}
+		}
+		return false;
 	}
 
 	public String queryPath(Uri uri)
@@ -329,9 +354,16 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			{
 				try
 				{
-					mCustomTileset = BitmapFactory.decodeFile(newPath);
+					File localFile = Tileset.getLocalTilesetFile();
+					if(!localFile.exists())
+					{
+						// User deleted local copy, or coming from an old version
+						createCustomTilesetLocalCopy(Uri.fromFile(new File(newPath)));
+					}
+
+					mCustomTileset = BitmapFactory.decodeFile(Tileset.getLocalTilesetFile().getPath());
 					if(mCustomTileset == null)
-						Toast.makeText(getContext(), "Error loading: " + newPath, Toast.LENGTH_SHORT).show();
+						Toast.makeText(getContext(), "Error loading: " + newPath, Toast.LENGTH_LONG).show();
 
 				}
 				catch(Exception e)

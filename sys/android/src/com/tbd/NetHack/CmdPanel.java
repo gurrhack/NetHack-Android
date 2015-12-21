@@ -3,12 +3,12 @@ package com.tbd.NetHack;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnDismissListener;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -21,6 +21,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
+
 import com.tbd.NetHack.Cmd.KeySequnece;
 
 public class CmdPanel
@@ -122,8 +123,7 @@ public class CmdPanel
 		{
 			return createCmdButtonFromCmd(new Cmd.ToggleKeyboard(mState, label));
 		}
-
-		// special case for menu
+		// special case for menu.
 		if(chars.equalsIgnoreCase("menu"))
 		{
 			return createCmdButtonFromCmd(new Cmd.OpenMenu(mContext, label));

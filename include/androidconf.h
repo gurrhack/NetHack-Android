@@ -21,8 +21,15 @@
 #define tgetch nhgetch
 
 #undef SHELL				/* we do not support the '!' command */
+//#undef MAIL
+//#undef DEF_PAGER
+#undef DEF_MAILREADER
 
 #define ASCIIGRAPH
+
+#define NO_SIGNAL
+
+#define SELECTSAVED
 
 # endif /* ANDROIDCONF_H */
 #endif /* ANDROID */

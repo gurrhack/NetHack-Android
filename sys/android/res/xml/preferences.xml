@@ -3,14 +3,6 @@
 	xmlns:android="http://schemas.android.com/apk/res/android">
 	<PreferenceCategory
 		android:title="Settings">
-		<EditTextPreference
-			android:title="Who are you?"
-			android:summary="The name of your character"
-			android:persistent="true"
-			android:defaultValue=""
-			android:singleLine="true"
-			android:key="username"/>
-
 		<PreferenceScreen
 			android:title="Tileset"
 			android:summary="The visual style of the game world">
@@ -30,21 +22,6 @@
 			android:defaultValue="false"
 			android:key="fallbackRenderer"/>
 
-		<CheckBoxPreference
-			android:title="Autopickup"
-			android:summary="Automatically pick up items from the floor when you step on them"
-			android:persistent="true"
-			android:defaultValue="true"
-			android:key="autoPickup"/>
-			
-		<EditTextPreference
-			android:title="Pickup types"
-			android:summary="The item types that are picked up if Autopickup is enabled"
-			android:persistent="true"
-			android:defaultValue="=!?+/$*&quot;"
-			android:singleLine="true"
-			android:key="autoPickupTypes"/>
-			
 		<CheckBoxPreference
 			android:title="Reset command panel"
 			android:summary="Restore the command panel to its original layout"
@@ -92,13 +69,6 @@
 			android:defaultValue="1"
 			android:entries="@array/travelNames"
 			android:entryValues="@array/travelValues"/>
-
-		<CheckBoxPreference
-			android:title="Group log messages"
-			android:summary="Reduce log verbosity by grouping identical messages"
-			android:persistent="true"
-			android:defaultValue="false"
-			android:key="groupLog"/>
 
         <CheckBoxPreference
                 android:title="Lock view"

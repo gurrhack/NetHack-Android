@@ -1,9 +1,9 @@
 package com.tbd.NetHack;
 
 import java.util.Set;
+
 import android.app.Activity;
 import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -52,21 +52,27 @@ public class NHW_Text implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void printString(Spanned str)
+	/*public void printString(Spanned str)
 	{
 		if(mBuilder.length() > 0)
 			mBuilder.append('\n');
 		mBuilder.append(str);
 		mUI.update();
-	}
+	}*/
 
 	// ____________________________________________________________________________________
-	public void printString(TextAttr attr, String str, int append)
+	public void printString(int attr, String str, int append, int color)
 	{
 		if(mBuilder.length() > 0)
 			mBuilder.append('\n');
-		mBuilder.append(attr.style(str));
+		mBuilder.append(TextAttr.style(str, attr));
 		mUI.update();
+	}
+
+	// ____________________________________________________________________________________
+	@Override
+	public void setCursorPos(int x, int y)
+	{
 	}
 
 	// ____________________________________________________________________________________
@@ -203,7 +209,7 @@ public class NHW_Text implements NH_Window
 			{
 			case KeyEvent.KEYCODE_ENTER:
 			case KeyEvent.KEYCODE_BACK:
-			//case KeyEvent.KEYCODE_ESCAPE:
+			case KeyEvent.KEYCODE_ESCAPE:
 			case KeyEvent.KEYCODE_DPAD_CENTER:
 				close();
 			break;
@@ -226,10 +232,24 @@ public class NHW_Text implements NH_Window
 			case KeyEvent.KEYCODE_SPACE:
 			case KeyEvent.KEYCODE_DPAD_RIGHT:
 			case KeyEvent.KEYCODE_PAGE_DOWN:
-				mScroll.pageScroll(View.FOCUS_DOWN);
+				if(isScrolledToBottom())
+					close();
+				else
+					mScroll.pageScroll(View.FOCUS_DOWN);
 			break;
 			}
 			return KeyEventResult.HANDLED;
+		}
+
+		public boolean isScrolledToBottom()
+		{
+			int count = mScroll.getChildCount();
+			if(count > 0) {
+				View view = mScroll.getChildAt(count - 1);
+				if(mScroll.getScrollY() + mScroll.getHeight() >= view.getBottom())
+					return true;
+			}
+			return false;
 		}
 	}
 }

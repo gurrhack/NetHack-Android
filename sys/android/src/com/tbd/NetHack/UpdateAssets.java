@@ -29,6 +29,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	private long mRequiredSpace;
 	private long mTotalRead;
 	private NetHack mNetHack;
+	volatile Boolean mWipeConfirmed = null;
 
 	// ____________________________________________________________________________________
 	public UpdateAssets(NetHack nethack)
@@ -41,7 +42,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 		mTotalRead = 0;
 		mRequiredSpace = 0;
 	}
-	
+
 	// ____________________________________________________________________________________
 	@Override
 	protected void onPostExecute(Void unused)
@@ -52,7 +53,10 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 			mProgress.dismiss();
 		if(mDstPath == null)
 		{
-			showError();
+			if(mWipeConfirmed == null || mWipeConfirmed == true)
+				showError();
+			else
+				mNetHack.finish();
 		}
 		else
 		{
@@ -82,7 +86,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 			mProgress = new ProgressDialog(mNetHack);
 			mProgress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
 			mProgress.setMax((int)mRequiredSpace);
-			mProgress.setMessage("Preparing content for first time use...");
+			mProgress.setMessage("Preparing content...");
 			mProgress.setCancelable(false);
 			mProgress.show();
 		}
@@ -101,13 +105,27 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 	
 				if(mWipeUserdata)
 				{
-					deleteDirContent(dstPath);					
+					if(confirmWipe(dstPath))
+						deleteDirContent(dstPath);
+					else
+						return null;
 				}
 				
 				if(dstPath == null)
 					mError = String.format("Not enough space. %.2fMb required", (float)(mRequiredSpace)/(1024.f*1024.f));
-				else
+				else {
+
+					long startns = System.nanoTime();
 					updateFiles(dstPath);
+					long endns = System.nanoTime();
+
+					// Show progess dialog at least 1 second just to make it readable
+					try {
+						int sleepms = Math.max(1000-(int)((endns-startns)/1000000), 0);
+						Thread.sleep(sleepms);
+					} catch(InterruptedException e) {
+					}
+				}
 			}
 			
 			if(dstPath == null)
@@ -118,7 +136,7 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 				saveDir.delete();
 			if(!saveDir.exists())
 				saveDir.mkdir();
-			
+
 			return dstPath;
 		}
 		catch(IOException e)
@@ -129,14 +147,58 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 		}
 	}
 
+	private boolean confirmWipe(File datapath) {
+
+		String[] saves = new File(datapath, "save").list();
+		if(saves == null || saves.length == 0)
+			return true;
+
+		mNetHack.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				AlertDialog.Builder builder = new AlertDialog.Builder(mNetHack);
+				builder.setTitle("This is NetHack 3.6.0").setMessage(
+						"Your saves are not compatible with this version. If you continue they will be deleted.\n\n"+
+						"Old releases can be found here:\nhttps://github.com/gurrhack/NetHack-Android")
+						.setPositiveButton("Continue", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int id) {
+								mWipeConfirmed = true;
+							}
+						})
+						.setNegativeButton("Quit", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int id) {
+								mWipeConfirmed = false;
+							}
+						}).setOnCancelListener(new DialogInterface.OnCancelListener() {
+							public void onCancel(DialogInterface dialog) {
+								mWipeConfirmed = false;
+							}
+						});
+
+				builder.create().show();
+			}
+		});
+
+		while(mWipeConfirmed == null) {
+			try {
+				Thread.sleep(10);
+			} catch(InterruptedException e) {
+			}
+		}
+
+		return mWipeConfirmed;
+	}
+
 	// ____________________________________________________________________________________
 	private void showError()
 	{
 		AlertDialog.Builder builder = new AlertDialog.Builder(mNetHack);
-		builder.setMessage(mError).setPositiveButton("Ok", new DialogInterface.OnClickListener()
-		{
-			public void onClick(DialogInterface dialog, int id)
-			{
+		builder.setMessage(mError).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialog, int id) {
+				mNetHack.finish();
+			}
+		}).setOnCancelListener(new DialogInterface.OnCancelListener() {
+			public void onCancel(DialogInterface dialog) {
 				mNetHack.finish();
 			}
 		});

@@ -69,6 +69,8 @@ int NetHackMain(int argc, char** argv)
 	boolean exact_username;
 	FILE* fp;
 
+    boolean resuming = FALSE; /* assume new game */
+
 	hname = argv[0];
 	hackpid = getpid();
 	(void)umask(0777 & ~FCMASK);
@@ -100,9 +102,9 @@ int NetHackMain(int argc, char** argv)
 	catmore = DEF_PAGER;
 #endif
 
-#ifdef MAIL
-	getmailstatus();
-#endif
+//#ifdef MAIL
+//	getmailstatus();
+//#endif
 
 	plnamesuffix(); /* strip suffix from name; calls askname() */
 					/* again if suffix was whole name */
@@ -176,6 +178,7 @@ int NetHackMain(int argc, char** argv)
 		mark_synch(); /* flush output */
 		if(!dorecover(fd))
 			goto not_recovered;
+		resuming = TRUE;
 #ifdef WIZARD
 		if(!wizard && remember_wiz_mode) wizard = TRUE;
 		if(wizard)
@@ -192,26 +195,29 @@ int NetHackMain(int argc, char** argv)
 			}
 			else
 			{
-				compress(fq_save);
+				nh_compress(fq_save);
 			}
 		}
-		flags.move = 0;
 	}
 	else
 	{
 		not_recovered: player_selection();
+		resuming = FALSE;
 		newgame();
 		wd_message();
-
-		flags.move = 0;
-		set_wear();
-		(void)pickup(1);
 	}
 
-	moveloop();
+	moveloop(resuming);
+    exit(EXIT_SUCCESS);
 
 	return (0);
 }
+
+boolean authorize_wizard_mode()
+{
+	return TRUE;
+}
+
 
 static void process_options(argc, argv)
 	int argc;char *argv[];
@@ -255,16 +261,6 @@ static void process_options(argc, argv)
 				else
 					raw_print("Player name expected after -u");
 			}
-		break;
-		case 'I':
-		case 'i':
-			if(!strncmpi(argv[0] + 1, "IBM", 3))
-				switch_graphics(IBM_GRAPHICS);
-		break;
-			/*  case 'D': */
-		case 'd':
-			if(!strncmpi(argv[0] + 1, "DEC", 3))
-				switch_graphics(DEC_GRAPHICS);
 		break;
 		case 'p': /* profession (role) */
 			if(argv[0][2])

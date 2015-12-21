@@ -66,20 +66,10 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	public void sendFlags(boolean bAutoMenu, boolean bAutoPickup, String pickupTypes)
+	public void sendFlags(boolean bAutoMenu)
 	{
-		// take care of special characters
-		pickupTypes = pickupTypes.replace('\'', '`');
-		pickupTypes = pickupTypes.replace('\u00B4', '`');
-		pickupTypes = pickupTypes.replace('\u2018', '`');
-		pickupTypes = pickupTypes.replace('\u2019', '`');
-		pickupTypes = pickupTypes.replace('\u201C', '"');
-		pickupTypes = pickupTypes.replace('\u201D', '"');
-
 		mCmdQue.add(FlagCmd);
 		mCmdQue.add(bAutoMenu ? 1 : 0);
-		mCmdQue.add(bAutoPickup ? 1 : 0);
-		sendLineCmd(pickupTypes.trim());
 	}
 
 	// ____________________________________________________________________________________
@@ -163,7 +153,7 @@ public class NetHackIO implements Runnable
 		try
 		{
 			System.loadLibrary("nethack");
-			RunNetHack(mState.getDataDir(), mState.getUsername());
+			RunNetHack(mState.getDataDir());
 		}
 		catch(Exception e)
 		{
@@ -309,9 +299,7 @@ public class NetHackIO implements Runnable
 		break;
 		case FlagCmd:
 			int autoMenu = removeFromQue();
-			int autoPickup = removeFromQue();
-			String types = waitForLine();
-			SetFlags(autoPickup, types, autoMenu);
+			SetFlags(autoMenu);
 		break;
 		}
 	}
@@ -429,7 +417,7 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private void putString(final int wid, final int attr, final byte[] cmsg, final int append, final int hp, final int hpMax)
+	private void putString(final int wid, final int attr, final byte[] cmsg, final int append, final int color)
 	{
 		final String msg = CP437.decode(cmsg);
 		if(wid == mMessageWid)
@@ -439,7 +427,31 @@ public class NetHackIO implements Runnable
 		{
 			public void run()
 			{
-				mState.putString(wid, attr, msg, append, hp, hpMax);
+				mState.putString(wid, attr, msg, append, color);
+			}
+		});
+	}
+
+	// ____________________________________________________________________________________
+	private void setHealthColor(final int color)
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.setHealthColor(color);
+			}
+		});
+	}
+
+	// ____________________________________________________________________________________
+	private void redrawStatus()
+	{
+		mHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				mState.redrawStatus();
 			}
 		});
 	}
@@ -609,14 +621,14 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private void addMenu(final int wid, final int tile, final int id, final int acc, final int groupAcc, final int attr, final byte[] text, final int bSelected)
+	private void addMenu(final int wid, final int tile, final int id, final int acc, final int groupAcc, final int attr, final byte[] text, final int bSelected, final int color)
 	{
 		final String msg = CP437.decode(text);
 		mHandler.post(new Runnable()
 		{
 			public void run()
 			{
-				mState.addMenu(wid, tile, id, acc, groupAcc, attr, msg, bSelected);
+				mState.addMenu(wid, tile, id, acc, groupAcc, attr, msg, bSelected, color);
 			}
 		});
 	}
@@ -709,18 +721,6 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	private void showPrevMessage()
-	{
-		mHandler.post(new Runnable()
-		{
-			public void run()
-			{
-				mState.showPrevMessage();
-			}
-		});
-	}
-
-	// ____________________________________________________________________________________
 	private void showLog(final int bBlocking)
 	{
 		mHandler.post(new Runnable()
@@ -794,7 +794,7 @@ public class NetHackIO implements Runnable
 	}
 	 
 	// ____________________________________________________________________________________
-	private native void RunNetHack(String path, String username);
+	private native void RunNetHack(String path);
 	private native void SaveNetHackState();
-	private native void SetFlags(int bAutoPickup, String pickupTypes, int bAutoMenu);
+	private native void SetFlags(int bAutoMenu);
 }

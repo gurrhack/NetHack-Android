@@ -5,16 +5,12 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.Preference;
-import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
 import android.view.Window;
-import android.widget.Toast;
 
 public class Settings extends PreferenceActivity implements OnSharedPreferenceChangeListener
 {
-	private Toast mToast;
 	private TilesetPreference mTilesetPref;
-
 
 	// ____________________________________________________________________________________
 	@Override
@@ -26,10 +22,6 @@ public class Settings extends PreferenceActivity implements OnSharedPreferenceCh
 		super.onCreate(savedInstanceState);
 
 		addPreferencesFromResource(R.xml.preferences);
-
-		mToast = Toast.makeText(Settings.this, "This will take effect the next time you start NetHack", 1000);
-
-		findPreference("username").setOnPreferenceChangeListener(requiresRestart);
 	}
 
 	// ____________________________________________________________________________________
@@ -74,17 +66,6 @@ public class Settings extends PreferenceActivity implements OnSharedPreferenceCh
 		super.onPause();
 		getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
 	}
-
-	// ____________________________________________________________________________________
-	OnPreferenceChangeListener requiresRestart = new OnPreferenceChangeListener()
-	{
-		public boolean onPreferenceChange(Preference preference, Object newValue)
-		{
-			if(!newValue.equals(preference.getSharedPreferences().getAll().get(preference.getKey())))
-				mToast.show();
-			return true;
-		}
-	};
 
 	// ____________________________________________________________________________________
 	@Override

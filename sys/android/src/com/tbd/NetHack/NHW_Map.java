@@ -105,7 +105,7 @@ public class NHW_Map implements NH_Window
 	private Point mCursorPos;
 	private boolean mIsRogue;
 	private NHW_Status mStatus;
-	private int mHealthLevel;
+	private int mHealthColor;
 	private boolean mIsVisible;
 	private boolean mIsBlocking;
 	private int mWid;
@@ -190,7 +190,7 @@ public class NHW_Map implements NH_Window
 	}
 	
 	// ____________________________________________________________________________________
-	public void printString(TextAttr attr, String str, int append)
+	public void printString(int attr, String str, int append, int color)
 	{
 	}
 
@@ -516,23 +516,15 @@ public class NHW_Map implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void setHealthLevel(int hp, int hpMax)
+	public void setHealthColor(int color)
 	{
-		int healthLevel;
-		if(hp < hpMax / 2)
-			healthLevel = 0;
-		else if(hp < (3 * hpMax) / 4)
-			healthLevel = 1;
-		else
-			healthLevel = 2;
-
-		if(healthLevel != mHealthLevel)
+		if(color != mHealthColor)
 		{
-			mHealthLevel = healthLevel;
+			mHealthColor = color;
 			mUI.invalidateTile(mCursorPos.x, mCursorPos.y);
 		}
 	}
-	
+
 	// ____________________________________________________________________________________
 	public void viewAreaChanged(Rect viewRect)
 	{
@@ -699,15 +691,11 @@ public class NHW_Map implements NH_Window
 			float x = FloatMath.floor(mViewOffset.x);
 			float y = FloatMath.floor(mViewOffset.y);
 
-			if(mCursorPos.x >= 0)
+			if(mCursorPos.x >= 0 && mHealthColor != 0)
 			{
-				if(mHealthLevel <= 0)
-					mPaint.setColor(0x80B00020);
-				else if(mHealthLevel == 1)
-					mPaint.setColor(0x80CABF00);
-				else
-					mPaint.setColor(0x8020A020);
+				mPaint.setColor(mHealthColor);
 				mPaint.setStyle(Style.STROKE);
+				mPaint.setStrokeWidth(2);
 				mPaint.setAntiAlias(false);
 				RectF dst = new RectF();
 				dst.left = x + mCursorPos.x * tileW + 0.5f;
@@ -754,20 +742,13 @@ public class NHW_Map implements NH_Window
 					int bgColor = 0xff000000;
 					if(tileX == mCursorPos.x && tileY == mCursorPos.y)
 					{
-						// ascii-looking cursor
-						if(mHealthLevel <= 0)
-							bgColor = 0xFFB00000;
-						else if(mHealthLevel == 1)
-							bgColor = 0xFFB0B000;
-						else
-							bgColor = 0xFF00B000;
-						/*
-						if((tile.color & 0xffffff) != 0)
-							bgColor = tile.color;
-						else
-							bgColor = 0xffffffff;*/
-
-						fgColor = 0xff000000;
+						if(mHealthColor != 0) {
+							bgColor = mHealthColor;
+							fgColor = 0xff000000;
+						} else {
+							bgColor = 0x00000000;
+							fgColor = 0xffffffff;
+						}
 					}
 					else if(tile.overlay == 8 && tile.glyph >= 0)
 					{
@@ -1121,6 +1102,7 @@ public class NHW_Map implements NH_Window
 			{
 				if(!bLongClick)
 					setBlocking(false);
+				mIsViewPanned = false;
 				return;
 			}
 

@@ -66,7 +66,7 @@ public class Input
 		case KeyEvent.KEYCODE_SPACE:
 			nhKey = ' ';
 		break;
-		case 111: // KeyEvent.KEYCODE_ESCAPE:
+		case KeyEvent.KEYCODE_ESCAPE:
 			nhKey = '\033';
 		break;
 		case KeyEvent.KEYCODE_DEL:

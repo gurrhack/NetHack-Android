@@ -42,6 +42,7 @@ public class NHW_Menu implements NH_Window
 	private Type mType;
 	private SelectMode mHow;
 	private int mWid;
+	private int mKeyboardCount;
 
 	// ____________________________________________________________________________________
 	public enum SelectMode
@@ -65,6 +66,7 @@ public class NHW_Menu implements NH_Window
 		mIO = io;
 		mTileset = tileset;
 		mType = Type.None;
+		mKeyboardCount = -1;
 		setContext(context);
 	}
 
@@ -103,6 +105,7 @@ public class NHW_Menu implements NH_Window
 			mType = Type.Text;
 			mUI.createTextDlg();
 		}
+		mKeyboardCount = -1;
 		mUI.showInternal();
 		mIsBlocking = bBlocking;
 	}
@@ -137,10 +140,12 @@ public class NHW_Menu implements NH_Window
 		mItems = null;
 		mBuilder = null;
 		mType = Type.None;
+		mKeyboardCount = -1;
 	}
 
 	// ____________________________________________________________________________________
-	public void printString(final TextAttr attr, final String str, int append)
+	@Override
+	public void printString(final int attr, final String str, int append, int color)
 	{
 		if(mBuilder == null)
 		{
@@ -150,8 +155,13 @@ public class NHW_Menu implements NH_Window
 		else
 		{
 			mBuilder.append('\n');
-			mBuilder.append(attr.style(str));
+			mBuilder.append(TextAttr.style(str, attr));
 		}
+	}
+
+	// ____________________________________________________________________________________
+	@Override
+	public void setCursorPos(int x, int y) {
 	}
 
 	// ____________________________________________________________________________________
@@ -162,27 +172,17 @@ public class NHW_Menu implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void addMenu(final int tile, final int ident, final int accelerator, final int groupacc, final TextAttr attr, final String str, final int preselected)
+	public void addMenu(int tile, int ident, int accelerator, int groupacc, int attr, String str, int preselected, int color)
 	{
 		if(str.length() == 0 && tile < 0)
 			return;
-		mItems.add(new MenuItem(tile, ident, accelerator, groupacc, attr, str, preselected));
+		mItems.add(new MenuItem(tile, ident, accelerator, groupacc, attr, str, preselected, color));
 	}
 
 	// ____________________________________________________________________________________
-	public void endMenu(final String prompt)
+	public void endMenu(String prompt)
 	{
 		mTitle = prompt;
-	}
-
-	// ____________________________________________________________________________________
-	public int getNumSelected()
-	{
-		int n = 0;
-		for(MenuItem i : mItems)
-			if(i.isSelected())
-				n++;
-		return n;
 	}
 
 	// ____________________________________________________________________________________
@@ -217,6 +217,7 @@ public class NHW_Menu implements NH_Window
 	public void selectMenu(SelectMode how)
 	{
 		mType = Type.Menu;
+		mKeyboardCount = -1;
 		mUI.createMenu(how);
 		show(false);
 	}
@@ -282,14 +283,17 @@ public class NHW_Menu implements NH_Window
 				{
 				case KeyEvent.KEYCODE_ESCAPE:
 				case KeyEvent.KEYCODE_BACK:
+					mKeyboardCount = -1;
 					sendCancelSelect();
 				break;
 
 				case KeyEvent.KEYCODE_PAGE_DOWN:
+					mKeyboardCount = -1;
 					mListView.setSelection(mListView.getLastVisiblePosition());
 					break;
 
 				case KeyEvent.KEYCODE_PAGE_UP:
+					mKeyboardCount = -1;
 					if(mListView.getFirstVisiblePosition() == 0)
 					{
 						mListView.setSelection(0);
@@ -337,8 +341,15 @@ public class NHW_Menu implements NH_Window
 						}
 						return KeyEventResult.RETURN_TO_SYSTEM;
 					}
+					else if(ch >= '0' && ch <= '9')
+					{
+						if(mKeyboardCount < 0)
+							mKeyboardCount = 0;
+						mKeyboardCount = mKeyboardCount * 10 + ch - '0';
+					}
 					else if(menuSelect(ch))
 						return KeyEventResult.HANDLED;
+
 					return KeyEventResult.RETURN_TO_SYSTEM;
 				}
 				return KeyEventResult.HANDLED;
@@ -354,14 +365,12 @@ public class NHW_Menu implements NH_Window
 			if(mHow == SelectMode.PickOne)
 			{
 				if(amount > 0)
-					sendSelectOne(item.getId(), amount);
+					sendSelectOne(item, amount);
 				else if(amount == 0)
 					sendCancelSelect();
 			}
 			else
 			{
-				if(amount > 0 && !item.isSelected() || amount == 0 && item.isSelected())
-					toggleItemAt(mItems.indexOf(item));
 				item.setCount(amount);
 				((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
 			}
@@ -380,6 +389,7 @@ public class NHW_Menu implements NH_Window
 		// ____________________________________________________________________________________
 		public void hideInternal()
 		{
+			mKeyboardCount = -1;
 			if(mRoot != null)
 				mRoot.setVisibility(View.GONE);
 		}
@@ -414,10 +424,14 @@ public class NHW_Menu implements NH_Window
 		}
 
 		// ____________________________________________________________________________________
-		private void sendSelectOne(int id, int count)
+		private void sendSelectOne(MenuItem item, int count)
 		{
 			if(isShowing())
 			{
+				int id = item.getId();
+				// Avoid the "You don't have that many!" message
+				if(count > 0)
+					count = Math.min(count, item.getMaxCount());
 				mIO.sendSelectCmd(id, count);
 				hideInternal();
 			}
@@ -460,75 +474,41 @@ public class NHW_Menu implements NH_Window
 			if(item.isHeader())
 				toggleGroupAt(itemPos);
 			else
-				toggleItemAt(itemPos);
+				toggleItem(item, true);
 		}
 
 		// ____________________________________________________________________________________
 		private void toggleGroupAt(int itemPos)
 		{
-			if(mHow != SelectMode.PickMany)
-				return;
-
-			if(itemPos < 0 || itemPos >= mItems.size())
-				return;
-
-			MenuItem item = mItems.get(itemPos);
-			if(!item.isHeader())
-				return;
+			// Cancel keyboard count first
+			mKeyboardCount = -1;
 
 			boolean select = false;
 
+			MenuItem item;
+
 			itemPos++;
-			int lastItem = itemPos;
-			for(; lastItem < mItems.size(); lastItem++)
+			int lastItemPos = itemPos;
+			for(; lastItemPos < mItems.size(); lastItemPos++)
 			{
-				item = mItems.get(lastItem);
+				item = mItems.get(lastItemPos);
 				if(item.isHeader())
 					break;
 				if(item.isSelectable() && !item.isSelected())
 					select = true;
 			}
 
-			for(; itemPos < lastItem; itemPos++)
+			for(; itemPos < lastItemPos; itemPos++)
 			{
 				item = mItems.get(itemPos);
 
 				if(item.isHeader() || !item.isSelectable())
 					continue;
 
-				if(select ^ item.isSelected())
-					toggleItemAt(itemPos);
-			}
-		}
-
-		// ____________________________________________________________________________________
-		private void toggleItemAt(int itemPos)
-		{
-			if(mHow != SelectMode.PickMany)
-				return;
-
-			// Toggle the item itself
-			if(itemPos >= 0 && itemPos < mItems.size())
-			{
-				MenuItem item = mItems.get(itemPos);
-				if(item.isHeader() || !item.isSelectable())
-					return;
-				item.toggle();
-				if(item.getCount() != -1)
-				{
-					item.setCount(-1);
-					((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
-				}
+				item.setCount(select ? -1 : 0);
 			}
 
-			// Toggle the checkbox if it's currently visible
-			int listPos = itemPos - mListView.getFirstVisiblePosition();
-			if(listPos >= 0 && listPos < mListView.getChildCount())
-			{
-				View view = mListView.getChildAt(listPos);
-				CheckBox chck = (CheckBox)view.findViewById(R.id.item_check);
-				chck.toggle();
-			}
+			((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
 		}
 
 		// ____________________________________________________________________________________
@@ -555,27 +535,48 @@ public class NHW_Menu implements NH_Window
 				if(i >= 0)
 				{
 					MenuItem item = mItems.get(i);
-					toggleItemAt(i);
 					if(mHow == SelectMode.PickOne)
-						sendSelectOne(item.getId(), -1);
+						sendSelectOne(item, mKeyboardCount);
+					else
+						toggleItem(item, false);
 					bRet = true;
 				}
 				else if(mHow == SelectMode.PickMany)
 				{
-					// do group acc if none was found
-					for(i = 0; i < mItems.size(); i++)
+					// Do group acc if none was found
+					// Cancel keyboard count first
+					mKeyboardCount = -1;
+					for(MenuItem item : mItems)
 					{
-						MenuItem item = mItems.get(i);
 						if(item.getGroupAcc() == acc && !item.isHeader() && item.isSelectable())
 						{
-							toggleItemAt(i);
+							toggleItem(item, false);
 							bRet = true;
 						}
 					}
 				}
+
+				if(bRet)
+					((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
+
 				return bRet;
 			}
 			return false;
+		}
+
+		// ____________________________________________________________________________________
+		private void toggleItem(MenuItem item, boolean notifyAdapter)
+		{
+			if(!item.isHeader() && item.isSelectable())
+			{
+				if(mKeyboardCount >= 0)
+					item.setCount(mKeyboardCount);
+				else
+					item.setCount(item.isSelected() ? 0 : -1);
+				if(notifyAdapter)
+					((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
+			}
+			mKeyboardCount = -1;
 		}
 
 		// ____________________________________________________________________________________
@@ -586,9 +587,11 @@ public class NHW_Menu implements NH_Window
 				for(int i = 0; i < mItems.size(); i++)
 				{
 					MenuItem item = mItems.get(i);
-					if(!item.isHeader() && item.isSelectable() && !item.isSelected())
-						toggleItemAt(i);
+					if(!item.isHeader() && item.isSelectable())
+						item.setCount(-1);
 				}
+				((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
+				mKeyboardCount = -1;
 			}
 		}
 
@@ -600,9 +603,11 @@ public class NHW_Menu implements NH_Window
 				for(int i = 0; i < mItems.size(); i++)
 				{
 					MenuItem item = mItems.get(i);
-					if(!item.isHeader() && item.isSelectable() && item.isSelected())
-						toggleItemAt(i);
+					if(!item.isHeader() && item.isSelectable())
+						item.setCount(0);
 				}
+				((MenuItemAdapter)mListView.getAdapter()).notifyDataSetChanged();
+				mKeyboardCount = -1;
 			}
 		}
 
@@ -744,7 +749,7 @@ public class NHW_Menu implements NH_Window
 					case PickOne:
 						MenuItem item = mItems.get(position);
 						if(!item.isHeader() && item.isSelectable())
-							sendSelectOne(item.getId(), -1);
+							sendSelectOne(item, mKeyboardCount);
 					break;
 					case PickMany:
 						toggleItemOrGroupAt(position);
@@ -762,7 +767,6 @@ public class NHW_Menu implements NH_Window
 						return false;
 					if(item.getMaxCount() < 2 || mHow == SelectMode.PickNone)
 						return false;
-					// hideInternal();
 					mAmountSelector = new AmountSelector(UI.this, mContext, mIO, mTileset, item);
 					return true;
 				}
@@ -825,7 +829,7 @@ public class NHW_Menu implements NH_Window
 			case PickOne:
 				int itemPos = mListView.getSelectedItemPosition();
 				if(itemPos >= 0 && itemPos < mItems.size())
-					sendSelectOne(mItems.get(itemPos).getId(), -1);
+					sendSelectOne(mItems.get(itemPos), mKeyboardCount);
 			break;
 			case PickMany:
 				sendSelectChecked();

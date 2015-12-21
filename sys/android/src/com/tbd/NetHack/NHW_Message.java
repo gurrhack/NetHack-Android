@@ -13,15 +13,12 @@ import android.widget.TextView;
 
 public class NHW_Message implements NH_Window
 {
-	private class LogEntry
-	{
-		public Spanned msg;
-		public int repeat;
-	}
+	protected static final int SHOW_MAX_LINES = 3;
+
 	private NetHackIO mIO;
 	private Activity mContext;
 	private final int MaxLog = 256;
-	private LogEntry[] mLog = new LogEntry[MaxLog];
+	private String[] mLog = new String[MaxLog];
 	private int mCurrentIdx;
 	private int mLogCount;
 	private int mDispCount;
@@ -34,8 +31,6 @@ public class NHW_Message implements NH_Window
 	public NHW_Message(Activity context, NetHackIO io)
 	{
 		mIO = io;
-		for(int i = 0; i < mLog.length; i++)
-			mLog[i] = new LogEntry();
 		setContext(context);
 	}
 
@@ -67,13 +62,12 @@ public class NHW_Message implements NH_Window
 		KeyEventResult ret;
 		if(isLogShowing() && (ret = mLogView.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput)) != KeyEventResult.IGNORED)
 			return ret;
-		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput);
+		return mUI.handleKeyDown(ch, nhKey, keyCode, modifiers, bSoftInput) ? KeyEventResult.HANDLED : KeyEventResult.IGNORED;
 	}
 
 	// ____________________________________________________________________________________
 	public void clear()
 	{
-		// mCurrentIdx = getIndex(mLogCount - 1);
 		mDispCount = 0;
 		mUI.clear();
 	}
@@ -85,62 +79,38 @@ public class NHW_Message implements NH_Window
 			return 0;
 		return i & (MaxLog - 1);
 	}
-	
+
 	// ____________________________________________________________________________________
-	private int getOldestIndex()
-	{
-		if(mLogCount <= MaxLog)
-			return 0;
-		return getIndex(mLogCount + 1);
-	}
-	
-	// ____________________________________________________________________________________
-	public void printString(TextAttr attr, String str, int append)
+	public void printString(int attr, String str, int append, int color)
 	{
 		mCurrentIdx = getIndex(mLogCount - 1);
-		
-		if(append < 0 && mLogCount > 0)
-		{
+
+		if( append < 0 && mLogCount > 0 ) {
 			append++;
-			Spanned l = mLog[mCurrentIdx].msg;
-			if(append < -l.length())
+			String l = mLog[mCurrentIdx];
+			if( append < -l.length() )
 				append = -l.length();
-			l = (Spanned)l.subSequence(0, l.length() + append);
-			mLog[mCurrentIdx].msg = new SpannedString(TextUtils.concat(l, attr.style(str)));
-		}
-		else if(append > 0 && mLogCount > 0)
-		{
-			if(str.length() > 0)
-				mLog[mCurrentIdx].msg = new SpannedString(TextUtils.concat(mLog[mCurrentIdx].msg, attr.style(str)));
-		}
-		else
-		{
-			Spanned newMsg = attr.style(str);
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-			boolean grouping = prefs.getBoolean("groupLog", false);
-			if(grouping && mLogCount > 1)
-			{
-				Spanned prev = mLog[mCurrentIdx].msg;
-				if(prev.toString().equals(newMsg.toString()))
-				{
-					mLog[mCurrentIdx].repeat++;
-					mDispCount++;
-				}
-				else
-					addMessage(newMsg);
-			}
-			else
-				addMessage(newMsg);
+			l = l.substring(0, l.length() + append);
+			mLog[mCurrentIdx] = l + str;
+		} else if( append > 0 && mLogCount > 0 ) {
+			if( str.length() > 0 )
+				mLog[mCurrentIdx] = mLog[mCurrentIdx] + str;
+		} else {
+			addMessage(str);
 		}
 		mUI.update();
 	}
 
 	// ____________________________________________________________________________________
-	private void addMessage(Spanned newMsg) 
+	public void setCursorPos( int x, int y )
+	{
+	}
+
+	// ____________________________________________________________________________________
+	private void addMessage(String newMsg)
 	{
 		mCurrentIdx = getIndex(mCurrentIdx + 1);
-		mLog[mCurrentIdx].msg = newMsg;
-		mLog[mCurrentIdx].repeat = 1;
+		mLog[mCurrentIdx] = newMsg;
 		mDispCount++;
 		mLogCount++;
 	}
@@ -155,7 +125,7 @@ public class NHW_Message implements NH_Window
 		StringBuilder line = new StringBuilder();
 		for( int i = nLines - 1; i >= 0; i-- ) {
 			int idx = getIndex(mCurrentIdx - i);
-			line.append( mLog[idx].msg );
+			line.append( mLog[idx] );
 			line.append(' ');
 		}
 		line.append('\n');
@@ -182,42 +152,36 @@ public class NHW_Message implements NH_Window
 	}
 
 	// ____________________________________________________________________________________
-	public void showPrev()
-	{
-		if(mCurrentIdx == getOldestIndex())
-			return;
-
-		mCurrentIdx = getIndex(mCurrentIdx - 1);
-		mDispCount = 1;
-
-		mUI.update();
-	}
-
-	// ____________________________________________________________________________________
 	public void showLog(boolean bBlocking)
 	{
 		if(mLogView == null)
 			mLogView = new NHW_Text(0, mContext, mIO);
 
+		boolean highlightNew = mDispCount > SHOW_MAX_LINES;
+
+		int nLogs = 0;
+		for( int n = 0; n < MaxLog; n++ ) {
+			if( mLog[n] != null )
+				nLogs++;
+		}
+
+		int attr = 0;
 		mLogView.clear();
 		int i = mCurrentIdx + 1;
 		for(int n = 0; n < MaxLog; n++, i++)
 		{
-			LogEntry e = mLog[getIndex(i)];
-			Spanned s = e.msg;
+			String s = mLog[getIndex(i)];
 			if(s != null)
 			{
-				if(e.repeat > 1)
-					mLogView.printString(new SpannedString(TextUtils.concat(s, " (" + Integer.toString(e.repeat) + ")")));
-				else
-					mLogView.printString(s);
+				nLogs--;
+				if( highlightNew && nLogs < mDispCount )
+					attr = TextAttr.ATTR_BOLD;
+				mLogView.printString(attr, s, 0, 0xffffffff);
 			}
 		}
 		mLogView.show(bBlocking);
 		mLogView.scrollToEnd();
-		int disp = mDispCount < 3 ? mDispCount : 3;
 		clear();
-		mDispCount = disp;
 		mUI.update();
 	}
 
@@ -225,11 +189,6 @@ public class NHW_Message implements NH_Window
 	private boolean isLogShowing()
 	{
 		return mLogView != null && mLogView.isVisible();
-	}
-
-	// ____________________________________________________________________________________
-	public void setCursorPos(int x)
-	{
 	}
 
 	// ____________________________________________________________________________________
@@ -250,14 +209,13 @@ public class NHW_Message implements NH_Window
 	private class UI
 	{
 		private TextView m_view;
-		private View m_more;
-		private boolean mTextUpdaterRunning;
+		private TextView m_more;
 
 		// ____________________________________________________________________________________
 		public UI()
 		{
 			m_view = (TextView)mContext.findViewById(R.id.nh_message);
-			m_more = mContext.findViewById(R.id.more);
+			m_more = (TextView)mContext.findViewById(R.id.more);
 			m_more.setVisibility(View.GONE);
 			m_more.setOnClickListener(new OnClickListener()
 			{
@@ -266,6 +224,12 @@ public class NHW_Message implements NH_Window
 					showLog(false);
 				}
 			});
+		}
+
+		// ____________________________________________________________________________________
+		public boolean isMoreVisible()
+		{
+			return m_more.getVisibility() == View.VISIBLE;
 		}
 
 		// ____________________________________________________________________________________
@@ -292,59 +256,38 @@ public class NHW_Message implements NH_Window
 		// ____________________________________________________________________________________
 		public void update()
 		{
-			if(mDispCount <= 4 && !mTextUpdaterRunning)
-			{
-				//m_view.post(mTextUpdater);
-				mTextUpdater.run();
-			}
-			if(mDispCount > 3)
+			updateText();
+			if( mDispCount > SHOW_MAX_LINES ) {
+				m_more.setText("--" + Integer.toString(mDispCount - SHOW_MAX_LINES) + " more--");
 				m_more.setVisibility(View.VISIBLE);
-			else
+			} else
 				m_more.setVisibility(View.GONE);
 		}
 
 		// ____________________________________________________________________________________
-		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
+		public boolean handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, boolean bSoftInput)
 		{
-			if(m_more.getVisibility() == View.VISIBLE && ch == ' ' && !isLogShowing())
-			{
+			if(isMoreVisible() && ch == ' ' && !isLogShowing()) {
 				showLog(false);
-				return KeyEventResult.HANDLED;
+				return true;
 			}
-			return KeyEventResult.IGNORED;
+			return false;
 		}
 
 		// ____________________________________________________________________________________
-		private Runnable mTextUpdater = new Runnable()
+		private void updateText()
 		{
-			public void run()
-			{
-				mTextUpdaterRunning = false;
-
-				m_view.setText("");
-				if(mDispCount > 0)
-				{
-					int iStart = mCurrentIdx - mDispCount + 1;
-					for(int i = 0; i < mDispCount && i < 3; i++)
-					{
-						LogEntry e = mLog[getIndex(iStart + i)];
-						if(e.msg == null)
-							break;
-						if(i > 0)
-							m_view.append("\n");
-						if(e.repeat > 1)
-							m_view.append(new SpannedString(TextUtils.concat(e.msg, " (" + Integer.toString(e.repeat) + ")")));
-						else
-							m_view.append(e.msg);
-					}
-					if(mDispCount > 3)
-					{
-						mDispCount--;
-						m_view.postDelayed(mTextUpdater, 100);
-						mTextUpdaterRunning = true;
-					}
+			m_view.setText("");
+			if( mDispCount > 0 ) {
+				int lineCount = Math.min(SHOW_MAX_LINES, mDispCount);
+				int iStart = mCurrentIdx - lineCount + 1;
+				for( int i = 0; i < lineCount; i++ ) {
+					String msg = mLog[getIndex(iStart + i)];
+					if( i > 0 )
+						m_view.append("\n");
+					m_view.append(msg);
 				}
 			}
-		};
+		}
 	}
 }

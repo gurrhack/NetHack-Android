@@ -35,7 +35,6 @@ public class NH_State
 	private ArrayList<NH_Window> mWindows;
 	private Tileset mTileset;
 	private String mDataDir;
-	private String mUsername;
 	private CmdPanelLayout mCmdPanelLayout;
 	private DPadOverlay mDPad;
 	private boolean mIsDPadActive;
@@ -87,9 +86,6 @@ public class NH_State
 	// ____________________________________________________________________________________
 	public void startNetHack(String path)
 	{
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		
-		mUsername = prefs.getString("username", "");
 		mDataDir = path;
 		mIO.start();
 
@@ -99,6 +95,7 @@ public class NH_State
 		mMap.loadZoomLevel();
 
 		// I have preferences already, might as well pass them in...
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 		mHearse = new Hearse(mContext, prefs, path);
 	}
 
@@ -145,10 +142,8 @@ public class NH_State
 		mTileset.updateTileset(prefs, mContext.getResources());
 		mMap.updateZoomLimits();
 
-		String pickupTypes = prefs.getString("autoPickupTypes", "");
-		boolean bAutoPickup = prefs.getBoolean("autoPickup", false);
 		boolean bAutoMenu = prefs.getBoolean("automenu", true);
-		mIO.sendFlags(bAutoMenu, bAutoPickup, pickupTypes);
+		mIO.sendFlags(bAutoMenu);
 
 		int flag = prefs.getBoolean("fullscreen", false) ? WindowManager.LayoutParams.FLAG_FULLSCREEN : 0;		
 		mContext.getWindow().setFlags(flag, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -266,33 +261,34 @@ public class NH_State
 	public void setCursorPos(int wid, int x, int y)
 	{
 		NH_Window wnd = getWindow(wid);
-		if(wnd == mMap)
-			mMap.setCursorPos(x, y);
-		else if(wnd == mStatus)
-			mStatus.setRow(y);
-		else if(wnd == mMessage)
-			mMessage.setCursorPos(x);
+		if(wnd != null)
+			wnd.setCursorPos(x, y);
 	}
 
 	// ____________________________________________________________________________________
-	public void putString(int wid, int attr, String msg, int append, int hp, int hpMax)
+	public void putString(int wid, int attr, String msg, int append, int color)
 	{
 		NH_Window wnd = getWindow(wid);
 		if(wnd == null)
 		{
 			Log.print("[no wnd] " + msg);
-			mMessage.printString(TextAttr.fromNative(attr), msg, append);
+			mMessage.printString(attr, msg, append, color);
 		}
 		else
-			wnd.printString(TextAttr.fromNative(attr), msg, append);
+			wnd.printString(attr, msg, append, color);
+	}
+
+	// ____________________________________________________________________________________
+	public void setHealthColor(int color)
+	{
 		if(mMap != null)
-			mMap.setHealthLevel(hp, hpMax);
+			mMap.setHealthColor(color);
 	}
 
 	// ____________________________________________________________________________________
 	public void rawPrint(int attr, String msg)
 	{
-		mMessage.printString(TextAttr.fromNative(attr), msg, 0);
+		mMessage.printString(attr, msg, 0, -1);
 	}
 
 	// ____________________________________________________________________________________
@@ -428,9 +424,9 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void addMenu(int wid, int tile, int id, int acc, int groupAcc, int attr, String text, int bSelected)
+	public void addMenu(int wid, int tile, int id, int acc, int groupAcc, int attr, String text, int bSelected, int color)
 	{
-		((NHW_Menu)getWindow(wid)).addMenu(tile, id, acc, groupAcc, TextAttr.fromNative(attr), text, bSelected);
+		((NHW_Menu)getWindow(wid)).addMenu(tile, id, acc, groupAcc, attr, text, bSelected, color);
 	}
 
 	// ____________________________________________________________________________________
@@ -449,12 +445,6 @@ public class NH_State
 	public void cliparound(int x, int y, int playerX, int playerY)
 	{
 		mMap.cliparound(x, y, playerX, playerY);
-	}
-
-	// ____________________________________________________________________________________
-	public void showPrevMessage()
-	{
-		mMessage.showPrev();
 	}
 
 	// ____________________________________________________________________________________
@@ -484,12 +474,6 @@ public class NH_State
 	public String getDataDir()
 	{
 		return mDataDir;
-	}
-
-	// ____________________________________________________________________________________
-	public String getUsername()
-	{
-		return mUsername;
 	}
 
 	// ____________________________________________________________________________________
@@ -608,13 +592,13 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void saveRegularKeyboard()
+	private void saveRegularKeyboard()
 	{
 		mRegularKeyboard = mKeyboard.getKeyboard();
 	}
 
 	// ____________________________________________________________________________________
-	public void restoreRegularKeyboard()
+	private void restoreRegularKeyboard()
 	{
 		if(mRegularKeyboard != null)
 			mKeyboard.setKeyboard(mRegularKeyboard);
@@ -704,5 +688,11 @@ public class NH_State
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 		mCmdPanelLayout.wizardUpgrade(prefs);
+	}
+
+	// ____________________________________________________________________________________
+	public void redrawStatus()
+	{
+		mStatus.redraw();
 	}
 }

@@ -93,7 +93,7 @@ public class Hearse implements SharedPreferences.OnSharedPreferenceChangeListene
 	 * bon<dungeon code><0 | role code>.<level boneid | level number>
 	 * XXX case_tolerant if appropriate
 	 */
-	private static final Pattern PATTERN = Pattern.compile("^bon[A-Z](0|(:?Arc|Bar|Cav|Hea|Kni|Mon|Pri|Rog|Ran|Sam|Tou|Val|Wiz))\\.([A-Z]|\\d+)\\z", Pattern.CASE_INSENSITIVE);
+	private static final Pattern PATTERN = Pattern.compile("^bon[A-Z](0|(Arc|Bar|Cav|Hea|Kni|Mon|Pri|Rog|Ran|Sam|Tou|Val|Wiz))\\.([A-Z]|\\d+)\\z", Pattern.CASE_INSENSITIVE);
 	private static final String TAG = "MD5";
 	private static final String PREFS_HEARSE_ID = "hearseID";
 	private static final String PREFS_HEARSE_MAIL = "hearseMail";

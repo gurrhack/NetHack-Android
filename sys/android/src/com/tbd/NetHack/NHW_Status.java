@@ -3,13 +3,12 @@ package com.tbd.NetHack;
 import java.util.Set;
 
 import android.app.Activity;
-import android.text.Spanned;
+import android.text.SpannableStringBuilder;
 import android.view.View;
-import android.widget.TextView;
 
 public class NHW_Status implements NH_Window
 {
-	private Spanned[] mRows;
+	private SpannableStringBuilder[] mRows;
 	private int mCurRow;
 	private NetHackIO mIO;
 	private UI mUI;
@@ -20,7 +19,9 @@ public class NHW_Status implements NH_Window
 	public NHW_Status(Activity context, NetHackIO io)
 	{
 		mIO = io;
-		mRows = new Spanned[2];
+		mRows = new SpannableStringBuilder[2];
+		mRows[0] = new SpannableStringBuilder();
+		mRows[1] = new SpannableStringBuilder();
 		mCurRow = 0;
 		setContext(context);
 	}
@@ -81,21 +82,29 @@ public class NHW_Status implements NH_Window
 	// ____________________________________________________________________________________
 	public void clear()
 	{
-		mRows[0] = null;
-		mRows[1] = null;
+		mRows[0] = new SpannableStringBuilder();
+		mRows[1] = new SpannableStringBuilder();
 		mUI.hideInternal();
 	}
 
 	// ____________________________________________________________________________________
-	public void printString(TextAttr attr, String str, int append)
+	@Override
+	public void printString(int attr, String str, int append, int color)
 	{
-		mRows[mCurRow] = attr.style(str);
+		if( append == 0 || str.length() < mRows[mCurRow].length() ) {
+			mRows[mCurRow] = new SpannableStringBuilder( TextAttr.style(str, attr, color) );
+		} else {
+			mRows[mCurRow].append( TextAttr.style(str.substring(mRows[mCurRow].length(), str.length()), attr, color) );
+		}
+	}
+
+	public void redraw() {
 		mUI.update();
 	}
 
 	// ____________________________________________________________________________________
-	public void setRow(int y)
-	{
+	@Override
+	public void setCursorPos(int x, int y) {
 		mCurRow = y == 0 ? 0 : 1;
 	}
 

@@ -11,118 +11,50 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 
-public enum TextAttr
+public class TextAttr
 {
-	None
-	{
-		Spanned style(String str)
-		{
+	public static final int ATTR_NONE = (1<<0);
+	public static final int ATTR_BOLD = (1<<1);
+	public static final int ATTR_DIM = (1<<2);
+	public static final int ATTR_ULINE = (1<<4);
+	public static final int ATTR_BLINK = (1<<5);
+	public static final int ATTR_INVERSE = (1<<7);
+	public static final int ATTR_UNDEFINED = (1<<8);
+
+	public static Spanned style(String str, int attr) {
+		if( attr == 0 || attr == ATTR_NONE || attr == ATTR_UNDEFINED)
 			return new SpannedString(str);
-		}
 
-		int bgCol()
-		{
-			return Color.BLACK;
-		}
-	},
+		if( (attr & ATTR_INVERSE) != 0 )
+			return style(str, attr, Color.WHITE);
 
-	Bold
-	{
-		Spanned style(String str)
-		{
-			Spannable span = new SpannableString(str);
-			span.setSpan(new StyleSpan(Typeface.BOLD), 0, str.length(), 0);
-			return span;
-		}
+		if( (attr & ATTR_DIM) != 0 )
+			return style(str, attr, Color.GRAY);
 
-		int bgCol()
-		{
-			return Color.BLACK;
-		}
-	},
+		if( (attr & ATTR_BLINK) != 0 )
+			return style(str, attr, 0xFFF88017);
 
-	Dim
-	{
-		Spanned style(String str)
-		{
-			Spannable span = new SpannableString(str);
-			span.setSpan(new ForegroundColorSpan(Color.GRAY), 0, str.length(), 0);
-			return span;
-		}
-
-		int bgCol()
-		{
-			return Color.BLACK;
-		}
-	},
-
-	ULine
-	{
-		Spanned style(String str)
-		{
-			Spannable span = new SpannableString(str);
-			span.setSpan(new UnderlineSpan(), 0, str.length(), 0);
-			return span;
-		}
-
-		int bgCol()
-		{
-			return Color.BLACK;
-		}
-	},
-
-	Blink
-	{
-		Spanned style(String str)
-		{
-			Spannable span = new SpannableString(str);
-			span.setSpan(new ForegroundColorSpan(0xFFF88017), 0, str.length(), 0);
-			return span;
-		}
-
-		int bgCol()
-		{
-			return Color.BLACK;
-		}
-	},
-
-	Inverse
-	{
-		Spanned style(String str)
-		{
-			Spannable span = new SpannableString(str);
-			span.setSpan(new BackgroundColorSpan(bgCol()), 0, str.length(), 0);
-			span.setSpan(new ForegroundColorSpan(Color.BLACK), 0, str.length(), 0);
-			return span;
-		}
-
-		int bgCol()
-		{
-			return Color.WHITE;
-		}
-	};
-
-	abstract Spanned style(String str);
-
-	abstract int bgCol();
-
-	// ____________________________________________________________________________________
-	public static TextAttr fromNative(int a)
-	{
-		switch(a)
-		{
-		case 1:
-			return Bold;
-		case 3:
-			return Dim;
-		case 4:
-			return ULine;
-		case 5:
-			return Blink;
-		case 7:
-			return Inverse;
-		default:
-			return None;
-		}
+		return style(str, attr, Color.WHITE);
 	}
+
+	public static Spanned style(String str, int attr, int color) {
+
+		Spannable span = new SpannableString(str);
+
+		if( (attr & ATTR_INVERSE) == 0 )
+			span.setSpan(new ForegroundColorSpan(color), 0, str.length(), 0);
+		else {
+			span.setSpan(new BackgroundColorSpan(color), 0, str.length(), 0);
+			span.setSpan(new ForegroundColorSpan(Color.BLACK), 0, str.length(), 0);
+		}
+
+		if( (attr & ATTR_BOLD) != 0 )
+			span.setSpan(new StyleSpan(Typeface.BOLD), 0, str.length(), 0);
+
+		if( (attr & ATTR_ULINE) != 0 )
+			span.setSpan(new UnderlineSpan(), 0, str.length(), 0);
+
+		return span;
+	}
+
 }

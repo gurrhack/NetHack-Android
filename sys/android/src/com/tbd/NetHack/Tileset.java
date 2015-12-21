@@ -8,11 +8,14 @@ import android.graphics.drawable.BitmapDrawable;
 import android.text.TextPaint;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Tileset
 {
+	private static final String LOCAL_TILESET_NAME = "custom_tileset";
+
 	private Bitmap mBitmap;
 	private Bitmap mOverlay;
 	private int mTileW;
@@ -38,6 +41,7 @@ public class Tileset
 	// ____________________________________________________________________________________
 	public void updateTileset(SharedPreferences prefs, Resources r)
 	{
+
 		mFallbackRenderer = prefs.getBoolean("fallbackRenderer", false);
 
 		String tilesetName = prefs.getString("tileset", "TTY");
@@ -63,7 +67,7 @@ public class Tileset
 			mTileH = tileH;
 
 			if(prefs.getBoolean("customTiles", false))
-				loadFromFile(tilesetName, prefs);
+				loadCustomTileset(tilesetName);
 			else
 				loadFromResources(tilesetName, r);
 
@@ -99,23 +103,34 @@ public class Tileset
 	}
 
 	// ____________________________________________________________________________________
-	private void loadFromFile(String tilesetName, SharedPreferences prefs)
-	{
+	private void loadCustomTileset(String tilesetName) {
 		clearBitmap();
+		mBitmap = tryLoadBitmap(getLocalTilesetFile().getPath(), false);
+		// Fallback if coming from an old version
+		mBitmap = tryLoadBitmap(tilesetName, true);
+			if(mBitmap == null)
+			Toast.makeText(mContext, "Error loading custom tileset", Toast.LENGTH_LONG).show();
+	}
+
+	// ____________________________________________________________________________________
+	private Bitmap tryLoadBitmap(String path, boolean logFailure)
+	{
+		Bitmap bitmap = null;
 		try
 		{
-			mBitmap = BitmapFactory.decodeFile(tilesetName);
-			if(mBitmap == null)
-				Toast.makeText(mContext, "Error loading tileset " + tilesetName, Toast.LENGTH_LONG).show();
+			bitmap = BitmapFactory.decodeFile(path);
 		}
 		catch(Exception e)
 		{
-			Toast.makeText(mContext, "Error loading " + tilesetName + ": " + e.toString(), Toast.LENGTH_LONG).show();
+			if(logFailure)
+				Toast.makeText(mContext, "Error loading custom tileset: " + e.toString(), Toast.LENGTH_LONG).show();
 		}
 		catch(OutOfMemoryError e)
 		{
-			Toast.makeText(mContext, "Error loading " + tilesetName + ": Out of memory", Toast.LENGTH_LONG).show();
+			if(logFailure)
+				Toast.makeText(mContext, "Error loading custom tileset: Out of memory", Toast.LENGTH_LONG).show();
 		}
+		return bitmap;
 	}
 
 	// ____________________________________________________________________________________
@@ -228,5 +243,12 @@ public class Tileset
 			src.bottom = src.top + getTileHeight();
 			canvas.drawBitmap(mBitmap, src, dst, paint);
 		}
+	}
+
+	// ____________________________________________________________________________________
+	public static File getLocalTilesetFile() {
+		File dir = NetHack.getApplicationDir();
+		File file = new File(dir, LOCAL_TILESET_NAME);
+		return file;
 	}
 }

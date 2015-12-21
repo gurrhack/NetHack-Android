@@ -33,8 +33,45 @@
 #OPTIONS=scores:10 top/2 around/own
 #OPTIONS=nolegacy,noverbose
 #
-#OPTIONS=!lit_corridor,rest_on_space
 #OPTIONS=hilite_pet,!toptenwin
 #OPTIONS=!splash_screen
 #
 #
+OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
+
+# Colorize individual rows on a menu based on what regular expressions match its text
+# http://nethackwiki.com/wiki/Menucolors
+MENUCOLOR=" blessed "=green
+MENUCOLOR=" holy "=green
+MENUCOLOR=" uncursed "=yellow
+MENUCOLOR=" cursed "=red
+MENUCOLOR=" unholy "=red
+MENUCOLOR=" cursed .* (being worn)"=orange&underline
+
+MENUCOLOR="loadstone\|wand \(of\|called\) cancellation"=underline
+MENUCOLOR="Amulet of Yendor named"=magenta                           # color only the real Amulet
+MENUCOLOR="gold piece"=yellow
+
+MENUCOLOR=". -.* \[(Unskilled|Basic|Skilled|Expert|Master)"=white # skill slots
+MENUCOLOR="[a-zA-Z] - [a-zA-Z ]+[ ]+[0-9]+\*[ ]+[a-z]+[ ]+[0-9]+%"=magenta  # forgotten spell
+
+
+# Colorize the status line values
+## HP
+STATUSCOLOR=hp%100=green,hp%66=yellow,hp%50=orange
+STATUSCOLOR=hp%33=red&bold,hp%15:red&inverse,hp%0:red&inverse&blink
+## Pw
+STATUSCOLOR=pw%100=green,pw%66=yellow,pw%50:orange,pw%33=red&bold
+## Carry
+STATUSCOLOR=burdened:yellow,stressed:orange,strained:red&bold
+STATUSCOLOR=overtaxed:red&inverse,overloaded:red&inverse&blink
+## Hunger
+STATUSCOLOR=satiated:yellow,hungry:orange,weak:red&bold
+STATUSCOLOR=fainting:red&inverse,fainted:red&inverse&blink
+## Mental
+STATUSCOLOR=hallu:yellow,conf:orange,stun:red&bold
+## Health
+STATUSCOLOR=ill:red&inverse,foodpois:red&inverse,slime:red&inverse
+## Other
+STATUSCOLOR=held:red&inverse,blind:red&inverse
+

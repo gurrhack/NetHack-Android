@@ -20,7 +20,7 @@ public interface Cmd
 	String getLabel();
 
 	// ____________________________________________________________________________________
-	public class ToggleKeyboard implements Cmd
+	class ToggleKeyboard implements Cmd
 	{
 		private NH_State mState;
 		private String mLabel = "";

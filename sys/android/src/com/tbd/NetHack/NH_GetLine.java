@@ -79,6 +79,8 @@ public class NH_GetLine
 	// ____________________________________________________________________________________
 	private void storeHistory(List<String> history, String newString)
 	{
+		if( newString.trim().length() == 0 )
+			return;
 		history.remove(newString);
 		history.add(0, newString);
 		if(history.size() > MAX_HISTORY)
@@ -148,7 +150,7 @@ public class NH_GetLine
 
 					if(keyCode == KeyEvent.KEYCODE_ENTER)
 						ok();
-					else if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == 111/*KeyEvent.KEYCODE_ESCAPE*/)
+					else if(keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE)
 						cancel();
 					else if(keyCode == KeyEvent.KEYCODE_SEARCH) // This is doing weird stuff, might as well block it 
 						return true;

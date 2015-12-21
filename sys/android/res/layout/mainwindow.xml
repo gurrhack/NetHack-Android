@@ -47,13 +47,16 @@
                         android:layout_height="wrap_content"
                         android:textSize="15sp" />
 
-                    <ImageView
+                    <TextView
                         android:id="@+id/more"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:scaleType="center"
-                        android:src="@drawable/more"
-                        android:visibility="gone" />
+                        android:text="--More--"
+                        android:background="@android:color/background_light"
+                        android:textColor="@android:color/black"
+                        android:clickable="true"
+                        android:visibility="gone"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <TextView

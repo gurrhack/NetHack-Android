@@ -16,11 +16,13 @@ void FDECL(and_dismiss_nhwindow, (winid));
 void FDECL(and_destroy_nhwindow, (winid));
 void FDECL(and_curs, (winid,int,int));
 void FDECL(and_putstr, (winid, int, const char *));
+void FDECL(and_putmixed, (winid, int, const char *));
 void FDECL(and_display_file, (const char *, BOOLEAN_P));
 void FDECL(and_start_menu, (winid));
 void FDECL(and_add_menu, (winid,int,const ANY_P *, CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
 void FDECL(and_end_menu, (winid, const char *));
 int FDECL(and_select_menu, (winid, int, MENU_ITEM_P **));
+char FDECL(and_message_menu, (CHAR_P, int, const char *));
 void NDECL(and_update_inventory);
 void NDECL(and_mark_synch);
 void NDECL(and_wait_synch);
@@ -30,7 +32,7 @@ void FDECL(and_cliparound, (int, int));
 #ifdef POSITIONBAR
 void FDECL(and_update_positionbar, (char *));
 #endif
-void FDECL(and_print_glyph, (winid,XCHAR_P,XCHAR_P,int));
+void FDECL(and_print_glyph, (winid,XCHAR_P,XCHAR_P,int,int));
 void FDECL(and_raw_print, (const char *));
 void FDECL(and_raw_print_bold, (const char *));
 int NDECL(and_nhgetch);

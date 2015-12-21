@@ -8,6 +8,7 @@
 #include "dlb.h"
 
 extern short glyph2tile[];
+const char sdir[];
 
 struct window_procs and_procs = {
 	"and",
@@ -26,12 +27,13 @@ struct window_procs and_procs = {
 	and_destroy_nhwindow,
 	and_curs,
 	and_putstr,
+	and_putmixed,
 	and_display_file,
 	and_start_menu,
 	and_add_menu,
 	and_end_menu,
 	and_select_menu,
-	genl_message_menu,
+	and_message_menu,
 	and_update_inventory,
 	and_mark_synch,
 	and_wait_synch,
@@ -60,7 +62,17 @@ struct window_procs and_procs = {
 	and_start_screen,
 	and_end_screen,
 	genl_outrip,
-	and_preference_update
+	and_preference_update,
+	genl_getmsghistory,
+	genl_putmsghistory,
+#ifdef STATUS_VIA_WINDOWPORT
+    genl_status_init, genl_status_finish, genl_status_enablefield,
+    genl_status_update,
+#ifdef STATUS_HILITES
+    genl_status_threshold,
+#endif
+#endif
+    genl_can_suspend_no,
 };
 
 static void and_n_getline(const char* question, char* buf, int nMax, int showLog);
@@ -79,6 +91,8 @@ static jmethodID jDisplayWindow;
 static jmethodID jClearWindow;
 static jmethodID jDestroyWindow;
 static jmethodID jPutString;
+static jmethodID jSetHealthColor;
+static jmethodID jRedrawStatus;
 static jmethodID jRawPrint;
 static jmethodID jSetCursorPos;
 static jmethodID jPrintTile;
@@ -91,7 +105,6 @@ static jmethodID jSelectMenu;
 static jmethodID jCliparound;
 static jmethodID jDelayOutput;
 static jmethodID jShowDPad;
-static jmethodID jShowPrevMessage;
 static jmethodID jShowLog;
 static jmethodID jSetUsername;
 static jmethodID jSetNumPadOption;
@@ -128,14 +141,11 @@ void destroy_jobject(jstring jstr)
 //____________________________________________________________________________________
 
 boolean autoMenuFromFile;
-boolean autoPickupFromFile;
-boolean pickupTypesFromFile;
 
 
 //____________________________________________________________________________________
 void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username)
 {
-	int nParams;
 	char* params[10];
 	const char* pChars;
 
@@ -149,20 +159,21 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jClearWindow = (*jEnv)->GetMethodID(jEnv, jApp, "clearWindow", "(II)V");
 	jDisplayWindow = (*jEnv)->GetMethodID(jEnv, jApp, "displayWindow", "(II)V");
 	jDestroyWindow = (*jEnv)->GetMethodID(jEnv, jApp, "destroyWindow", "(I)V");
-	jPutString = (*jEnv)->GetMethodID(jEnv, jApp, "putString", "(II[BIII)V");
+	jPutString = (*jEnv)->GetMethodID(jEnv, jApp, "putString", "(II[BII)V");
+	jSetHealthColor = (*jEnv)->GetMethodID(jEnv, jApp, "setHealthColor", "(I)V");
+	jRedrawStatus = (*jEnv)->GetMethodID(jEnv, jApp, "redrawStatus", "()V");
 	jRawPrint = (*jEnv)->GetMethodID(jEnv, jApp, "rawPrint", "(I[B)V");
 	jSetCursorPos = (*jEnv)->GetMethodID(jEnv, jApp, "setCursorPos", "(III)V");
 	jPrintTile = (*jEnv)->GetMethodID(jEnv, jApp, "printTile", "(IIIIIII)V");
 	jYNFunction = (*jEnv)->GetMethodID(jEnv, jApp, "ynFunction", "([B[BI)V");
 	jGetLine = (*jEnv)->GetMethodID(jEnv, jApp, "getLine", "([BIII)Ljava/lang/String;");
 	jStartMenu = (*jEnv)->GetMethodID(jEnv, jApp, "startMenu", "(I)V");
-	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "addMenu", "(IIIIII[BI)V");
+	jAddMenu = (*jEnv)->GetMethodID(jEnv, jApp, "addMenu", "(IIIIII[BII)V");
 	jEndMenu = (*jEnv)->GetMethodID(jEnv, jApp, "endMenu", "(I[B)V");
 	jSelectMenu = (*jEnv)->GetMethodID(jEnv, jApp, "selectMenu", "(III)[I");
 	jCliparound = (*jEnv)->GetMethodID(jEnv, jApp, "cliparound", "(IIII)V");
 	jDelayOutput = (*jEnv)->GetMethodID(jEnv, jApp, "delayOutput", "()V");
 	jShowDPad = (*jEnv)->GetMethodID(jEnv, jApp, "askDirection", "()V");
-	jShowPrevMessage = (*jEnv)->GetMethodID(jEnv, jApp, "showPrevMessage", "()V");
 	jShowLog = (*jEnv)->GetMethodID(jEnv, jApp, "showLog", "(I)V");
 	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
 	jSetNumPadOption = (*jEnv)->GetMethodID(jEnv, jApp, "setNumPadOption", "(I)V");
@@ -172,8 +183,8 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
-			jCliparound && jDelayOutput && jShowDPad && jShowPrevMessage && jShowLog && jSetUsername &&
-			jSetNumPadOption && jAskName && jSetWizardMode))
+			jCliparound && jDelayOutput && jShowDPad && jShowLog && jSetUsername &&
+			jSetNumPadOption && jAskName && jSetWizardMode && jSetHealthColor && jRedrawStatus))
 	{
 		debuglog("baaaaad");
 		return;
@@ -185,58 +196,18 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	(*jEnv)->ReleaseStringUTFChars(jEnv, path, pChars);
 
 	params[0] = "nethack";
-	nParams = 1;
-
-	if(username && (*jEnv)->GetStringUTFLength(jEnv, username) > 0)
-	{
-		pChars = (*jEnv)->GetStringUTFChars(jEnv, username, 0);
-
-		//debuglog("username: %s", pChars);
-
-		params[nParams++] = "-u";
-		params[nParams++] = (char*)pChars;
-	}
-	params[nParams] = 0;
+	params[1] = 0;
 
 	autoMenuFromFile = FALSE;
-	autoPickupFromFile = FALSE;
-	pickupTypesFromFile = FALSE;
 
-	NetHackMain(nParams, params);
+	NetHackMain(1, params);
 }
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_SetFlags(JNIEnv* env, jobject thiz, int autoPickup, jstring pickupTypes, int autoMenu)
+void Java_com_tbd_NetHack_NetHackIO_SetFlags(JNIEnv* env, jobject thiz, int autoMenu)
 {
-	int n, i, j, oc_sym;
-	const char* pChars;
-
 	if(!autoMenuFromFile)
 		iflags.automenu = autoMenu ? TRUE : FALSE;
-
-	if(!autoPickupFromFile)
-		flags.pickup = autoPickup ? TRUE : FALSE;
-
-	n = (*jEnv)->GetStringUTFLength(jEnv, pickupTypes);
-	pChars = (*jEnv)->GetStringUTFChars(jEnv, pickupTypes, 0);
-
-	//debuglog("set auto pickup %s (%s)", autoPickup ? "ON" : "OFF", autoPickup ? pChars : "-");
-
-	if(!pickupTypesFromFile)
-	{
-		flags.pickup_types[0] = '\0';
-		for(i = 0, j = 0; i < n && j < MAXOCLASSES - 1; i++)
-		{
-			oc_sym = def_char_to_objclass(pChars[i]);
-			if(oc_sym != MAXOCLASSES && !index(flags.pickup_types, oc_sym))
-			{
-				flags.pickup_types[j] = oc_sym;
-				flags.pickup_types[++j] = '\0';
-			}
-		}
-	}
-
-	(*jEnv)->ReleaseStringUTFChars(jEnv, pickupTypes, pChars);
 }
 
 //____________________________________________________________________________________
@@ -328,7 +299,7 @@ void debuglog(const char *fmt, ...)
 //		** windows?  Or at least all but WIN_INFO?	-dean
 void and_init_nhwindows(int* argcp, char** argv)
 {
-	//debuglog("and_init_nhwindows()");
+	debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
 }
 
@@ -349,7 +320,7 @@ void and_player_selection()
 	anything any;
 	menu_item *selected = 0;
 
-	//debuglog("and_player_selection()");
+	debuglog("and_player_selection()");
 
 	/* prevent an unnecessary prompt */
 	rigid_role_checks();
@@ -521,7 +492,7 @@ void and_get_nh_event()
 //		   if possible.
 void and_exit_nhwindows(const char *str)
 {
-	//debuglog("exit_nhwindows");
+	debuglog("exit_nhwindows");
 	iflags.window_inited = FALSE;
 }
 
@@ -552,7 +523,7 @@ winid and_create_nhwindow(int type)
 //		-- Clear the given window, when appropriate.
 void and_clear_nhwindow(winid wid)
 {
-	//debuglog("and_clear_nhwindow(%d)", wid);
+	debuglog("and_clear_nhwindow(%d)", wid);
 	JNICallV(jClearWindow, wid, Is_rogue_level(&u.uz));
 }
 
@@ -568,8 +539,8 @@ void and_clear_nhwindow(winid wid)
 //		   --more--, if necessary, in the tty window-port.
 void and_display_nhwindow(winid wid, BOOLEAN_P blocking)
 {
-	//debuglog("display_nhwindow(%d)", wid);
-	if(wid != WIN_MESSAGE && wid != WIN_STATUS && wid != WIN_MAP)
+	debuglog("display_nhwindow(%d)", wid);
+	if(wid != WIN_MESSAGE && /*wid != WIN_STATUS && */wid != WIN_MAP)
 		blocking = TRUE;
 	JNICallV(jDisplayWindow, wid, blocking);
 	if(blocking)
@@ -604,6 +575,103 @@ void and_curs(winid wid, int x, int y)
 	JNICallV(jSetCursorPos, wid, x, y);
 }
 
+// For STATUSCOLORS
+static int text_attribs = 0;
+static int text_color = 0xffffffff;
+
+int nhcolor_to_RGB(int c)
+{
+	switch(c)
+	{
+	case CLR_BLACK:
+		return 0xFF555555;
+	case CLR_RED:
+		return 0xFFFF0000;
+	case CLR_GREEN:
+		return 0xFF008000;
+	case CLR_BROWN:
+		return 0xFF4d2121;//A52A2A;
+	case CLR_BLUE:
+		return 0xFF0000FF;
+	case CLR_MAGENTA:
+		return 0xFFFF00FF;
+	case CLR_CYAN:
+		return 0xFF00FFFF;
+	case CLR_GRAY:
+		return 0xFF909090;
+	case NO_COLOR:
+		return 0xFFFFFFFF;
+	case CLR_ORANGE:
+		return 0xFFFFA500;
+	case CLR_BRIGHT_GREEN:
+		return 0xFF00FF00;
+	case CLR_YELLOW:
+		return 0xFFFFFF00;
+	case CLR_BRIGHT_BLUE:
+		return 0xFF00C0FF;
+	case CLR_BRIGHT_MAGENTA:
+		return 0xFFFF80FF;
+	case CLR_BRIGHT_CYAN:
+		return 0xFF80FFFF; /* something close to aquamarine */
+	case CLR_WHITE:
+		return 0xFFFFFFFF;
+	default:
+		return 0xFF000000; /* black */
+	}
+}
+
+const char* colname(int color)
+{
+	switch(color)
+	{
+	case CLR_BLACK: return "black";
+	case CLR_RED: return "red";
+	case CLR_GREEN: return "green";
+	case CLR_BROWN: return "brown";
+	case CLR_BLUE: return "blue";
+	case CLR_MAGENTA: return "magenta";
+	case CLR_CYAN: return "cyan";
+	case CLR_GRAY: return "gray";
+	case NO_COLOR: return "no color";
+	case CLR_ORANGE: return "orange";
+	case CLR_BRIGHT_GREEN: return "bright green";
+	case CLR_YELLOW: return "yellow";
+	case CLR_BRIGHT_BLUE: return "bright blue";
+	case CLR_BRIGHT_MAGENTA: return "bright magenta";
+	case CLR_BRIGHT_CYAN: return "bright cyan";
+	case CLR_WHITE: return "white";
+	default: return "black";
+	}
+}
+
+void
+term_start_attr(attr)
+int attr;
+{
+	text_attribs |= 1<<attr;
+}
+
+void
+term_end_attr(attr)
+int attr;
+{
+	text_attribs &= ~(1<<attr);
+}
+
+void
+term_start_color(color)
+int color;
+{
+	debuglog("term_start_color %s", colname(color));
+	text_color = nhcolor_to_RGB(color);
+}
+
+void
+term_end_color()
+{
+	text_color = 0xffffffff;
+}
+
 //____________________________________________________________________________________
 //putstr(window, attr, str)
 //		-- Print str on the window with the given attribute.  Only
@@ -629,8 +697,21 @@ void and_curs(winid wid, int x, int y)
 void and_putstr_ex(winid wid, int attr, const char *str, int append)
 {
 	jbyteArray jstr = create_bytearray(str);
-	// HACK. send some additional info here
-	JNICallV(jPutString, wid, attr, jstr, append, u.uhp, u.uhpmax);
+
+	if(wid == NHW_STATUS)
+	{
+	debuglog("put status: %s", str);
+		if(context.botlx)
+			append = 0;
+		else
+			append = 1;
+	}
+	if(attr)
+		attr = 1<<attr;
+	else
+		attr = text_attribs;
+
+	JNICallV(jPutString, wid, attr, jstr, append, text_color);
 	destroy_jobject(jstr);
 }
 
@@ -639,13 +720,34 @@ void and_putstr(winid wid, int attr, const char *str)
 	and_putstr_ex(wid, attr, str, 0);
 }
 
+void and_set_health_color(struct color_option colop)
+{
+	JNICallV(jSetHealthColor, nhcolor_to_RGB(colop.color));
+}
+
+void and_bot_updated()
+{
+	JNICallV(jRedrawStatus);
+}
+
+//____________________________________________________________________________________
+void
+and_putmixed(window, attr, str)
+winid window;
+int attr;
+const char *str;
+{
+	debuglog("put mixed: %s", str);
+	genl_putmixed(window, attr, str);
+}
+
 //____________________________________________________________________________________
 //display_file(str, boolean complain)
 //		-- Display the file named str.  Complain about missing files
 //		   iff complain is TRUE.
 void and_display_file(const char *name, BOOLEAN_P complain)
 {
-	//debuglog("and_display_file(%s, %d)", name, complain);
+	debuglog("and_display_file(%s, %d)", name, complain);
 
 	dlb* f;
 	char buf[BUFSZ];
@@ -718,14 +820,23 @@ void and_start_menu(winid wid)
 //		   menu is displayed, set preselected to TRUE.
 void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, CHAR_P groupacc, int attr, const char *str, BOOLEAN_P preselected)
 {
-	int tile;
+	int tile, color;
 	if(glyph == NO_GLYPH)
 		tile = -1;
 	else
 		tile = glyph2tile[glyph];
 
+	if(iflags.use_menu_color && get_menu_coloring((char*)str, &color, &attr)) {
+		color = nhcolor_to_RGB(color);
+	} else {
+		color = -1;
+	}
+
+	if(attr)
+		attr = 1<<attr;
+
 	jbyteArray jstr = create_bytearray(str);
-	JNICallV(jAddMenu, wid, tile, ident->a_int, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected);
+	JNICallV(jAddMenu, wid, tile, ident->a_int, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected, color);
 	destroy_jobject(jstr);
 }
 
@@ -784,13 +895,13 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	jint* p;
 	jint* q;
 
-	//debuglog("and_select_menu");
+	debuglog("and_select_menu");
 
 	a = (jintArray)JNICallO(jSelectMenu, wid, how, reentry);
 
 	*selected = 0;
 
-	//debuglog("returned %d", a);
+	debuglog("returned %d", a);
 	if(a == 0)
 		return -1;
 
@@ -824,6 +935,28 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 }
 
 //____________________________________________________________________________________
+//char message_menu(char let, int how, const char *mesg)
+//		-- tty-specific hack to allow single line context-sensitive
+//		   help to behave compatibly with multi-line help menus.
+//		-- This should only be called when a prompt is active; it
+//		   sends `mesg' to the message window.  For tty, it forces
+//		   a --More-- prompt and enables `let' as a viable keystroke
+//		   for dismissing that prompt, so that the original prompt
+//		   can be answered from the message line "help menu".
+//		-- Return value is either `let', '\0' (no selection was made),
+//		   or '\033' (explicit cancellation was requested).
+//		-- Interfaces which issue prompts and messages to separate
+//		   windows typically won't need this functionality, so can
+//		   substitute genl_message_menu (windows.c) instead.
+char and_message_menu(CHAR_P let, int how, const char* mesg)
+{
+	debuglog("message_menu: %s", mesg);
+
+    pline("%s", mesg);
+    return 0;
+}
+
+//____________________________________________________________________________________
 //update_inventory()
 //		-- Indicate to the window port that the inventory has been
 //		   changed.
@@ -831,7 +964,7 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 //		   leave the window up, otherwise empty.
 void and_update_inventory()
 {
-//	debuglog("and_update_inventory");
+	debuglog("and_update_inventory");
 }
 
 //____________________________________________________________________________________
@@ -840,7 +973,7 @@ void and_update_inventory()
 //		   for the moment
 void and_mark_synch()
 {
-//	debuglog("and_mark_synch");
+	debuglog("and_mark_synch");
 }
 
 //____________________________________________________________________________________
@@ -850,7 +983,7 @@ void and_mark_synch()
 //		   display is OK when return from wait_synch().
 void and_wait_synch()
 {
-//	debuglog("and_wait_synch");
+	debuglog("and_wait_synch");
 }
 
 //____________________________________________________________________________________
@@ -860,7 +993,7 @@ void and_wait_synch()
 //		-- This function is only defined if CLIPPING is defined.
 void and_cliparound(int x, int y)
 {
-//	debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
+	debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
 	JNICallV(jCliparound, x, y, u.ux, u.uy);
 }
 
@@ -880,7 +1013,7 @@ void and_cliparound(int x, int y)
 //		   location. A zero char marks the end of the list.
 void and_update_positionbar(char *features)
 {
-	//debuglog("and_update_positionbar");
+	debuglog("and_update_positionbar");
 }
 
 #endif
@@ -892,50 +1025,9 @@ void and_update_positionbar(char *features)
 //		   port wants (symbol, font, color, attributes, ...there's
 //		   a 1-1 map between glyphs and distinct things on the map).
 
-int nhcolor_to_RGB(int c)
+void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph, int bkglyph)
 {
-	switch(c)
-	{
-	case CLR_BLACK:
-		return 0xFF555555;
-	case CLR_RED:
-		return 0xFFFF0000;
-	case CLR_GREEN:
-		return 0xFF008000;
-	case CLR_BROWN:
-		return 0xFF4d2121;//A52A2A;
-	case CLR_BLUE:
-		return 0xFF0000FF;
-	case CLR_MAGENTA:
-		return 0xFFFF00FF;
-	case CLR_CYAN:
-		return 0xFF00FFFF;
-	case CLR_GRAY:
-		return 0xFF909090;
-	case NO_COLOR:
-		return 0xFFFFFFFF;
-	case CLR_ORANGE:
-		return 0xFFFFA500;
-	case CLR_BRIGHT_GREEN:
-		return 0xFF00FF00;
-	case CLR_YELLOW:
-		return 0xFFFFFF00;
-	case CLR_BRIGHT_BLUE:
-		return 0xFF00C0FF;
-	case CLR_BRIGHT_MAGENTA:
-		return 0xFFFF80FF;
-	case CLR_BRIGHT_CYAN:
-		return 0xFF80FFFF; /* something close to aquamarine */
-	case CLR_WHITE:
-		return 0xFFFFFFFF;
-	default:
-		return 0xFF000000; /* black */
-	}
-}
-
-void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph)
-{
-//	debuglog("and_print_glyph wid=%d %dx%d", wid, x, y);
+	//debuglog("and_print_glyph wid=%d %dx%d", wid, x, y);
 	int tile;
 	if(glyph == NO_GLYPH)
 		tile = -1;
@@ -981,7 +1073,7 @@ void and_raw_print_bold(const char* str)
 //                   non meta-zero too (zero with the meta-bit set).
 int and_nhgetch()
 {
-	//debuglog("and_nhgetch");
+	debuglog("and_nhgetch");
 	int c = JNICallI(jReceiveKey);
 
 	quit_if_possible = FALSE;
@@ -1028,7 +1120,7 @@ void lock_mouse_cursor(boolean bLock)
 
 int and_nh_poskey(int *x, int *y, int *mod)
 {
-//	debuglog("and_nh_poskey");
+	debuglog("and_nh_poskey");
 	jintArray a = (*jEnv)->NewIntArray(jEnv, 2);
 	int c = JNICallI(jReceivePosKey, bMouseLock, a);
 	if(!c)
@@ -1059,7 +1151,7 @@ int and_nh_poskey(int *x, int *y, int *mod)
 //		   redone, since sounds aren't attributable to windows anyway.]
 void and_nhbell()
 {
-//	debuglog("and_nhbell");
+	debuglog("and_nhbell");
 }
 
 //____________________________________________________________________________________
@@ -1068,8 +1160,9 @@ void and_nhbell()
 //		-- On the tty-port this scrolls WIN_MESSAGE back one line.
 int and_doprev_message()
 {
-	//debuglog("and_doprev_message");
-	JNICallV(jShowPrevMessage);
+	debuglog("and_doprev_message");
+	JNICallV(jShowLog, 1);
+	and_nhgetch();
 	return 0;
 }
 
@@ -1120,9 +1213,9 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	allow_num = choices && index(choices, '#');
 
 	//if(choices)
-	//	debuglog("yn %s [%s](%c)", question, choices, def);
+		debuglog("yn %s [%s](%c)", question, choices, def);
 	//else
-	//	debuglog("yn %s", question);
+		debuglog("yn %s", question);
 
 	if(iflags.automenu && choices && nChoices <= 4 && esc < 0 && !allow_num)
 	{
@@ -1339,6 +1432,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int
 	jstr = (jstring)JNICallO(jGetLine, jq, nMax, showLog, reentry);
 	destroy_jobject(jq);
 
+
 	n = (*jEnv)->GetStringLength(jEnv, jstr);
 	if(n >= nMax)
 		n = nMax - 1;
@@ -1346,6 +1440,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int
 	if(n > 0)
 	{
 		pChars = (*jEnv)->GetStringChars(jEnv, jstr, 0);
+	debuglog("    returned %c %s", *pChars, pChars);
 		if(*pChars == 0x80)
 		{
 			// special case: ABORT
@@ -1397,7 +1492,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int
 //		   the nul character.
 void and_getlin(const char *question, char *input)
 {
-	//debuglog("and_getlin '%s'", question);
+	debuglog("and_getlin '%s'", question);
 	and_n_getline(question, input, BUFSZ, FALSE);
 }
 
@@ -1410,7 +1505,7 @@ void and_getlin_log(const char *question, char *input)
 //askname()	-- Ask the user for a player name.
 void and_askname()
 {
-	//debuglog("ask name");
+	debuglog("ask name");
 
 	int i, n, w;
 	const jchar* pChars;
@@ -1471,7 +1566,7 @@ void and_askname()
 //		   selection, -1 otherwise.
 int do_ext_cmd_menu()
 {
-	//debuglog("and_get_ext_cmd");
+	debuglog("and_get_ext_cmd");
 
 	winid wid;
 	int i, count, what;
@@ -1536,7 +1631,7 @@ void get_ext_cmd_auto(const char *query, register char *bufp)
 	bufp[n] = 0;
 	for(;;)
 	{
-		c = Getchar();
+		c = and_nhgetch();
 		if(c == EOF || c == '\n')
 		{
 			bufp[n] = 0;
@@ -1618,7 +1713,7 @@ int and_get_ext_cmd()
 //		-- Initialize the number pad to the given state.
 void and_number_pad(int state)
 {
-//	debuglog("and_number_pad(%d)", state);
+	debuglog("and_number_pad(%d)", state);
 	JNICallV(jSetNumPadOption, state);
 }
 
@@ -1628,7 +1723,7 @@ void and_number_pad(int state)
 //		   by a nap(50ms), but allows asynchronous operation.
 void and_delay_output()
 {
-//	debuglog("and_delay_output()");
+	debuglog("and_delay_output()");
 	JNICallV(jDelayOutput);
 }
 
@@ -1636,13 +1731,13 @@ void and_delay_output()
 #ifdef CHANGE_COLOR
 void and_change_color(int a,long b,int c)
 {
-//	debuglog("and_change_color(%d, %d, %d)", a, b, c);
+	debuglog("and_change_color(%d, %d, %d)", a, b, c);
 }
 
 //____________________________________________________________________________________
 char* and_get_color_string()
 {
-//	debuglog("and_get_color_string");
+	debuglog("and_get_color_string");
 	return "";
 }
 #endif
@@ -1655,7 +1750,7 @@ char* and_get_color_string()
 //		   just declare an empty function.
 void and_start_screen()
 {
-//	debuglog("and_start_screen");
+	debuglog("and_start_screen");
 }
 
 //____________________________________________________________________________________
@@ -1663,7 +1758,7 @@ void and_start_screen()
 //		   completeness.  The complement of start_screen().
 void and_end_screen()
 {
-//	debuglog("and_end_screen");
+	debuglog("and_end_screen");
 }
 
 //____________________________________________________________________________________
@@ -1677,17 +1772,19 @@ void and_end_screen()
 //		   corresponding bit in the wincap mask.
 void and_preference_update(const char *pref)
 {
-//	debuglog("and_preference_update %s", pref);
+	debuglog("and_preference_update %s", pref);
 	//genl_preference_update(pref);
 }
 
 int doshowlog()
 {
+	debuglog("doshowlog");
 	JNICallV(jShowLog, 0);
 	return 0;
 }
 
 void and_set_wizard_mode()
 {
+	debuglog("set wizard mode");
 	JNICallV(jSetWizardMode);
 }

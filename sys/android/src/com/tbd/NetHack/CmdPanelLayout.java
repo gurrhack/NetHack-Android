@@ -9,7 +9,6 @@ import android.graphics.Rect;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.view.ContextMenu;
-import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
@@ -225,19 +224,6 @@ public class CmdPanelLayout extends FrameLayout
 			editor.remove("cmdLayout");
 			resetPanels(editor);
 		}
-		else if(prefs.contains("cmdLayout"))
-		{
-			Log.print("old cmdLayout");
-			// backwards compatible			
-			String s = prefs.getString("cmdLayout", "");
-			editor.remove("cmdLayout");
-			s = convertOldCmds(s);
-			if(s != null)
-			{
-				resetPanels(editor);
-				editor.putString("pCmdString0", s);
-			}
-		}
 
 		// get rid of old showCmdPanel
 		if(prefs.contains("showCmdPanel"))
@@ -411,28 +397,6 @@ public class CmdPanelLayout extends FrameLayout
 	}
 
 	// ____________________________________________________________________________________
-	private String convertOldCmds(String s)
-	{
-		if(s == null || s.length() == 0)
-			return "";
-
-		String[] a = (String[])Util.stringToObject(s);
-		if(a == null)
-			return null;
-
-		StringBuilder b = new StringBuilder();
-		for(String c : a)
-		{
-			c = c.replace(" ", "\\ ");
-			c = c.replace("|", "\\|");
-			b.append(c);
-			b.append(" ");
-		}
-
-		return b.toString();
-	}
-
-	// ____________________________________________________________________________________
 	private void forceAddMenu(SharedPreferences prefs, Editor editor)
 	{
 		// Add menu command to first non-empty active panel
@@ -460,6 +424,7 @@ public class CmdPanelLayout extends FrameLayout
 				}
 			}
 		}
+
 	}
 
 	// ____________________________________________________________________________________

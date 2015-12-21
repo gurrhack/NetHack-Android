@@ -1,5 +1,7 @@
 package com.tbd.NetHack;
 
+import java.util.Set;
+
 import android.app.Activity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -9,7 +11,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
-import java.util.Set;
+import com.tbd.NetHack.Input.Modifier;
 
 public class NH_Question
 {
@@ -57,7 +59,7 @@ public class NH_Question
 	}
 
 	// ____________________________________________________________________________________
-	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+	public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Modifier> modifiers, int repeatCount, boolean bSoftInput)
 	{
 		if(mUI == null)
 			return KeyEventResult.IGNORED;
@@ -162,7 +164,7 @@ public class NH_Question
 		};
 		
 		// ____________________________________________________________________________________
-		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Input.Modifier> modifiers, int repeatCount, boolean bSoftInput)
+		public KeyEventResult handleKeyDown(char ch, int nhKey, int keyCode, Set<Modifier> modifiers, int repeatCount, boolean bSoftInput)
 		{
 			if(mRoot == null)
 				return KeyEventResult.IGNORED;

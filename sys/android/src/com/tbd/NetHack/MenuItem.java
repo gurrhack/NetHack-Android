@@ -7,42 +7,26 @@ public class MenuItem
 {
 	private final int mTile;
 	private final int mIdent;
+	private final int mColor;
 	private char mAccelerator;
 	private final char mGroupacc;
-	private final TextAttr mAttr;
+	private final int mAttr;
 	private String mName;
 	private final Spanned mText;
 	private final Spanned mSubText;
 	private Spanned mAccText;
 	private int mCount;
 	private int mMaxCount;
-	private boolean mIsSelected;
 	private View mView;
 
-	public MenuItem(MenuItem item)
-	{
-		mTile = item.mTile;
-		mIdent = item.mIdent;
-		mAccelerator = item.mAccelerator;
-		mGroupacc = item.mGroupacc;
-		mAttr = item.mAttr;
-		mName = item.mName;
-		mText = item.mText;
-		mSubText = item.mSubText;
-		mAccText = item.mAccText;
-		mCount = item.mCount;
-		mMaxCount = item.mMaxCount;
-		mIsSelected = item.mIsSelected;
-	}
-	
-	// ____________________________________________________________________________________
-	public MenuItem(final int tile, final int ident, final int accelerator, final int groupacc, final TextAttr attr, final String str, final int selected)
+	public MenuItem(int tile, int ident, int accelerator, int groupacc, int attr, String str, int selected, int color)
 	{
 		mTile = tile;
 		mIdent = ident;
 		mAccelerator = (char)accelerator;
 		mGroupacc = (char)groupacc;
-		mAttr = attr == TextAttr.Bold ? TextAttr.Inverse : attr;
+		mAttr = attr == TextAttr.ATTR_BOLD ? TextAttr.ATTR_INVERSE : attr;
+		mColor = color;
 
 		String text = str;
 		int lp = text.lastIndexOf('(');
@@ -50,18 +34,18 @@ public class MenuItem
 		if(accelerator != 0 && lp > 0 && lp != rp && rp == text.length() - 1)
 		{
 			mName = text.substring(0, lp);
-			mSubText = TextAttr.Dim.style(text.substring(lp + 1, rp));
+			mSubText = TextAttr.style(text.substring(lp + 1, rp), TextAttr.ATTR_DIM);
 		}
 		else
 		{
 			mName = text;
 			mSubText = null;
 		}
-		mText = mAttr.style(mName);
+		mText = TextAttr.style(mName, mAttr, mColor);
 
 		setAcc(mAccelerator);
-		
-		mCount = -1;
+
+		mCount = selected > 0 ? -1 : 0;
 		mMaxCount = 0;
 		
 		int i;
@@ -74,8 +58,8 @@ public class MenuItem
 		}
 		if(i > 0)
 			mName = mName.substring(i).trim();
-
-		mIsSelected = selected != 0;
+		else
+			mMaxCount = 1;
 	}
 
 	// ____________________________________________________________________________________
@@ -111,7 +95,7 @@ public class MenuItem
 	// ____________________________________________________________________________________
 	public boolean isHeader()
 	{
-		return mAttr == TextAttr.Inverse;
+		return mAttr == TextAttr.ATTR_INVERSE;
 	}
 
 	// ____________________________________________________________________________________
@@ -138,8 +122,7 @@ public class MenuItem
 		if(c < 0 || c >= mMaxCount)
 			mCount = -1;
 		else
-			mCount = NHW_Map.clamp(c, 0, mMaxCount);
-		mIsSelected = mCount != 0;
+			mCount = c;
 	}
 
 	// ____________________________________________________________________________________
@@ -155,15 +138,9 @@ public class MenuItem
 	}
 
 	// ____________________________________________________________________________________
-	public void toggle()
-	{
-		mIsSelected = !mIsSelected;
-	}
-
-	// ____________________________________________________________________________________
 	public boolean isSelected()
 	{
-		return mIsSelected;
+		return mCount != 0;
 	}
 
 	// ____________________________________________________________________________________
@@ -183,7 +160,7 @@ public class MenuItem
 	{
 		mAccelerator = acc;
 		if(acc != 0)
-			mAccText = mAttr.style(Character.toString(acc));
+			mAccText = TextAttr.style(Character.toString(acc), mAttr);
 		else
 			mAccText = null;
 	}

@@ -148,6 +148,7 @@ public class NetHack extends Activity
 		if(nhState != null) {
             nhState.saveAndQuit();
         }
+		nhState = null;
 		
 		super.onDestroy();
 	}
