@@ -1036,6 +1036,15 @@ void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph, int bkglyph)
 	int col;
 	int special;
 	mapglyph(glyph, &ch, &col, &special, x, y);
+
+	special &= ~(MG_CORPSE|MG_INVIS|MG_RIDDEN|MG_STATUE); // TODO support
+	if(!iflags.hilite_pet)
+		special &= ~MG_PET;
+	if(!iflags.hilite_pile)
+		special &= ~MG_OBJPILE;
+	if(!iflags.use_inverse)
+		special &= ~MG_DETECT;
+
 	JNICallV(jPrintTile, wid, x, y, tile, ch, nhcolor_to_RGB(col), special);
 }
 

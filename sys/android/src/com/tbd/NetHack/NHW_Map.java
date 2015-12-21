@@ -750,7 +750,7 @@ public class NHW_Map implements NH_Window
 							fgColor = 0xffffffff;
 						}
 					}
-					else if(tile.overlay == 8 && tile.glyph >= 0)
+					else if(tile.overlay != 0 && tile.glyph >= 0)
 					{
 						bgColor = fgColor;
 						fgColor = 0xff000000;

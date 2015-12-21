@@ -228,7 +228,7 @@ static struct Bool_Opt {
     { "toptenwin", &iflags.toptenwin, FALSE, SET_IN_GAME },
     { "travel", &flags.travelcmd, TRUE, SET_IN_GAME },
     { "use_darkgray", &iflags.wc2_darkgray, TRUE, SET_IN_FILE },
-#ifdef WIN32
+#if defined(WIN32) || defined(ANDROID)
     { "use_inverse", &iflags.wc_inverse, TRUE, SET_IN_GAME }, /*WC*/
 #else
     { "use_inverse", &iflags.wc_inverse, FALSE, SET_IN_GAME }, /*WC*/

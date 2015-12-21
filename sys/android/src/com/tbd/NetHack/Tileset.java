@@ -14,6 +14,10 @@ import java.util.Map;
 
 public class Tileset
 {
+	public final int OVERLAY_DETECT = 0x04;
+	public final int OVERLY_PET = 0x08;
+	public final int OVERLAY_OBJPILE = 0x40;
+
 	private static final String LOCAL_TILESET_NAME = "custom_tileset";
 
 	private Bitmap mBitmap;
@@ -208,7 +212,7 @@ public class Tileset
 	// ____________________________________________________________________________________
 	public Bitmap getTileOverlay(short overlay)
 	{
-		if(overlay == 8)
+		if((overlay & OVERLY_PET) != 0)
 			return mOverlay;
 		return null;
 	}
