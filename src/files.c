@@ -1110,7 +1110,7 @@ const char *filename;
          && read(fd, (genericptr_t) &version_data, sizeof version_data) == sizeof version_data
          && read(fd, (genericptr_t) &sfi, sizeof sfi) == sizeof sfi
          && read(fd, (genericptr_t) &pltmpsiz, sizeof pltmpsiz) == sizeof pltmpsiz
-         && pltmpsiz <= PL_NSIZ
+         && pltmpsiz > 0 && pltmpsiz <= PL_NSIZ
          && read(fd, (genericptr_t) &tmpplbuf, pltmpsiz) == pltmpsiz ) {
             result = dupstr(tmpplbuf);
         }
