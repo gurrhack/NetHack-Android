@@ -28,14 +28,11 @@
 #
 # *** General options ***
 #
-#OPTIONS=autopickup,pickup_types:$"=/!?+
+OPTIONS=autopickup,pickup_types:$"=/!?+
 #OPTIONS=packorder:")[%?+/=!(*0_`
-#OPTIONS=scores:10 top/2 around/own
+OPTIONS=scores:10 top/2 around/own
 #OPTIONS=nolegacy,noverbose
-#
-#OPTIONS=!splash_screen
-#
-#
+
 OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
 OPTIONS=pile_limit:2,hilite_pile,hilite_pet
 
@@ -46,14 +43,10 @@ MENUCOLOR=" holy "=green
 MENUCOLOR=" uncursed "=yellow
 MENUCOLOR=" cursed "=red
 MENUCOLOR=" unholy "=red
-MENUCOLOR=" cursed .* (being worn)"=orange&underline
-
-MENUCOLOR="loadstone\|wand \(of\|called\) cancellation"=underline
+MENUCOLOR=" cursed .* \(being worn\)"=red&underline
+MENUCOLOR="loadstone|wand (of|called) cancellation"=white&underline
 MENUCOLOR="Amulet of Yendor named"=magenta                           # color only the real Amulet
 MENUCOLOR="gold piece"=yellow
-
-MENUCOLOR=". -.* \[(Unskilled|Basic|Skilled|Expert|Master)"=white # skill slots
-MENUCOLOR="[a-zA-Z] - [a-zA-Z ]+[ ]+[0-9]+\*[ ]+[a-z]+[ ]+[0-9]+%"=magenta  # forgotten spell
 
 
 # Colorize the status line values

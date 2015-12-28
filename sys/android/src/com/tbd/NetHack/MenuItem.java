@@ -56,7 +56,7 @@ public class MenuItem
 				break;
 			mMaxCount = mMaxCount * 10 + c - '0';
 		}
-		if(i > 0)
+		if(i > 0 && mMaxCount > 0)
 			mName = mName.substring(i).trim();
 		else
 			mMaxCount = 1;

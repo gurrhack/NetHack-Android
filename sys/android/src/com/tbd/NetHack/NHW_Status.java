@@ -94,7 +94,9 @@ public class NHW_Status implements NH_Window
 		if( append == 0 || str.length() < mRows[mCurRow].length() ) {
 			mRows[mCurRow] = new SpannableStringBuilder( TextAttr.style(str, attr, color) );
 		} else {
-			mRows[mCurRow].append( TextAttr.style(str.substring(mRows[mCurRow].length(), str.length()), attr, color) );
+			int nToAppend = str.length() - mRows[mCurRow].length();
+			if(nToAppend > 0)
+				mRows[mCurRow].append(TextAttr.style(str.substring(mRows[mCurRow].length(), str.length()), attr, color));
 		}
 	}
 
@@ -104,7 +106,8 @@ public class NHW_Status implements NH_Window
 
 	// ____________________________________________________________________________________
 	@Override
-	public void setCursorPos(int x, int y) {
+	public void setCursorPos(int x, int y)
+	{
 		mCurRow = y == 0 ? 0 : 1;
 	}
 
@@ -138,7 +141,7 @@ public class NHW_Status implements NH_Window
 		// ____________________________________________________________________________________
 		public void showInternal()
 		{
-			update();
+			//update();
 			mViews[0].setVisibility(View.VISIBLE);
 			mViews[1].setVisibility(View.VISIBLE);
 		}
@@ -155,6 +158,8 @@ public class NHW_Status implements NH_Window
 		{
 			mViews[0].setText(mRows[0]);
 			mViews[1].setText(mRows[1]);
+			mRows[0] = new SpannableStringBuilder();
+			mRows[1] = new SpannableStringBuilder();
 		}
 
 		// ____________________________________________________________________________________

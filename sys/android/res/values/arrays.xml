@@ -2,23 +2,21 @@
 <resources>
     <string-array name="tileNames">
         <item>Absurd</item>
-        <item>Abigaba</item>
     	<item>Ascii (no tiles)</item>
+        <item>Chozo</item>
+        <item>DawnHack</item>
         <item>Default</item>
         <item>Geoduck</item>
-        <item>RLTiles</item>
-        <item>Kins</item>
-        <item>Lagged</item>
+        <item>Nevanda</item>
     </string-array>
     <string-array name="tileValues">
         <item>absurd_32</item>
-        <item>chozo_32</item>
         <item>TTY</item>
+        <item>chozo_32</item>
+        <item>dawnhack_32</item>
         <item>default_32</item>
-        <item>geoduck_12x20</item>
-        <item>itakura_32</item>
-        <item>kins_32</item>
-        <item>lagged_12x20</item>
+        <item>geoduck_24x40</item>
+        <item>nevanda_32</item>
     </string-array>
 
     <string-array name="actionNames">

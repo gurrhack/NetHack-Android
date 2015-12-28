@@ -23,13 +23,16 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 
 import java.io.*;
+import java.util.Arrays;
+import java.util.List;
 
 public class TilesetPreference extends Preference implements PreferenceManager.OnActivityResultListener
 {
 	private static final int GET_IMAGE_REQUEST = 342;
+	private final String TTY = "TTY";
 
-	private String[] mEntries;
-	private String[] mEntryValues;
+	private List<String> mEntries;
+	private List<String> mEntryValues;
 	private TextView mTilesetPath;
 	private EditText mTileW;
 	private EditText mTileH;
@@ -46,8 +49,8 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 	{
 		super(context, attrs);
 
-		mEntries = context.getResources().getStringArray(R.array.tileNames);
-		mEntryValues = context.getResources().getStringArray(R.array.tileValues);
+		mEntries = Arrays.asList(context.getResources().getStringArray(R.array.tileNames));
+		mEntryValues = Arrays.asList(context.getResources().getStringArray(R.array.tileValues));
 	}
 
 	@Override
@@ -130,16 +133,12 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		super.onBindView(view);
 
 		SharedPreferences prefs = getSharedPreferences();
-		String currentValue = prefs.getString("tileset", "TTY");
+		String currentValue = prefs.getString("tileset", TTY);
 
-		for(int i = 0; i < mEntryValues.length; i++)
-		{
-			if(currentValue.equals(mEntryValues[i]))
-			{
-				((RadioButton)mRoot.getChildAt(i)).setChecked(true);
-				break;
-			}
-		}
+		int i = mEntryValues.indexOf(currentValue);
+		if(i < 0)
+			i = mEntryValues.indexOf(TTY);
+		((RadioButton)mRoot.getChildAt(i)).setChecked(true);
 
 		mTilesetPath.setText(prefs.getString("customTileset", ""));
 		mTileW.setText(Integer.toString(prefs.getInt("customTileW", 32)));
@@ -250,11 +249,11 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 
 	private void createChoices()
 	{
-		for(int i = mEntries.length - 1; i >= 0; i--)
+		for(int i = mEntries.size() - 1; i >= 0; i--)
 		{
 			RadioButton button = new RadioButton(getContext());
-			button.setText(mEntries[i]);
-			button.setTag(mEntryValues[i]);
+			button.setText(mEntries.get(i));
+			button.setTag(mEntryValues.get(i));
 			button.setOnCheckedChangeListener(tilesetChecked);
 			LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 			mRoot.addView(button, 0, params);
@@ -291,16 +290,20 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 			if(isChecked)
 			{
 				String id = (String)buttonView.getTag();
-				int tileW, tileH;
-				if(id.endsWith("32"))
-				{
-					tileW = 32;
-					tileH = 32;
-				} else
-				{
-					tileW = 12;
-					tileH = 20;
-
+				int tileW;
+				int tileH;
+				if(TTY.equals(id)) {
+					tileW = 0;
+					tileH = 0;
+				} else {
+					int iw = id.lastIndexOf('_') + 1;
+					int ih = id.lastIndexOf('x');
+					if(ih < iw)
+						ih = id.length();
+					tileW = Integer.parseInt(id.substring(iw, ih));
+					tileH = tileW;
+					if(ih != id.length())
+						tileH = Integer.parseInt(id.substring(ih + 1, id.length()));
 				}
 				persistTileset(id, tileW, tileH, false);
 			}

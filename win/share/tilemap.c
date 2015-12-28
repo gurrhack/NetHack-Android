@@ -20,7 +20,7 @@ extern void FDECL(exit, (int));
 #endif
 #endif
 
-#if defined(WIN32)
+#if defined(WIN32) || defined(ANDROID)
 #define STATUES_LOOK_LIKE_MONSTERS
 #endif
 

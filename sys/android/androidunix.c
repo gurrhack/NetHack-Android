@@ -70,18 +70,11 @@ getlock()
 	}
 	(void) close(fd);
 
-	c = yn("There is already a game in progress under that name. Recover?");
-
-	if(c == 'y')
+	if(!recover_savefile())
 	{
-		if(!recover_savefile())
-		{
-			(void) eraseoldlocks();
-			unlock_file(HLOCK);
-			error("Couldn't recover old game.");
-		}
-	} else {
+		(void) eraseoldlocks();
 		unlock_file(HLOCK);
+		error("Couldn't recover old game.");
 	}
 
 gotlock:
@@ -94,7 +87,7 @@ gotlock:
 	}
 	else
 	{
-		debuglog("created lock(%s)", fq_lock);
+		//debuglog("created lock(%s)", fq_lock);
 
 		if(write(fd, (genericptr_t) &hackpid, sizeof(hackpid)) != sizeof(hackpid))
 		{

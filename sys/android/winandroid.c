@@ -298,7 +298,7 @@ void debuglog(const char *fmt, ...)
 //		** windows?  Or at least all but WIN_INFO?	-dean
 void and_init_nhwindows(int* argcp, char** argv)
 {
-	debuglog("and_init_nhwindows()");
+	//debuglog("and_init_nhwindows()");
 	iflags.window_inited = TRUE;
 }
 
@@ -319,7 +319,7 @@ void and_player_selection()
 	anything any;
 	menu_item *selected = 0;
 
-	debuglog("and_player_selection()");
+	//debuglog("and_player_selection()");
 
 	/* prevent an unnecessary prompt */
 	rigid_role_checks();
@@ -491,7 +491,7 @@ void and_get_nh_event()
 //		   if possible.
 void and_exit_nhwindows(const char *str)
 {
-	debuglog("exit_nhwindows");
+	//debuglog("exit_nhwindows");
 	iflags.window_inited = FALSE;
 }
 
@@ -522,7 +522,7 @@ winid and_create_nhwindow(int type)
 //		-- Clear the given window, when appropriate.
 void and_clear_nhwindow(winid wid)
 {
-	debuglog("and_clear_nhwindow(%d)", wid);
+	//debuglog("and_clear_nhwindow(%d)", wid);
 	JNICallV(jClearWindow, wid, Is_rogue_level(&u.uz));
 }
 
@@ -538,7 +538,7 @@ void and_clear_nhwindow(winid wid)
 //		   --more--, if necessary, in the tty window-port.
 void and_display_nhwindow(winid wid, BOOLEAN_P blocking)
 {
-	debuglog("display_nhwindow(%d)", wid);
+	//debuglog("display_nhwindow(%d)", wid);
 	if(wid != WIN_MESSAGE && /*wid != WIN_STATUS && */wid != WIN_MAP)
 		blocking = TRUE;
 	JNICallV(jDisplayWindow, wid, blocking);
@@ -661,7 +661,7 @@ void
 term_start_color(color)
 int color;
 {
-	debuglog("term_start_color %s", colname(color));
+	//debuglog("term_start_color %s", colname(color));
 	text_color = nhcolor_to_RGB(color);
 }
 
@@ -699,7 +699,6 @@ void and_putstr_ex(winid wid, int attr, const char *str, int append)
 
 	if(wid == NHW_STATUS)
 	{
-	debuglog("put status: %s", str);
 		if(context.botlx)
 			append = 0;
 		else
@@ -736,7 +735,7 @@ winid window;
 int attr;
 const char *str;
 {
-	debuglog("put mixed: %s", str);
+	//debuglog("put mixed: %s", str);
 	genl_putmixed(window, attr, str);
 }
 
@@ -746,7 +745,7 @@ const char *str;
 //		   iff complain is TRUE.
 void and_display_file(const char *name, BOOLEAN_P complain)
 {
-	debuglog("and_display_file(%s, %d)", name, complain);
+	//debuglog("and_display_file(%s, %d)", name, complain);
 
 	dlb* f;
 	char buf[BUFSZ];
@@ -831,6 +830,8 @@ void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, 
 		color = -1;
 	}
 
+	//debuglog("add menu %d: %s", attr, str);
+
 	if(attr)
 		attr = 1<<attr;
 
@@ -894,13 +895,13 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	jint* p;
 	jint* q;
 
-	debuglog("and_select_menu");
+	//debuglog("and_select_menu");
 
 	a = (jintArray)JNICallO(jSelectMenu, wid, how, reentry);
 
 	*selected = 0;
 
-	debuglog("returned %d", a);
+	//debuglog("returned %d", a);
 	if(a == 0)
 		return -1;
 
@@ -949,7 +950,7 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 //		   substitute genl_message_menu (windows.c) instead.
 char and_message_menu(CHAR_P let, int how, const char* mesg)
 {
-	debuglog("message_menu: %s", mesg);
+	//debuglog("message_menu: %s", mesg);
 
     pline("%s", mesg);
     return 0;
@@ -963,7 +964,7 @@ char and_message_menu(CHAR_P let, int how, const char* mesg)
 //		   leave the window up, otherwise empty.
 void and_update_inventory()
 {
-	debuglog("and_update_inventory");
+	//debuglog("and_update_inventory");
 }
 
 //____________________________________________________________________________________
@@ -972,7 +973,7 @@ void and_update_inventory()
 //		   for the moment
 void and_mark_synch()
 {
-	debuglog("and_mark_synch");
+	//debuglog("and_mark_synch");
 }
 
 //____________________________________________________________________________________
@@ -982,7 +983,7 @@ void and_mark_synch()
 //		   display is OK when return from wait_synch().
 void and_wait_synch()
 {
-	debuglog("and_wait_synch");
+	//debuglog("and_wait_synch");
 }
 
 //____________________________________________________________________________________
@@ -992,7 +993,7 @@ void and_wait_synch()
 //		-- This function is only defined if CLIPPING is defined.
 void and_cliparound(int x, int y)
 {
-	debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
+	//debuglog("and_cliparound %dx%d (%dx%d)", x, y, u.ux, u.uy);
 	JNICallV(jCliparound, x, y, u.ux, u.uy);
 }
 
@@ -1012,7 +1013,7 @@ void and_cliparound(int x, int y)
 //		   location. A zero char marks the end of the list.
 void and_update_positionbar(char *features)
 {
-	debuglog("and_update_positionbar");
+	//debuglog("and_update_positionbar");
 }
 
 #endif
@@ -1081,7 +1082,7 @@ void and_raw_print_bold(const char* str)
 //                   non meta-zero too (zero with the meta-bit set).
 int and_nhgetch()
 {
-	debuglog("and_nhgetch");
+	//debuglog("and_nhgetch");
 	int c = JNICallI(jReceiveKey);
 
 	quit_if_possible = FALSE;
@@ -1128,7 +1129,7 @@ void lock_mouse_cursor(boolean bLock)
 
 int and_nh_poskey(int *x, int *y, int *mod)
 {
-	debuglog("and_nh_poskey");
+	//debuglog("and_nh_poskey");
 	jintArray a = (*jEnv)->NewIntArray(jEnv, 2);
 	int c = JNICallI(jReceivePosKey, bMouseLock, a);
 	if(!c)
@@ -1159,7 +1160,7 @@ int and_nh_poskey(int *x, int *y, int *mod)
 //		   redone, since sounds aren't attributable to windows anyway.]
 void and_nhbell()
 {
-	debuglog("and_nhbell");
+//	debuglog("and_nhbell");
 }
 
 //____________________________________________________________________________________
@@ -1168,7 +1169,7 @@ void and_nhbell()
 //		-- On the tty-port this scrolls WIN_MESSAGE back one line.
 int and_doprev_message()
 {
-	debuglog("and_doprev_message");
+//	debuglog("and_doprev_message");
 	JNICallV(jShowLog, 1);
 	and_nhgetch();
 	return 0;
@@ -1221,9 +1222,9 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	allow_num = choices && index(choices, '#');
 
 	//if(choices)
-		debuglog("yn %s [%s](%c)", question, choices, def);
+	//	debuglog("yn %s [%s](%c)", question, choices, def);
 	//else
-		debuglog("yn %s", question);
+	//	debuglog("yn %s", question);
 
 	if(iflags.automenu && choices && nChoices <= 4 && esc < 0 && !allow_num)
 	{
@@ -1448,7 +1449,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int
 	if(n > 0)
 	{
 		pChars = (*jEnv)->GetStringChars(jEnv, jstr, 0);
-	debuglog("    returned %c %s", *pChars, pChars);
+	//debuglog("    returned %c %s", *pChars, pChars);
 		if(*pChars == 0x80)
 		{
 			// special case: ABORT
@@ -1500,7 +1501,7 @@ void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int
 //		   the nul character.
 void and_getlin(const char *question, char *input)
 {
-	debuglog("and_getlin '%s'", question);
+//	debuglog("and_getlin '%s'", question);
 	and_n_getline(question, input, BUFSZ, FALSE);
 }
 
@@ -1513,7 +1514,7 @@ void and_getlin_log(const char *question, char *input)
 //askname()	-- Ask the user for a player name.
 void and_askname()
 {
-	debuglog("ask name");
+//	debuglog("ask name");
 
 	int i, n, w;
 	const jchar* pChars;
@@ -1574,7 +1575,7 @@ void and_askname()
 //		   selection, -1 otherwise.
 int do_ext_cmd_menu()
 {
-	debuglog("and_get_ext_cmd");
+//	debuglog("and_get_ext_cmd");
 
 	winid wid;
 	int i, count, what;
@@ -1721,7 +1722,7 @@ int and_get_ext_cmd()
 //		-- Initialize the number pad to the given state.
 void and_number_pad(int state)
 {
-	debuglog("and_number_pad(%d)", state);
+//	debuglog("and_number_pad(%d)", state);
 	JNICallV(jSetNumPadOption, state);
 }
 
@@ -1731,7 +1732,7 @@ void and_number_pad(int state)
 //		   by a nap(50ms), but allows asynchronous operation.
 void and_delay_output()
 {
-	debuglog("and_delay_output()");
+//	debuglog("and_delay_output()");
 	JNICallV(jDelayOutput);
 }
 
@@ -1739,13 +1740,13 @@ void and_delay_output()
 #ifdef CHANGE_COLOR
 void and_change_color(int a,long b,int c)
 {
-	debuglog("and_change_color(%d, %d, %d)", a, b, c);
+//	debuglog("and_change_color(%d, %d, %d)", a, b, c);
 }
 
 //____________________________________________________________________________________
 char* and_get_color_string()
 {
-	debuglog("and_get_color_string");
+//	debuglog("and_get_color_string");
 	return "";
 }
 #endif
@@ -1758,7 +1759,7 @@ char* and_get_color_string()
 //		   just declare an empty function.
 void and_start_screen()
 {
-	debuglog("and_start_screen");
+//	debuglog("and_start_screen");
 }
 
 //____________________________________________________________________________________
@@ -1766,7 +1767,7 @@ void and_start_screen()
 //		   completeness.  The complement of start_screen().
 void and_end_screen()
 {
-	debuglog("and_end_screen");
+//	debuglog("and_end_screen");
 }
 
 //____________________________________________________________________________________
@@ -1780,19 +1781,19 @@ void and_end_screen()
 //		   corresponding bit in the wincap mask.
 void and_preference_update(const char *pref)
 {
-	debuglog("and_preference_update %s", pref);
+//	debuglog("and_preference_update %s", pref);
 	//genl_preference_update(pref);
 }
 
 int doshowlog()
 {
-	debuglog("doshowlog");
+//	debuglog("doshowlog");
 	JNICallV(jShowLog, 0);
 	return 0;
 }
 
 void and_set_wizard_mode()
 {
-	debuglog("set wizard mode");
+//	debuglog("set wizard mode");
 	JNICallV(jSetWizardMode);
 }
