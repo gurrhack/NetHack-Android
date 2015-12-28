@@ -15,6 +15,10 @@ import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.text.*;
+import android.text.method.LinkMovementMethod;
+import android.text.style.URLSpan;
+import android.widget.TextView;
 
 public class UpdateAssets extends AsyncTask<Void, Void, Void>
 {
@@ -156,10 +160,26 @@ public class UpdateAssets extends AsyncTask<Void, Void, Void>
 		mNetHack.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				final TextView text = new TextView(mNetHack);
+
+				SpannableStringBuilder b = new SpannableStringBuilder(
+						"Your saved games are not compatible with this version. If you continue they will be deleted.\n\n"
+						+ "Old releases can be found ");
+
+				Spannable url = new SpannableString("at GitHub");
+				url.setSpan(new URLSpan("https://github.com/gurrhack/NetHack-Android"), 0, url.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+				b.append(url);
+
+				text.setText(b, TextView.BufferType.SPANNABLE);
+				text.setMovementMethod(LinkMovementMethod.getInstance());
+
+				final float density = mNetHack.getResources().getDisplayMetrics().density;
+				int padding = (int)(5 * density);
+				text.setPadding(3*padding, padding, 3*padding, 2*padding);
+
 				AlertDialog.Builder builder = new AlertDialog.Builder(mNetHack);
-				builder.setTitle("This is NetHack 3.6.0").setMessage(
-						"Your saves are not compatible with this version. If you continue they will be deleted.\n\n"+
-						"Old releases can be found here:\nhttps://github.com/gurrhack/NetHack-Android")
+				builder.setTitle("This is NetHack 3.6.0").setView(text)
 						.setPositiveButton("Continue", new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog, int id) {
 								mWipeConfirmed = true;
