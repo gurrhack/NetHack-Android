@@ -1137,6 +1137,7 @@ doterrain(VOID_ARGS)
     men = create_nhwindow(NHW_MENU);
     any = zeroany;
     any.a_int = 1;
+    start_menu(men);
     add_menu(men, NO_GLYPH, &any, 0, 0, ATR_NONE,
              "known map without monsters, objects, and traps",
              MENU_SELECTED);
