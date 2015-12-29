@@ -1212,8 +1212,10 @@ get_saved_games()
     if(n2 < 0) n2 = 0;
     int i,uid;
     char name[64]; /* more than PL_NSIZ */
-    if(n1 > 0 || n2 > 0)
+    if(n1 > 0 || n2 > 0) {
         result = (char**)alloc((n1+n2+1)*sizeof(char*)); /* at most */
+        (void) memset((genericptr_t) result, 0, (n1+n2+1) * sizeof(char *));
+    }
     for (i=0; i<n1; i++) {
         if ( sscanf( namelist[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
             if ( uid == myuid ) {
