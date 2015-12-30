@@ -9,8 +9,8 @@
 # for Ubuntu dapper.
 
 
-#PREFIX=/usr
-PREFIX=$(wildcard ~)/nh/install
+PREFIX=/usr
+#PREFIX=$(wildcard ~)/nh/install
 HACKDIR=$(PREFIX)/games/lib/$(GAME)dir
 SHELLDIR = $(PREFIX)/games
 INSTDIR=$(HACKDIR)

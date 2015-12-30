@@ -176,6 +176,9 @@ public class NHW_Menu implements NH_Window
 	{
 		if(str.length() == 0 && tile < 0)
 			return;
+		// start_menu is not always called
+		if(mItems == null)
+			startMenu();
 		mItems.add(new MenuItem(tile, ident, accelerator, groupacc, attr, str, preselected, color));
 	}
 

@@ -61,7 +61,7 @@ public class NetHackIO implements Runnable
 	{
 		if(mThread != null)
 			throw new IllegalStateException();
-		mThread = new Thread(this);
+		mThread = new Thread(this, "nh_thread");
 		mThread.start();
 	}
 
