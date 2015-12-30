@@ -250,7 +250,7 @@ bot2()
 #if defined(STATUS_COLORS) && defined(TEXTCOLOR)
         add_colored_text("Conf", newbot2);
 #else
-        Strcat(nb = eos(nb), " Conf");
+        Sprintf(nb = eos(nb), " Conf");
 #endif
     if (Sick) {
         if (u.usick_type & SICK_VOMITABLE)
