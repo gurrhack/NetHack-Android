@@ -662,8 +662,8 @@ int x, y;
 #ifdef ANDROID
 	    if (locked && flags.autokick) {
 			autokick();
-#endif
 	    }
+#endif
         return res;
     }
 
