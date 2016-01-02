@@ -56,7 +56,6 @@ char * NDECL(and_get_color_string);
 void NDECL(and_start_screen);
 void NDECL(and_end_screen);
 void FDECL(and_preference_update, (const char *));
-void NDECL(and_set_wizard_mode);
 
 int NetHackMain(int argc, char** argv);
 

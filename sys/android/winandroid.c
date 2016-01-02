@@ -108,7 +108,6 @@ static jmethodID jShowLog;
 static jmethodID jSetUsername;
 static jmethodID jSetNumPadOption;
 static jmethodID jAskName;
-static jmethodID jSetWizardMode;
 
 static boolean quit_if_possible;
 
@@ -177,13 +176,12 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
 	jSetNumPadOption = (*jEnv)->GetMethodID(jEnv, jApp, "setNumPadOption", "(I)V");
 	jAskName = (*jEnv)->GetMethodID(jEnv, jApp, "askName", "(I[Ljava/lang/String;)Ljava/lang/String;");
-	jSetWizardMode = (*jEnv)->GetMethodID(jEnv, jApp, "setWizardMode", "()V");
 
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
 			jCliparound && jDelayOutput && jShowDPad && jShowLog && jSetUsername &&
-			jSetNumPadOption && jAskName && jSetWizardMode && jSetHealthColor && jRedrawStatus))
+			jSetNumPadOption && jAskName && jSetHealthColor && jRedrawStatus))
 	{
 		debuglog("baaaaad");
 		return;
@@ -1792,8 +1790,3 @@ int doshowlog()
 	return 0;
 }
 
-void and_set_wizard_mode()
-{
-//	debuglog("set wizard mode");
-	JNICallV(jSetWizardMode);
-}

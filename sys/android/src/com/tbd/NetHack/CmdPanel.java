@@ -27,7 +27,6 @@ import com.tbd.NetHack.Cmd.KeySequnece;
 public class CmdPanel
 {
 	private NetHack mContext;
-	private boolean mIsWizard;
 	private NH_State mState;
 	private LinearLayout mBtnPanel;
 	private Button mContextView;
@@ -41,25 +40,15 @@ public class CmdPanel
 	private int mOpacity;
 
 	// ____________________________________________________________________________________
-	public CmdPanel(NetHack context, NH_State state, CmdPanelLayout layout, boolean isWizard, String cmds, int opacity)
+	public CmdPanel(NetHack context, NH_State state, CmdPanelLayout layout, String cmds, int opacity)
 	{
 		mContext = context;
 		mState = state;
 		mLayout = layout;
 		mBtnPanel = new LinearLayout(context);
 		mBtnPanel.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
-		mIsWizard = isWizard;
 		mOpacity = opacity;
 		loadCmds(cmds);
-	}
-
-	// ____________________________________________________________________________________
-	public boolean isWizCmd(String cmd)
-	{
-		if(cmd.length() != 2 || cmd.charAt(0) != '^')
-			return false;
-		char c1 = Character.toLowerCase(cmd.charAt(1));
-		return c1 == 'e' || c1 == 'f' || c1 == 'g' || c1 == 'i' || c1 == 'o' || c1 == 'v' || c1 == 'w';
 	}
 
 	// ____________________________________________________________________________________
@@ -91,8 +80,6 @@ public class CmdPanel
 			label = label.replace("\\ ", " ");
 			View v = createCmdButtonFromString(cmd, label);
 			mBtnPanel.addView(v);
-			if(isWizCmd(cmd) && !mIsWizard)
-				v.setVisibility(View.GONE);
 		}
 	}
 

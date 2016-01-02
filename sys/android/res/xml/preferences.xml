@@ -165,7 +165,7 @@
 					android:title="Command buttons"
 					android:summary="Space separated list of commands in this panel"
 					android:persistent="true"
-					android:defaultValue="menu ... # 20s . : ; , e d r z Z q t f w x i E Q P R W T o ^d ^p a A ^t D F p ^x ^e ^f ^g ^i ^o ^v ^w ?"
+					android:defaultValue="menu ... # 20s . : ; , e d r z Z q t f w x i E Q P R W T o ^d ^p a A ^t D F p ^x ^o ?"
 					android:singleLine="false"
 					android:key="pCmdString0"/>
 	

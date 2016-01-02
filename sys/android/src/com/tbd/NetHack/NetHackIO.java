@@ -782,18 +782,6 @@ public class NetHackIO implements Runnable
 	}
 	
 	// ____________________________________________________________________________________
-	private void setWizardMode()
-	{
-		mHandler.post(new Runnable()
-		{
-			public void run()
-			{
-				mState.setWizardMode();
-			}
-		});
-	}
-	 
-	// ____________________________________________________________________________________
 	private native void RunNetHack(String path);
 	private native void SaveNetHackState();
 	private native void SetFlags(int bAutoMenu);

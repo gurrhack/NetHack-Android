@@ -684,13 +684,6 @@ public class NH_State
 	}
 
 	// ____________________________________________________________________________________
-	public void setWizardMode()
-	{
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-		mCmdPanelLayout.wizardUpgrade(prefs);
-	}
-
-	// ____________________________________________________________________________________
 	public void redrawStatus()
 	{
 		mStatus.redraw();

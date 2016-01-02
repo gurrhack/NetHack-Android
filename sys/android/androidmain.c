@@ -112,10 +112,6 @@ int NetHackMain(int argc, char** argv)
 					/* again if suffix was whole name */
 					/* accepts any suffix */
 #ifdef WIZARD
-	if(wizard) {
-		debuglog("i'm the wiz");
-		and_set_wizard_mode();
-	}
 	if(!wizard)
 #endif
 	setUsername();
@@ -182,9 +178,8 @@ int NetHackMain(int argc, char** argv)
 			goto not_recovered;
 		resuming = TRUE;
 #ifdef WIZARD
-		if(!wizard && remember_wiz_mode) wizard = TRUE;
-		if(wizard)
-			and_set_wizard_mode();
+		if(!wizard && remember_wiz_mode)
+			wizard = TRUE;
 #endif
 		check_special_room(FALSE);
 		wd_message();
