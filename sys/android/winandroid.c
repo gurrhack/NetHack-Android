@@ -137,11 +137,6 @@ void destroy_jobject(jstring jstr)
 #define JNICallO(func, ...) (*jEnv)->CallObjectMethod(jEnv, jAppInstance, func, ## __VA_ARGS__);
 
 //____________________________________________________________________________________
-
-boolean autoMenuFromFile;
-
-
-//____________________________________________________________________________________
 void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username)
 {
 	char* params[10];
@@ -195,16 +190,7 @@ void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstrin
 	params[0] = "nethack";
 	params[1] = 0;
 
-	autoMenuFromFile = FALSE;
-
 	NetHackMain(1, params);
-}
-
-//____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_SetFlags(JNIEnv* env, jobject thiz, int autoMenu)
-{
-	if(!autoMenuFromFile)
-		iflags.automenu = autoMenu ? TRUE : FALSE;
 }
 
 //____________________________________________________________________________________

@@ -142,10 +142,7 @@ public class NH_State
 		mTileset.updateTileset(prefs, mContext.getResources());
 		mMap.updateZoomLimits();
 
-		boolean bAutoMenu = prefs.getBoolean("automenu", true);
-		mIO.sendFlags(bAutoMenu);
-
-		int flag = prefs.getBoolean("fullscreen", false) ? WindowManager.LayoutParams.FLAG_FULLSCREEN : 0;		
+		int flag = prefs.getBoolean("fullscreen", false) ? WindowManager.LayoutParams.FLAG_FULLSCREEN : 0;
 		mContext.getWindow().setFlags(flag, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 	}
 

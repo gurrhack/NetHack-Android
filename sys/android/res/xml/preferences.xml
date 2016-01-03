@@ -30,13 +30,6 @@
 			android:key="reset"/>
 
 		<CheckBoxPreference
-			android:title="Automenu"
-			android:summary="Aid touch screen interaction by automatically opening menus and dialogs when possible"
-			android:persistent="true"
-			android:defaultValue="true"
-			android:key="automenu"/>
-
-		<CheckBoxPreference
 			android:title="Fullscreen"
 			android:summary="Enable fullscreen mode"
 			android:persistent="true"

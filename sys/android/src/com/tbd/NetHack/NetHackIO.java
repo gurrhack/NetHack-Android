@@ -66,13 +66,6 @@ public class NetHackIO implements Runnable
 	}
 
 	// ____________________________________________________________________________________
-	public void sendFlags(boolean bAutoMenu)
-	{
-		mCmdQue.add(FlagCmd);
-		mCmdQue.add(bAutoMenu ? 1 : 0);
-	}
-
-	// ____________________________________________________________________________________
 	public void saveState()
 	{
 		mCmdQue.add(SaveStateCmd);
@@ -296,10 +289,6 @@ public class NetHackIO implements Runnable
 		{
 		case SaveStateCmd:
 			SaveNetHackState();
-		break;
-		case FlagCmd:
-			int autoMenu = removeFromQue();
-			SetFlags(autoMenu);
 		break;
 		}
 	}
@@ -784,5 +773,4 @@ public class NetHackIO implements Runnable
 	// ____________________________________________________________________________________
 	private native void RunNetHack(String path);
 	private native void SaveNetHackState();
-	private native void SetFlags(int bAutoMenu);
 }

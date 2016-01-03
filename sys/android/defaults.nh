@@ -35,6 +35,7 @@ OPTIONS=scores:10 top/2 around/own
 
 OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
 OPTIONS=pile_limit:2,hilite_pile,hilite_pet
+#OPTIONS=!automenu
 
 # Colorize individual rows on a menu based on what regular expressions match its text
 # http://nethackwiki.com/wiki/Menucolors
