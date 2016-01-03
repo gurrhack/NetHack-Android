@@ -5,15 +5,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.res.Configuration;
+import android.graphics.Point;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
-import android.view.ContextMenu;
-import android.view.Gravity;
+import android.view.*;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
@@ -65,8 +62,36 @@ public class CmdPanelLayout extends FrameLayout
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 		int count = getChildCount();
 
-		int contentWidth = MeasureSpec.getSize(widthMeasureSpec);
-		int contentHeight = MeasureSpec.getSize(heightMeasureSpec);
+		int viewWidth = MeasureSpec.getSize(widthMeasureSpec);
+		int viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+
+		int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+		int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+
+		if(widthMode == MeasureSpec.UNSPECIFIED || heightMode == MeasureSpec.UNSPECIFIED) {
+
+			Point size = new Point();
+			if(android.os.Build.VERSION.SDK_INT >= 13) {
+				mContext.getWindowManager().getDefaultDisplay().getSize(size);
+			} else if(MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) {
+				size.x = mContext.getWindowManager().getDefaultDisplay().getWidth();
+				size.y = mContext.getWindowManager().getDefaultDisplay().getHeight();
+			}
+
+			if(widthMode == MeasureSpec.UNSPECIFIED)
+				viewWidth = size.x;
+			if(heightMode == MeasureSpec.UNSPECIFIED)
+				viewHeight = size.y;
+		}
+
+		int contentWidth = viewWidth;
+		int contentHeight = viewHeight;
+
+		int paddingWidth = getPaddingLeft() + getPaddingRight();
+		int paddingHeight = getPaddingTop() + getPaddingBottom();
+
+		contentWidth -= paddingWidth;
+		contentHeight -= paddingHeight;
 
 		for(int i = count - 1; i >= 0; i--)
 		{
@@ -117,20 +142,20 @@ public class CmdPanelLayout extends FrameLayout
 				if(lp.width == LayoutParams.MATCH_PARENT) {
 					childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(contentWidth - lp.leftMargin - lp.rightMargin, MeasureSpec.EXACTLY);
 				} else {
-					childWidthMeasureSpec = getChildMeasureSpec(widthMeasureSpec, lp.leftMargin + lp.rightMargin, lp.width);
+					childWidthMeasureSpec = getChildMeasureSpec(widthMeasureSpec, paddingWidth + lp.leftMargin + lp.rightMargin, lp.width);
 				}
 
 				if(lp.height == LayoutParams.MATCH_PARENT) {
 					childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(contentHeight - lp.topMargin - lp.bottomMargin, MeasureSpec.EXACTLY);
 				} else {
-					childHeightMeasureSpec = getChildMeasureSpec(heightMeasureSpec, lp.topMargin + lp.bottomMargin, lp.height);
+					childHeightMeasureSpec = getChildMeasureSpec(heightMeasureSpec, paddingHeight + lp.topMargin + lp.bottomMargin, lp.height);
 				}
 
 				child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
 			}
 		}
 
-		setMeasuredDimension(widthMeasureSpec, heightMeasureSpec);
+		setMeasuredDimension(viewWidth, viewHeight);
 	}
 
 	// ____________________________________________________________________________________
