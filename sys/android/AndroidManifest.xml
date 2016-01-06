@@ -3,7 +3,7 @@
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
 	android:versionCode="203"
-	android:versionName="3.6.0-2"
+	android:versionName="3.6.0-3"
 	android:installLocation="auto">
 	<uses-sdk
 		android:minSdkVersion="7"/>
