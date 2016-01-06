@@ -1,5 +1,6 @@
 package com.tbd.NetHack;
 
+import android.text.SpannableString;
 import android.text.Spanned;
 import android.view.View;
 
@@ -160,7 +161,7 @@ public class MenuItem
 	{
 		mAccelerator = acc;
 		if(acc != 0)
-			mAccText = TextAttr.style(Character.toString(acc), mAttr);
+			mAccText = new SpannableString(Character.toString(acc));
 		else
 			mAccText = null;
 	}
