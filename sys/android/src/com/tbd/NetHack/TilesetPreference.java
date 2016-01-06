@@ -138,7 +138,8 @@ public class TilesetPreference extends Preference implements PreferenceManager.O
 		int i = mEntryValues.indexOf(currentValue);
 		if(i < 0)
 			i = mEntryValues.indexOf(TTY);
-		((RadioButton)mRoot.getChildAt(i)).setChecked(true);
+		if(!prefs.getBoolean("customTiles", false))
+			((RadioButton)mRoot.getChildAt(i)).setChecked(true);
 
 		mTilesetPath.setText(prefs.getString("customTileset", ""));
 		mTileW.setText(Integer.toString(prefs.getInt("customTileW", 32)));
