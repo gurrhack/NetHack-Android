@@ -1120,8 +1120,7 @@ public class NHW_Map implements NH_Window
 					setCursorPos(tileX, tileY);
 				mNHState.sendPosCmd(tileX, tileY);
 			}
-			// Allow position touches when dpad is open, but not directional touches
-			else if(!mNHState.isDPadVisible())
+			else if(allowDirectionalInput())
 			{
 				int dx = tileX - mPlayerPos.x;
 				int dy = tileY - mPlayerPos.y;
@@ -1168,6 +1167,16 @@ public class NHW_Map implements NH_Window
 			{
 				mNHState.sendDirKeyCmd(c);
 			}
+		}
+
+		// ____________________________________________________________________________________
+		private boolean allowDirectionalInput()
+		{
+			if(!mNHState.isDPadVisible())
+				return true;
+
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+			return  prefs.getBoolean("allowMapDir", false);
 		}
 
 		// ____________________________________________________________________________________

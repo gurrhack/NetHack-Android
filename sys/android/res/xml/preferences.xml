@@ -113,14 +113,21 @@
 
 			<com.tbd.NetHack.SliderPreference
 				android:title="Opacity"
-				android:summary="The opacity of the overlay."
+				android:summary="The opacity of the overlay"
 				android:persistent="true"
 				android:key="ovlOpacity"
 				android:dialogMessage="The opacity between invisible (0) and opaque (255)"
 				android:defaultValue="255"
 				android:text=""
 				android:max="255"/>
-			
+
+			<CheckBoxPreference
+				android:title="Allow map input with overlay"
+				android:summary="Allow directional input by clicking on the map when the overlay is shown"
+				android:persistent="true"
+				android:key="allowMapDir"
+				android:defaultValue="false"/>
+
 		</PreferenceScreen>
 		
 		<PreferenceScreen
