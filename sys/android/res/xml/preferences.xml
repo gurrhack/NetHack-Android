@@ -70,6 +70,16 @@
                 android:defaultValue="true"
                 android:key="lockView"/>
 
+		<com.tbd.NetHack.SliderPreference
+			android:title="Status background opacity"
+			android:summary="The background opacity of the status lines"
+			android:persistent="true"
+			android:key="statusOpacity"
+			android:dialogMessage="The opacity between invisible (0) and opaque (255)"
+			android:defaultValue="0"
+			android:text=""
+			android:max="255"/>
+
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -189,7 +199,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity0"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
@@ -253,7 +263,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity1"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
@@ -318,7 +328,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity2"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
@@ -383,7 +393,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity3"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
@@ -448,7 +458,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity4"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"
@@ -513,7 +523,7 @@
 		
 				<com.tbd.NetHack.SliderPreference
 					android:title="Opacity"
-					android:summary="The opacity of the panel."
+					android:summary="The opacity of the panel"
 					android:persistent="true"
 					android:key="pOpacity5"
 					android:dialogMessage="The opacity between invisible (0) and opaque (255)"

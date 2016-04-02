@@ -3,10 +3,6 @@ package com.tbd.NetHack;
 import java.util.Set;
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
-import android.text.Spanned;
-import android.text.SpannedString;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.TextView;
@@ -26,6 +22,7 @@ public class NHW_Message implements NH_Window
 	private NHW_Text mLogView;
 	private boolean mIsVisible;
 	private int mWid;
+	private int mOpacity;
 
 	// ____________________________________________________________________________________
 	public NHW_Message(Activity context, NetHackIO io)
@@ -202,7 +199,14 @@ public class NHW_Message implements NH_Window
 	{
 		return mWid;
 	}
-	
+
+	// ____________________________________________________________________________________
+	public void preferencesUpdated(SharedPreferences prefs)
+	{
+		mOpacity = prefs.getInt("statusOpacity", 0);
+		mUI.updateOpacity();
+	}
+
 	// ____________________________________________________________________________________ //
 	// 																						//
 	// ____________________________________________________________________________________ //
@@ -224,6 +228,7 @@ public class NHW_Message implements NH_Window
 					showLog(false);
 				}
 			});
+			updateOpacity();
 		}
 
 		// ____________________________________________________________________________________
@@ -288,6 +293,12 @@ public class NHW_Message implements NH_Window
 					m_view.append(msg);
 				}
 			}
+		}
+
+		// ____________________________________________________________________________________
+		public void updateOpacity()
+		{
+			m_view.setBackgroundColor(mOpacity << 24);
 		}
 	}
 }
