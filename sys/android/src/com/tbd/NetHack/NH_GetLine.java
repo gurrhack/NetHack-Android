@@ -48,7 +48,7 @@ public class NH_GetLine
 		mContext = context;
 		mTitle = title;
 		mMaxChars = nMaxChars;
-		mUI = new UI(context, loadHistory(), true, true, false);
+		mUI = new UI(context, loadHistory(), true, true, false, !isWishingPrompt());
 	}
 	
 	// ____________________________________________________________________________________
@@ -57,7 +57,7 @@ public class NH_GetLine
 		mContext = context;
 		mTitle = "Who are you?";
 		mMaxChars = nMaxChars;
-		mUI = new UI(context, history, false, false, true);
+		mUI = new UI(context, history, false, false, true, true);
 	}
 
 	// ____________________________________________________________________________________
@@ -65,7 +65,12 @@ public class NH_GetLine
 	{
 		mContext = context;
 		if(mUI != null)
-			mUI = new UI(context, mUI.mHistory, mUI.mSaveHistory, mUI.mSaveHistory, mUI.mShowWizard);
+			mUI = new UI(context, mUI.mHistory, mUI.mSaveHistory, mUI.mSaveHistory, mUI.mShowWizard, !isWishingPrompt());
+	}
+
+	private boolean isWishingPrompt()
+	{
+		return mTitle.contains("For what do you wish");
 	}
 
 	// ____________________________________________________________________________________
@@ -130,7 +135,7 @@ public class NH_GetLine
 		public boolean mShowWizard;
 
 		// ____________________________________________________________________________________
-		public UI(Activity context, List<String> history, boolean saveHistory, boolean showKeyboard, boolean showWizard)
+		public UI(Activity context, List<String> history, boolean saveHistory, boolean showKeyboard, boolean showWizard, boolean initWithHistory)
 		{
 			mContext = context;
 			
@@ -241,7 +246,7 @@ public class NH_GetLine
 			mState.hideControls();
 			mInput.requestFocus();
 			
-			if(mHistory.size() > 0)
+			if(initWithHistory && mHistory.size() > 0)
 				mInput.setText(mHistory.get(0));
 			mInput.selectAll();
 			
