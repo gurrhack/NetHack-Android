@@ -579,7 +579,7 @@ public class NHW_Map implements NH_Window
 			super(mContext);
 			setFocusable(false);
 			setFocusableInTouchMode(false);
-			setBackgroundColor(0xff141418);
+			setBackgroundColor(0xff19191f);
 
 			((ViewGroup)mContext.findViewById(R.id.map_frame)).addView(this, 0);
 			mPaint = new TextPaint();
