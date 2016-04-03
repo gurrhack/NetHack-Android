@@ -215,6 +215,14 @@ public class CmdPanelLayout extends FrameLayout
 				case Gravity.FILL_HORIZONTAL:
 					childLeft = parentLeft;
 					childRight = parentRight;
+					if(child instanceof HorizontalScrollView)
+					{
+						// Don't cover the entire width if it's not needed. The additional space will be used for map input
+						// TODO maybe do this in onMeasure instead
+						int panelW = ((HorizontalScrollView)child).getChildAt(0).getMeasuredWidth();
+						if(panelW < (childRight-childLeft))
+							childRight = childLeft + panelW;
+					}
 				break;
 				default:
 					childLeft = parentLeft + parentRight - childWidth >> 1;
@@ -238,6 +246,14 @@ public class CmdPanelLayout extends FrameLayout
 				case Gravity.FILL_VERTICAL:
 					childTop = parentTop;
 					childBottom = parentBottom;
+					if(child instanceof ScrollView)
+					{
+						// Don't cover the entire height if it's not needed. The additional space will be used for map input
+						// TODO maybe do this in onMeasure instead
+						int panelH = ((ScrollView)child).getChildAt(0).getMeasuredHeight();
+						if(panelH < (childBottom-childTop))
+							childBottom = childTop + panelH;
+					}
 				break;
 				default:
 					childTop = parentTop + parentBottom - childHeight >> 1;
