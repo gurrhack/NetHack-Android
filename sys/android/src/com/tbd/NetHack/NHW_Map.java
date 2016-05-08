@@ -6,16 +6,10 @@ import java.util.Set;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
+import android.graphics.*;
 import android.graphics.Paint.Align;
 import android.graphics.Paint.FontMetrics;
 import android.graphics.Paint.Style;
-import android.graphics.Point;
-import android.graphics.PointF;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.Typeface;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
 import android.text.TextPaint;
@@ -32,6 +26,10 @@ public class NHW_Map implements NH_Window
 	public static final int TileCols = 80;
 	public static final int TileRows = 21;
 	private static final double ZOOM_BASE = 1.005;
+	private static final float PIE_SLICE = FloatMath.sqrt(2)-1;// tan(pi/8)
+	private static final float SELF_RADIUS_FACTOR = 25;
+	private static final float MIN_TILE_SIZE_FACTOR = 5;
+	private static final float MAX_TILE_SIZE_FACTOR = 100;
 
 	// y k u
 	// \ | /
@@ -84,6 +82,13 @@ public class NHW_Map implements NH_Window
 		public int color;
 	}
 
+	private enum TouchResult
+	{
+		SEND_POS,
+		SEND_MY_POS,
+		SEND_DIR
+	}
+
 	private Activity mContext;
 	private UI mUI;
 	private Tile[][] mTiles;
@@ -91,6 +96,8 @@ public class NHW_Map implements NH_Window
 	private float mDisplayDensity;
 	private float mMinTileH;
 	private float mMaxTileH;
+	private float mSelfRadius;
+	private float mSelfRadiusSquared;
 	private float mScaleCount;
 	private float mMinScaleCount;
 	private float mMaxScaleCount;
@@ -145,8 +152,10 @@ public class NHW_Map implements NH_Window
 			return;
 		mContext = context;
 		mDisplayDensity = context.getResources().getDisplayMetrics().density;
-		mMinTileH = 5 * mDisplayDensity;
-		mMaxTileH = 100 * mDisplayDensity;
+		mMinTileH = MIN_TILE_SIZE_FACTOR * mDisplayDensity;
+		mMaxTileH = MAX_TILE_SIZE_FACTOR * mDisplayDensity;
+		mSelfRadius = SELF_RADIUS_FACTOR * mDisplayDensity;
+		mSelfRadiusSquared = mSelfRadius * mSelfRadius;
 		mLockTopMargin = mStatus.getHeight();
 		mUI = new UI();
 		if(mIsVisible)
@@ -630,6 +639,8 @@ public class NHW_Map implements NH_Window
 				drawAscii(canvas);
 			else
 				drawTiles(canvas);
+
+			//drawGuides(canvas);
 		}
 
 		// ____________________________________________________________________________________
@@ -773,6 +784,48 @@ public class NHW_Map implements NH_Window
 			}
 
 			//drawCursor(canvas, tileW, tileH);
+		}
+
+		// ____________________________________________________________________________________
+		private void drawGuides(Canvas canvas)
+		{
+			mPaint.setAntiAlias(true);
+
+			float tileW = getScaledTileWidth();
+			float tileH = getScaledTileHeight();
+
+			float cx = mPlayerPos.x * tileW + mViewOffset.x + tileW * 0.5f;
+			float cy = mPlayerPos.y * tileH + mViewOffset.y + tileH * 0.5f;
+
+			float radius0 = mSelfRadius;
+			float radius1 = 5 * radius0;
+
+			mPaint.setColor(0x20ffffff);
+			canvas.drawCircle(cx, cy, radius1, mPaint);
+
+			mPaint.setColor(0xffffffff);
+			mPaint.setStyle(Style.STROKE);
+			mPaint.setStrokeWidth(2);
+			canvas.drawCircle(cx, cy, radius0, mPaint);
+
+			// r^2=x^2+y^2
+			// PIE_SLICE=y/x
+			// y = sqrt(r^2/(1+1/PIE_SLICE^2))
+			float y0 = FloatMath.sqrt(radius0*radius0 / (1 + 1 / (PIE_SLICE * PIE_SLICE)));
+			float y1 = FloatMath.sqrt(radius1*radius1 / (1 + 1 / (PIE_SLICE * PIE_SLICE)));
+			float x0 = y0/ PIE_SLICE;
+			float x1 = y1/ PIE_SLICE;
+			canvas.drawLine( x0+cx, y0+cy, x1+cx, y1+cy, mPaint);
+			canvas.drawLine( x0+cx,-y0+cy, x1+cx,-y1+cy, mPaint);
+			canvas.drawLine(-x0+cx, y0+cy,-x1+cx, y1+cy, mPaint);
+			canvas.drawLine(-x0+cx,-y0+cy,-x1+cx,-y1+cy, mPaint);
+
+			canvas.drawLine( y0+cx,-x0+cy, y1+cx,-x1+cy, mPaint);
+			canvas.drawLine( y0+cx, x0+cy, y1+cx, x1+cy, mPaint);
+			canvas.drawLine(-y0+cx,-x0+cy,-y1+cx,-x1+cy, mPaint);
+			canvas.drawLine(-y0+cx, x0+cy,-y1+cx, x1+cy, mPaint);
+
+			mPaint.setStyle(Style.FILL);
 		}
 
 		// ____________________________________________________________________________________
@@ -1112,44 +1165,68 @@ public class NHW_Map implements NH_Window
 			int tileX = (int)((x - mViewOffset.x) / tileW);
 			int tileY = (int)((y - mViewOffset.y) / tileH);
 
-			if(shouldSendPosOnTouch(tileX, tileY))
+			float cx = mPlayerPos.x * tileW + mViewOffset.x + tileW * 0.5f;
+			float cy = mPlayerPos.y * tileH + mViewOffset.y + tileH * 0.5f;
+
+			float dx = x - cx;
+			float dy = y - cy;
+
+			float distFromSelfSquared = dx*dx+dy*dy;
+
+			switch(getTouchResult(tileX, tileY, distFromSelfSquared))
 			{
-				tileX = clamp(tileX, 0, TileCols - 1);
-				tileY = clamp(tileY, 0, TileRows - 1);
-				if(mNHState.isMouseLocked())
-					setCursorPos(tileX, tileY);
-				mNHState.sendPosCmd(tileX, tileY);
-			}
-			else if(allowDirectionalInput())
-			{
-				int dx = tileX - mPlayerPos.x;
-				int dy = tileY - mPlayerPos.y;
-				int adx = Math.abs(dx);
-				int ady = Math.abs(dy);
+				case SEND_MY_POS:
+					tileX = mPlayerPos.x;
+					tileY = mPlayerPos.y;
+				// fall through
+				case SEND_POS:
+					tileX = clamp(tileX, 0, TileCols - 1);
+					tileY = clamp(tileY, 0, TileRows - 1);
+					if(mNHState.isMouseLocked())
+						setCursorPos(tileX, tileY);
+					mNHState.sendPosCmd(tileX, tileY);
+				break;
 
-				final float c = (float)Math.tan(3 * Math.PI / 8);
+				case SEND_DIR:
+					if(allowDirectionalInput())
+					{
+						char dir = getDir(tileX, tileY, dx, dy, distFromSelfSquared);
 
-				char dir;
-				if(adx > c * ady)
-					dir = dx > 0 ? getRIGHT() : getLEFT();
-				else if(ady > c * adx)
-					dir = dy < 0 ? getUP() : getDOWN();
-				else if(dx > 0)
-					dir = dy < 0 ? getUR() : getDR();
-				else
-					dir = dy < 0 ? getUL() : getDL();
-
-				if(bLongClick && !mNHState.expectsDirection())
-				{
-					mNHState.sendKeyCmd('g');
-					mNHState.sendKeyCmd(dir);
-				}
-				else
-				{
-					mNHState.sendDirKeyCmd(dir);
-				}
+						if(bLongClick && !mNHState.expectsDirection())
+						{
+							mNHState.sendKeyCmd('g');
+							mNHState.sendKeyCmd(dir);
+						}
+						else
+						{
+							mNHState.sendDirKeyCmd(dir);
+						}
+					}
+				break;
 			}
 			mIsViewPanned = false;
+		}
+
+		// ____________________________________________________________________________________
+		private char getDir(int tileX, int tileY, float dx, float dy, float distFromSelfSquared)
+		{
+			if(mPlayerPos.equals(tileX, tileY) || distFromSelfSquared < mSelfRadiusSquared)
+				return '.';
+
+			float adx = Math.abs(dx);
+			float ady = Math.abs(dy);
+
+			char dir;
+			if(ady < PIE_SLICE * adx)
+				dir = dx > 0 ? getRIGHT() : getLEFT();
+			else if(adx < PIE_SLICE * ady)
+				dir = dy < 0 ? getUP() : getDOWN();
+			else if(dx > 0)
+				dir = dy < 0 ? getUR() : getDR();
+			else
+				dir = dy < 0 ? getUL() : getDL();
+
+			return dir;
 		}
 
 		// ____________________________________________________________________________________
@@ -1180,27 +1257,27 @@ public class NHW_Map implements NH_Window
 		}
 
 		// ____________________________________________________________________________________
-		private boolean shouldSendPosOnTouch(int tileX, int tileY)
+		private TouchResult getTouchResult(int tileX, int tileY, float distFromSelfSquared)
 		{
 			if(mNHState.isMouseLocked())
-				return true;
+				return TouchResult.SEND_POS;
 
 			if(mNHState.expectsDirection())
-				return false;
+				return TouchResult.SEND_DIR;
 
-			if(mPlayerPos.equals(tileX, tileY))
-				return true;
+			if(mPlayerPos.equals(tileX, tileY) || distFromSelfSquared < mSelfRadiusSquared)
+				return TouchResult.SEND_MY_POS;
 
 			Travel travelOption = getTravelOption();
 
 			if(travelOption == Travel.Never)
-				return false;
+				return TouchResult.SEND_DIR;
 
 			if(travelOption == Travel.Always)
-				return true;
+				return TouchResult.SEND_POS;
 
 			if(!mIsViewPanned)
-				return false;
+				return TouchResult.SEND_DIR;
 
 			// Don't send pos command if clicking within a few tiles from the player
 
@@ -1213,9 +1290,9 @@ public class NHW_Map implements NH_Window
 			// . . . . .
 			// . . . . .
 			if(dx <= 3 && dy <= 3)
-				return false;
+				return TouchResult.SEND_DIR;
 
-			return true;
+			return TouchResult.SEND_POS;
 		}
 
 		// ____________________________________________________________________________________
