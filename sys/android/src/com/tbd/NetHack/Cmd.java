@@ -239,6 +239,20 @@ public interface Cmd
 						i += 2;
 					}
 				}
+				else if(ch == '\\' && mCommand.length() - i >= 2)
+				{
+					char n = mCommand.charAt(i + 1);
+					if(n == 'e')
+					{
+						ch = '\033';
+						i++;
+					}
+					else if(n == 'n')
+					{
+						ch = '\n';
+						i++;
+					}
+				}
 				mSeq.add(new KeyCmd(ch, mod));
 			}
 		}

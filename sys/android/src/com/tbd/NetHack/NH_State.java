@@ -169,17 +169,17 @@ public class NH_State
 			restoreRegularKeyboard();
 			return true;
 		}
-		
-		KeyEventResult ret = mQuestion.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
+
+		KeyEventResult ret = mGetLine.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
+
+		if(ret == KeyEventResult.IGNORED)
+			ret = mQuestion.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 
 		for(int i = mWindows.size() - 1; ret == KeyEventResult.IGNORED && i >= 0; i--)
 		{
 			NH_Window w = mWindows.get(i);
 			ret = w.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 		}
-
-		if(ret == KeyEventResult.IGNORED)
-			ret = mGetLine.handleKeyDown(ch, nhKey, keyCode, modifiers, repeatCount, bSoftInput);
 
 		if(ret == KeyEventResult.HANDLED)
 			return true;

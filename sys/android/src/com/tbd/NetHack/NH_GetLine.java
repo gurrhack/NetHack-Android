@@ -274,10 +274,17 @@ public class NH_GetLine
 			case KeyEvent.KEYCODE_ENTER:
 				ok();
 			break;
-			
+
 			default:
 				if(ch == '\033')
 					cancel();
+				else if(bSoftInput)
+				{
+					if(mInput.hasSelection())
+						mInput.setText(mInput.getText().replace(mInput.getSelectionStart(), mInput.getSelectionEnd(), ""));
+					mInput.append(""+ch);
+					return KeyEventResult.HANDLED;
+				}
 				else
 					return KeyEventResult.RETURN_TO_SYSTEM;
 			}
