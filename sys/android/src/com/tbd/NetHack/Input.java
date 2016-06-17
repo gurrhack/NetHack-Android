@@ -22,7 +22,7 @@ public class Input
 		EnumSet<Modifier> mod = EnumSet.noneOf(Modifier.class);
 		
 		// The ALT key is used for special characters (ike '{', '\', and '>') in the emulator
-		// so I don't dare use it as a modifier for meta keys ¤
+		// so I don't dare use it as a modifier for meta keys
 		//if(event.isAltPressed())
 		//	mod.add(Modifiers.Meta);
 

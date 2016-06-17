@@ -7,39 +7,39 @@
     >
     
     <Row>
-		<Key android:codes="241" android:keyLabel="¤q" android:keyEdgeFlags="left"/>
-		<Key android:codes="247" android:keyLabel="¤w"/>
-		<Key android:codes="229" android:keyLabel="¤e"/>
-		<Key android:codes="242" android:keyLabel="¤r"/>
-		<Key android:codes="244" android:keyLabel="¤t"/>
-		<Key android:codes="178" android:keyLabel="¤2"/>
-		<Key android:codes="245" android:keyLabel="¤u"/>
-		<Key android:codes="233" android:keyLabel="¤i"/>
-		<Key android:codes="239" android:keyLabel="¤o"/>
-		<Key android:codes="240" android:keyLabel="¤p" android:keyEdgeFlags="right"/>
+		<Key android:codes="241" android:keyLabel="M-q" android:keyEdgeFlags="left"/>
+		<Key android:codes="247" android:keyLabel="M-w"/>
+		<Key android:codes="229" android:keyLabel="M-e"/>
+		<Key android:codes="242" android:keyLabel="M-r"/>
+		<Key android:codes="244" android:keyLabel="M-t"/>
+		<Key android:codes="178" android:keyLabel="M-2"/>
+		<Key android:codes="245" android:keyLabel="M-u"/>
+		<Key android:codes="233" android:keyLabel="M-i"/>
+		<Key android:codes="239" android:keyLabel="M-o"/>
+		<Key android:codes="240" android:keyLabel="M-p" android:keyEdgeFlags="right"/>
     </Row>
     
     <Row>
-		<Key android:codes="225" android:keyLabel="¤a" android:horizontalGap="5%p" android:keyEdgeFlags="left"/>
-		<Key android:codes="243" android:keyLabel="¤s"/>
-		<Key android:codes="228" android:keyLabel="¤d"/>
-		<Key android:codes="230" android:keyLabel="¤f"/>
+		<Key android:codes="225" android:keyLabel="M-a" android:horizontalGap="5%p" android:keyEdgeFlags="left"/>
+		<Key android:codes="243" android:keyLabel="M-s"/>
+		<Key android:codes="228" android:keyLabel="M-d"/>
+		<Key android:codes="230" android:keyLabel="M-f"/>
 		<Key android:codes="0" android:keyLabel=""/>
 		<Key android:codes="0" android:keyLabel=""/>
-		<Key android:codes="234" android:keyLabel="¤j"/>
+		<Key android:codes="234" android:keyLabel="M-j"/>
 		<Key android:codes="0" android:keyLabel=""/>
-		<Key android:codes="236" android:keyLabel="¤l" android:keyEdgeFlags="right"/>
+		<Key android:codes="236" android:keyLabel="M-l" android:keyEdgeFlags="right"/>
     </Row>
     
     <Row>
         <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" android:keyEdgeFlags="left"/>
         <Key android:codes="0" android:keyLabel=""/>
         <Key android:codes="0" android:keyLabel=""/>
-		<Key android:codes="227" android:keyLabel="¤c"/>
-		<Key android:codes="246" android:keyLabel="¤v"/>
+		<Key android:codes="227" android:keyLabel="M-c"/>
+		<Key android:codes="246" android:keyLabel="M-v"/>
         <Key android:codes="0" android:keyLabel=""/>
-		<Key android:codes="238" android:keyLabel="¤n"/>
-		<Key android:codes="237" android:keyLabel="¤m"/>
+		<Key android:codes="238" android:keyLabel="M-n"/>
+		<Key android:codes="237" android:keyLabel="M-m"/>
         <Key android:codes="-5" android:keyIcon="@drawable/sym_keyboard_delete" android:keyWidth="15%p" android:keyEdgeFlags="right"/>
     </Row>
     
@@ -49,7 +49,7 @@
         <Key android:codes="0" android:keyLabel=""/>
         <Key android:codes="0" android:keyLabel=""/>
         <Key android:codes="0" android:keyLabel=""/>
-        <Key android:codes="191" android:keyLabel="¤?"/>
+        <Key android:codes="191" android:keyLabel="M-?"/>
         <Key android:codes="-7" android:keyLabel="Ctrl" android:keyWidth="15%p"/>
         <Key android:codes="-8" android:keyLabel="ESC" android:keyWidth="15%p" android:keyEdgeFlags="right"/>
     </Row>
