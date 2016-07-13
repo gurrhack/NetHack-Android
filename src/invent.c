@@ -2062,7 +2062,7 @@ boolean allownone;
      */
     if (!invent && !(flags.perm_invent && !lets && !want_reply)
 #ifdef ANDROID
-		&& iflags.automenu && !allownone
+		&& (!iflags.automenu || !allownone)
 #endif
 	) {
         pline("Not carrying anything.");
@@ -2160,7 +2160,7 @@ nextclass:
 			add_menu(win, NO_GLYPH, &any, '-', 0, ATR_NONE, "(nothing)", MENU_UNSELECTED);
 		}
 	    any.a_char = '*';
-	    add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "(more)", MENU_UNSELECTED);
+	    add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "(list everything)", MENU_UNSELECTED);
 	}
 #endif
     free(oarray);

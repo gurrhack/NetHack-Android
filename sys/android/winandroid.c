@@ -137,7 +137,7 @@ void destroy_jobject(jstring jstr)
 #define JNICallO(func, ...) (*jEnv)->CallObjectMethod(jEnv, jAppInstance, func, ## __VA_ARGS__);
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username)
+void Java_com_tbd_forkfront_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstring path, jstring username)
 {
 	char* params[10];
 	const char* pChars;
@@ -216,7 +216,7 @@ boolean SaveAndExit()
 }
 
 //____________________________________________________________________________________
-void Java_com_tbd_NetHack_NetHackIO_SaveNetHackState(JNIEnv* env, jobject thiz)
+void Java_com_tbd_forkfront_NetHackIO_SaveNetHackState(JNIEnv* env, jobject thiz)
 {
 	if(!program_state.gameover && program_state.something_worth_saving)
 		save_currentstate();

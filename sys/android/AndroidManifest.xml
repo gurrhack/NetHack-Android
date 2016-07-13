@@ -2,8 +2,8 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
-	android:versionCode="203"
-	android:versionName="3.6.0-3"
+	android:versionCode="204"
+	android:versionName="3.6.0-4"
 	android:installLocation="auto">
 	<uses-sdk
 		android:minSdkVersion="7"/>
@@ -18,7 +18,7 @@
 		android:theme="@android:style/Theme"
 		android:allowBackup="true">
 		<activity
-			android:name=".NetHack"
+			android:name="com.tbd.forkfront.ForkFront"
 			android:label="NetHack"
 			android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
 			android:launchMode="singleTask"
@@ -32,7 +32,7 @@
 			</intent-filter>
 		</activity>
 		<activity
-			android:name="Settings"
+			android:name="com.tbd.forkfront.Settings"
 			android:label="NetHack Settings">
 		</activity>
 	</application>
