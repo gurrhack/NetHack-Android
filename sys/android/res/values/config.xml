@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<string name="namespace">com.tbd.NetHack</string>
+	<string name="oldActivityName">NetHack</string>
 	<string name="nativeDataDir">nethackdir</string>
 	<string name="libraryName">nethack</string>
 	<string name="defaultsFile">defaults.nh</string>
