@@ -4,8 +4,9 @@
 		name="credits">
 <![CDATA[
 
-<p><h1>NetHack Android Port</h1><br/>
-Based on NetHack 3.6.0<br/>
+<h1>NetHack Android Port</h1>
+<a href="https://github.com/gurrhack/NetHack-Android">Project Home</a><br/>
+<p>Based on NetHack 3.6.0<br/>
 <a href="http://www.nethack.org">http://www.nethack.org</a></p>
 <p><small>Inspired by NetHack iPhone Port by <a href="http://code.google.com/p/iNetHack/">Dirk Zimmermann</a></small></p>
 
@@ -37,7 +38,6 @@ Modified by gurr</p>
 <a href="http://nevanda.deviantart.com/art/nethack-tiles-32x32px-416691316">http://nevanda.deviantart.com/art/nethack-tiles-32x32px-416691316</a><br/>
 Modified by Brendan Dwyer</p>
 
-<p><br/><small>&copy; 2015 Martin Gustafsson</small></p>
 ]]>
 	</string>
 </resources>

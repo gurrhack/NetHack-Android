@@ -41,7 +41,7 @@ work. If you're running Windows you're on your own.
 2. Create an empty project in the parent directory
 3. Add a new empty Java module to the project root
 4. Import the ForkFront module located at <ForkFront-Android>/forkfront.iml
-5. Import the ForkFront module located at <NetHack-Android>/sys/android/NetHack.iml
+5. Import the NetHack module located at <NetHack-Android>/sys/android/NetHack.iml
 6. Build and Run!
 
 
