@@ -48,7 +48,6 @@
 /* #define QT_GRAPHICS */    /* Qt interface */
 /* #define GNOME_GRAPHICS */ /* Gnome interface */
 /* #define MSWIN_GRAPHICS */ /* Windows NT, CE, Graphics */
-#define ANDROID_GRAPHICS
 
 /*
  * Define the default window system.  This should be one that is compiled
@@ -448,7 +447,9 @@ typedef unsigned char uchar;
  * bugs left here.
  */
 
+#ifdef ANDROID
 #define STATUS_COLORS
+#endif
 
 /* #define STATUS_VIA_WINDOWPORT */ /* re-work of the status line
                                        updating process */
