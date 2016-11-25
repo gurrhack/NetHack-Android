@@ -48,7 +48,8 @@ MENUCOLOR=" cursed "=red
 MENUCOLOR=" unholy "=red
 MENUCOLOR=" cursed .* \(being worn\)"=red&underline
 MENUCOLOR="loadstone|wand (of|called) cancellation"=white&underline
-MENUCOLOR="Amulet of Yendor named"=magenta                           # color only the real Amulet
+MENUCOLOR="Amulet of Yendor .*named"=magenta
+# color only the real Amulet
 MENUCOLOR="gold piece"=yellow
 
 
