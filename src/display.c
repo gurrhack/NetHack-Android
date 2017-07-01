@@ -137,6 +137,7 @@ STATIC_DCL int FDECL(set_crosswall, (int, int));
 STATIC_DCL void FDECL(set_seenv, (struct rm *, int, int, int, int));
 STATIC_DCL void FDECL(t_warn, (struct rm *));
 STATIC_DCL int FDECL(wall_angle, (struct rm *));
+STATIC_DCL int FDECL(get_unicode_codepoint, (int ch));
 
 #define remember_topology(x, y) (lastseentyp[x][y] = levl[x][y].typ)
 
@@ -1511,6 +1512,238 @@ int cursor_on_u;
 
 /* =========================================================================
  */
+
+#ifdef DUMP_LOG
+/* D: Added to dump screen to output file */
+STATIC_PTR uchar get_glyph_char(glyph, oclass)
+int glyph;
+int *oclass;
+{
+    uchar   ch;
+    register int offset;
+    *oclass = 0;
+
+    if (glyph >= NO_GLYPH)
+        return ' ';
+
+    /*
+     *  Map the glyph back to a character.
+     *
+     *  Warning:  For speed, this makes an assumption on the order of
+     *		  offsets.  The order is set in display.h.
+     */
+    if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
+	ch = def_warnsyms[offset].sym;
+    } else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
+	/* see swallow_to_glyph() in display.c */
+	ch = (uchar) defsyms[S_sw_tl + (offset & 0x7)].sym;
+    } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {	/* zap beam */
+	/* see zapdir_to_glyph() in display.c */
+	ch = defsyms[S_vbeam + (offset & 0x3)].sym;
+    } else if ((offset = (glyph - GLYPH_CMAP_OFF)) >= 0) {	/* cmap */
+	ch = defsyms[offset].sym;
+	*oclass = -1;
+    } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
+	ch = def_oc_syms[(int)objects[offset].oc_class].sym;
+	*oclass = (int)objects[offset].oc_class;
+    } else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) { /* mon ridden */
+	ch = def_monsyms[(int)mons[offset].mlet].sym;
+    } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
+	ch = def_oc_syms[(int)objects[CORPSE].oc_class].sym;
+    } else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) { /* mon detect */
+	ch = def_monsyms[(int)mons[offset].mlet].sym;
+    } else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {  /* invisible */
+	ch = DEF_INVISIBLE;
+    } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
+	ch = def_monsyms[(int)mons[offset].mlet].sym;
+    } else {						    /* a monster */
+	//ch = monsyms[(int)mons[glyph].mlet];
+	ch = def_monsyms[(int)mons[glyph].mlet].sym;
+    }
+    return ch;
+}
+
+#ifdef TTY_GRAPHICS
+extern const char * FDECL(compress_str, (const char *));
+#else
+const char*
+compress_str(str) /* copied from win/tty/wintty.c */
+const char *str;
+{
+	static char cbuf[BUFSZ];
+	/* compress in case line too long */
+	if((int)strlen(str) >= 80) {
+		register const char *bp0 = str;
+		register char *bp1 = cbuf;
+
+		do {
+			if(*bp0 != ' ' || bp0[1] != ' ')
+				*bp1++ = *bp0;
+		} while(*bp0++);
+	} else
+	    return str;
+	return cbuf;
+}
+#endif /* TTY_GRAPHICS */
+
+/** Take a screen dump */
+static int cp437_to_unicode[] = {
+	0x00A0, 0x263A, 0x263B, 0x2665, 0x2248, 0x2663, 0x2660, 0x2022, 0x25D8, 0x25CB, 0x25D9, 0x2660, 0x2661, 0x266A, 0x266B, 0x2609,
+	0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x2607, 0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
+	0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
+	0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
+	0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F,
+	0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
+	0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
+	0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x2206,
+	0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
+	0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A3, 0x0192,
+	0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
+	0x2591, 0x2592, 0x2591, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
+	0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
+	0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
+	0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x25A0, 0x002B,
+	0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0
+};
+
+STATIC_OVL
+int get_unicode_codepoint(int ch)
+{
+	if (ch >= 0 && ch <= 0xff)
+		return cp437_to_unicode[ch];
+	return ch;
+}
+void
+dump_screen()
+{
+    register int x,y;
+    int lastc = -1;
+    /* D: botl.c has a closer approximation to the size, but we'll go with
+     *    this */
+    /* Longest monster name:    guardian naga hatchling
+     * Longest dungeon feature: altar to Amaterasu Omikami (lawful) */
+#define BUFSIZE_PER_SQUARE 200
+    char buf[COLNO*BUFSIZE_PER_SQUARE], html_buf[COLNO*BUFSIZE_PER_SQUARE], html_c[BUFSZ], tmpbuf[BUFSIZE_PER_SQUARE], *ptr;
+    int ch, glyph, oclass;
+    int color;
+    unsigned special;
+    const char *dfeature = (char *)0;
+    char dfeaturebuf[BUFSZ];
+
+    dump_html("<pre class=\"nh_screen\">\n", "");
+    for (y = 0; y < ROWNO; y++) {
+	buf[0] = '\0';
+	html_buf[0] = '\0';
+	lastc = 0;
+	for (x = 1; x < COLNO; x++) {
+	    /* map glyph to character and color */
+	    glyph = gbuf[y][x].glyph;
+	    mapglyph(glyph, &ch, &color, &special, x, y);
+	    /* we can't use ch for output as that may be non-ASCII due
+	     * to DEC- or IBMgraphics */
+	    uchar c = get_glyph_char(glyph, &oclass);
+
+	    /* determine unicode point for HTML output */
+	    int unicode_codepoint = get_unicode_codepoint(ch);
+	    if (unicode_codepoint > 127) {
+	      Sprintf(html_c, "&#%d;", unicode_codepoint);
+	    } else {
+	      Sprintf(html_c, "%s", html_escape_character(unicode_codepoint));
+	    }
+	    dfeature = dfeature_at(x, y, dfeaturebuf);
+
+	    if (c == ' ')
+		Strcpy(tmpbuf, "&nbsp;");
+	    else if (x == u.ux && y == u.uy)
+		Sprintf(tmpbuf, "<span title=\"you\" class=\"nh_inv_%d nh_player\">%s</span>", color, html_c);
+	    else if (special & (MG_PET|MG_DETECT))
+		Sprintf(tmpbuf, "<span class=\"nh_inv_%d nh_pet\">%s</span>", color, html_c);
+	    else if (special & (MG_PET|MG_DETECT))
+		Sprintf(tmpbuf, "<span class=\"nh_inv_%d\">%s</span>", color, html_c);
+	    else if (special & MG_OBJPILE && dfeature != NULL)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_inv_%d\">%s</span>", dfeature, color, html_c);
+	    else if (special & MG_OBJPILE)
+		Sprintf(tmpbuf, "<span class=\"nh_inv_%d\">%s</span>", color, html_c);
+	    else if (oclass < 0 && IS_DOOR(levl[x][y].typ) && levl[x][y].doormask >= D_ISOPEN)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_door\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && IS_DRAWBRIDGE(levl[x][y].typ))
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_drawbridge\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == POOL)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_pool\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == MOAT)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_moat\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == WATER)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_water\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == LAVAPOOL)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_lava\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == IRONBARS)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_ironbars\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == CORR)
+		Sprintf(tmpbuf, "<span class=\"nh_corridor\">%s</span>", html_c);
+	    else if (oclass < 0 && levl[x][y].typ == STAIRS)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>", dfeature, color, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == LADDER)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_ladder\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == FOUNTAIN)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_fountain\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == THRONE)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_throne\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == SINK)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_sink\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == GRAVE)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_grave\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == ALTAR)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_altar\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == TREE)
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_tree\">%s</span>", dfeature, html_c);
+	    else if (oclass < 0 && levl[x][y].typ == ICE)
+		Sprintf(tmpbuf, "<span class=\"nh_ice\">%s</span>", html_c);
+	    else if (oclass < 0 && glyph_is_trap(glyph)) {
+		/* See bug C343-20, the level data can actually be gone
+		 * already, even though the map is still showing a trap.
+		 * Thus prevent null pointer crashes. */
+		struct trap *t = t_at(x,y);
+		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>",
+				t ? defsyms[trap_to_defsym(t->ttyp)].explanation : "trap",
+				color, html_c);
+	    } else {
+		struct monst *mtmp = m_at(x,y);
+		if (mtmp && canspotmon(mtmp)) {
+			Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>", m_monnam(mtmp), color, html_link(mtmp->data->mname, html_c));
+		} else {
+			Sprintf(tmpbuf, "<span class=\"nh_color_%d\">%s</span>", color, html_c);
+		}
+	    }
+	    /* Warning in case there's no crash */
+	    if (strlen(tmpbuf) > BUFSIZE_PER_SQUARE) {
+		pline("tmpbuf > %d: %zd, %s", BUFSIZE_PER_SQUARE, strlen(tmpbuf), tmpbuf);
+	    }
+	    /* HTML map */
+	    Strcat(html_buf, tmpbuf);
+
+	    /* ASCII map */
+	    Sprintf(tmpbuf, "%c", c);
+	    Strcat(buf, tmpbuf);
+
+	    if (c != ' ')
+		    lastc = x;
+	}
+	dump_html("<span class=\"nh_screen\">%s</span>\n", html_buf);
+	buf[lastc] = '\0';
+	dump_text("%s\n", buf);
+    }
+    dump("", "");
+    bot1str(buf);
+    ptr = (char *) compress_str((const char *) buf);
+    dump("", ptr);
+    bot2str(buf);
+    dump("", buf);
+    dump_html("</pre><br/>\n", "");
+    dump("", "");
+    dump("", "");
+#undef BUFSIZE_PER_SQUARE
+}
+#endif /* DUMP_LOG */
 
 /*
  * back_to_glyph()

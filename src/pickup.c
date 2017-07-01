@@ -2387,7 +2387,7 @@ int held;
         } else if (c == ':') { /* note: will set obj->cknown */
             if (!current_container->cknown)
                 used = 1; /* gaining info */
-            container_contents(current_container, FALSE, FALSE, TRUE);
+            container_contents(current_container, FALSE, FALSE, TRUE, TRUE);
         } else
             break;
     } /* loop until something other than '?' or ':' is picked */

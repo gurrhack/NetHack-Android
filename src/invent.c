@@ -22,8 +22,8 @@ STATIC_PTR int FDECL(ckunpaid, (struct obj *));
 STATIC_PTR int FDECL(ckvalidcat, (struct obj *));
 STATIC_PTR char *FDECL(safeq_xprname, (struct obj *));
 STATIC_PTR char *FDECL(safeq_shortxprname, (struct obj *));
-STATIC_DCL char FDECL(display_pickinv, (const char *, BOOLEAN_P, long *));
-STATIC_DCL char FDECL(display_pickinv_q, (const char *,BOOLEAN_P, long *, const char *, BOOLEAN_P));
+STATIC_DCL char FDECL(display_pickinv, (const char *, BOOLEAN_P, long *, BOOLEAN_P));
+STATIC_DCL char FDECL(display_pickinv_q, (const char *,BOOLEAN_P, long *, BOOLEAN_P, const char *, BOOLEAN_P));
 STATIC_DCL char FDECL(display_used_invlets, (CHAR_P));
 STATIC_DCL void FDECL(tally_BUCX,
                       (struct obj *, int *, int *, int *, int *, int *));
@@ -1172,7 +1172,7 @@ register const char *let, *word;
 		if(iflags.automenu) {
 		    ilet = *buf ? '?' : '*';
 			putstr(WIN_MESSAGE, 0, qbuf);
-		    ilet = display_pickinv_q(lets, TRUE, allowcnt ? &cnt : (long *)0, qbuf, allownone);
+		    ilet = display_pickinv_q(lets, TRUE, allowcnt ? &cnt : (long *)0, TRUE, qbuf, allownone);
 		    if (ilet && allowcnt && cnt >= 0) {
 		    	if(!cnt) prezero = TRUE;
 		    	allowcnt = 2;
@@ -1239,7 +1239,7 @@ register const char *let, *word;
             if (ilet == '?' && !*lets && *altlets)
                 allowed_choices = altlets;
             ilet = display_pickinv(allowed_choices, TRUE,
-                                   allowcnt ? &ctmp : (long *) 0);
+                                   allowcnt ? &ctmp : (long *) 0, TRUE);
             if (!ilet)
                 continue;
             if (allowcnt && ctmp >= 0) {
@@ -2014,19 +2014,21 @@ free_pickinv_cache()
  * any count returned from the menu selection is placed here.
  */
 STATIC_OVL char
-display_pickinv(lets, want_reply, out_cnt)
+display_pickinv(lets, want_reply, out_cnt, want_disp)
 register const char *lets;
 boolean want_reply;
 long *out_cnt;
+boolean want_disp;
 {
-	display_pickinv_q(lets, want_reply, out_cnt, 0, FALSE);
+	display_pickinv_q(lets, want_reply, out_cnt, want_disp, 0, FALSE);
 }
 
 STATIC_OVL char
-display_pickinv_q(lets, want_reply, out_cnt, quest, allownone)
+display_pickinv_q(lets, want_reply, out_cnt, want_disp, quest, allownone)
 register const char *lets;
 boolean want_reply;
 long* out_cnt;
+boolean want_disp;
 const char *quest;
 boolean allownone;
 {
@@ -2039,6 +2041,7 @@ boolean allownone;
     menu_item *selected;
     struct obj **oarray;
 
+	if (want_disp) {
     if (flags.perm_invent && lets && *lets) {
         /* partial inventory in perm_invent setting; don't operate on
            full inventory window, use an alternate one instead; create
@@ -2048,6 +2051,8 @@ boolean allownone;
         win = cached_pickinv_win;
     } else
         win = WIN_INVEN;
+	}
+	dump_title("Your inventory");
 
     /*
      * Exit early if no inventory -- but keep going if we are doing
@@ -2065,7 +2070,10 @@ boolean allownone;
 		&& (!iflags.automenu || !allownone)
 #endif
 	) {
-        pline("Not carrying anything.");
+		if (want_disp) {
+    	    pline("Not carrying anything.");
+		}
+	    dump("  ", "Not carrying anything");
         return 0;
     }
 
@@ -2083,11 +2091,19 @@ boolean allownone;
         ret = '\0';
         for (otmp = invent; otmp; otmp = otmp->nobj) {
             if (otmp->invlet == lets[0]) {
-                ret = message_menu(
-                    lets[0], want_reply ? PICK_ONE : PICK_NONE,
-                    xprname(otmp, (char *) 0, lets[0], TRUE, 0L, 0L));
-                if (out_cnt)
-                    *out_cnt = -1L; /* select all */
+				if (want_disp) {
+					ret = message_menu(
+						lets[0], want_reply ? PICK_ONE : PICK_NONE,
+						xprname(otmp, (char *) 0, lets[0], TRUE, 0L, 0L));
+					if (out_cnt)
+						*out_cnt = -1L; /* select all */
+				}
+				{
+					char letbuf[7];
+					sprintf(letbuf, "  %c - ", lets[0]);
+					dump_object(lets[0], otmp,
+					xprname(otmp, (char *)0, lets[0], TRUE, 0L, 0L));
+				}
                 break;
             }
         }
@@ -2111,7 +2127,8 @@ boolean allownone;
             objarr_set(otmp, i++, oarray, (flags.sortloot == 'f'));
         }
 
-    start_menu(win);
+	if (want_disp)
+	    start_menu(win);
     any = zeroany;
     if (wizard && iflags.override_ID) {
         char prompt[BUFSZ];
@@ -2120,7 +2137,8 @@ boolean allownone;
            into iflags.override_ID */
         Sprintf(prompt, "Debug Identify (%s to permanently identify)",
                 visctrl(iflags.override_ID));
-        add_menu(win, NO_GLYPH, &any, '_', iflags.override_ID, ATR_NONE,
+		if (want_disp)
+	        add_menu(win, NO_GLYPH, &any, '_', iflags.override_ID, ATR_NONE,
                  prompt, MENU_UNSELECTED);
     }
 nextclass:
@@ -2132,15 +2150,19 @@ nextclass:
         any = zeroany; /* zero */
         if (!flags.sortpack || otmp->oclass == *invlet) {
             if (flags.sortpack && !classcount) {
-                add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
+				if (want_disp)
+        	        add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
                          let_to_name(*invlet, FALSE,
                                      (want_reply && iflags.menu_head_objsym)),
                          MENU_UNSELECTED);
+				dump_subtitle(let_to_name(*invlet, FALSE, FALSE));
                 classcount++;
             }
             any.a_char = ilet;
-            add_menu(win, obj_to_glyph(otmp), &any, ilet, 0, ATR_NONE,
+			if (want_disp)
+	            add_menu(win, obj_to_glyph(otmp), &any, ilet, 0, ATR_NONE,
                      doname(otmp), MENU_UNSELECTED);
+			dump_object(ilet, otmp, doname(otmp));
         }
     }
     if (flags.sortpack) {
@@ -2152,7 +2174,7 @@ nextclass:
         }
     }
 #ifdef ANDROID
-	if(iflags.automenu && lets) {
+	if(iflags.automenu && lets && want_disp) {
 		any.a_void = 0;		/* zero */
 		add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Special", MENU_UNSELECTED);
 		if(allownone) {
@@ -2164,6 +2186,7 @@ nextclass:
 	}
 #endif
     free(oarray);
+	if (want_disp) {
     end_menu(win, (char *) quest);
 
     n = select_menu(win, want_reply ? PICK_ONE : PICK_NONE, &selected);
@@ -2174,6 +2197,8 @@ nextclass:
         free((genericptr_t) selected);
     } else
         ret = !n ? '\0' : '\033'; /* cancelled */
+	} /* want_disp */
+	dump("", "");
 
     return ret;
 }
@@ -2190,7 +2215,16 @@ display_inventory(lets, want_reply)
 const char *lets;
 boolean want_reply;
 {
-    return display_pickinv(lets, want_reply, (long *) 0);
+    return display_pickinv(lets, want_reply, (long *) 0, TRUE);
+}
+
+/* See display_inventory. This is the same thing WITH dumpfile creation */
+char
+dump_inventory(lets, want_reply, want_disp)
+register const char *lets;
+boolean want_reply, want_disp;
+{
+  return display_pickinv(lets, want_reply, (long *)0, want_disp);
 }
 
 /*

@@ -273,6 +273,20 @@ static struct Comp_Opt {
       sizeof(flags.end_disclose) * 2, SET_IN_GAME },
     { "dogname", "the name of your (first) dog (e.g., dogname:Fang)", PL_PSIZ,
       DISP_IN_GAME },
+#ifdef DUMP_LOG
+	{ "dumpfile", "where to dump data (e.g., dumpfile:/tmp/dump.nh)",
+#ifdef DUMP_FN
+		PL_PSIZ, DISP_IN_GAME },
+#else
+		PL_PSIZ, SET_IN_GAME },
+#endif
+    { "dumpfile_format", "format of the dumpfile", 1,
+#ifdef DUMP_FN
+		DISP_IN_GAME },
+#else
+		SET_IN_GAME },
+#endif
+#endif
     { "dungeon", "the symbols to use in drawing the dungeon map",
       MAXDCHARS + 1, SET_IN_FILE },
     { "effects", "the symbols to use in drawing special effects",
@@ -2093,6 +2107,34 @@ boolean tinitial, tfrom_file;
         sanitize_name(dogname);
         return;
     }
+
+#ifdef DUMP_LOG
+    fullname = "dumpfile_format";
+    if (match_optname(opts, fullname, strlen(fullname), TRUE)) {
+        if (duplicate)
+            complain_about_duplicate(opts, 1);
+        if (negated)
+            bad_negation(fullname, TRUE);
+		else if((op = string_for_opt(opts, FALSE)) != 0) {
+			if(!strcmp(op, "html"))		 dump_format = DUMP_FORMAT_HTML;
+			else if(!strcmp(op, "text")) dump_format = DUMP_FORMAT_TEXT;
+			else if(!strcmp(op, "both")) dump_format = DUMP_FORMAT_BOTH;
+			else badoption(opts);
+        }
+        return;
+    }
+
+	fullname = "dumpfile";
+	if (match_optname(opts, fullname, strlen(fullname), TRUE)) {
+#ifndef DUMP_FN
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_opt(opts, !tfrom_file)) != 0
+			&& strlen(op) > 1)
+			nmcpy(dump_fn, op, PL_PSIZ);
+#endif
+		return;
+       }
+#endif
 
     fullname = "horsename";
     if (match_optname(opts, fullname, 5, TRUE)) {
@@ -3965,11 +4007,32 @@ boolean setinitial, setfromfile;
     int i;
     char buf[BUFSZ];
 
-    /* Special handling of menustyle, pickup_burden, pickup_types,
+    /* Special handling of dumpfile_format, menustyle, pickup_burden, pickup_types,
      * disclose, runmode, msg_window, menu_headings, sortloot,
      * and number_pad options.
      * Also takes care of interactive autopickup_exception_handling changes.
      */
+#ifdef DUMP_LOG
+    if (!strcmp("dumpfile_format", optname)) {
+        menu_item *pick = (menu_item *) 0;
+
+        tmpwin = create_nhwindow(NHW_MENU);
+        start_menu(tmpwin);
+        any = zeroany;
+		any.a_int = DUMP_FORMAT_HTML;
+		add_menu(tmpwin, NO_GLYPH, &any, 'h', 0, ATR_NONE, "html", MENU_UNSELECTED);
+		any.a_int = DUMP_FORMAT_TEXT;
+		add_menu(tmpwin, NO_GLYPH, &any, 't', 0, ATR_NONE, "text", MENU_UNSELECTED);
+		any.a_int = DUMP_FORMAT_BOTH;
+		add_menu(tmpwin, NO_GLYPH, &any, 'b', 0, ATR_NONE, "both", MENU_UNSELECTED);
+        end_menu(tmpwin, "Select dump file format:");
+        if (select_menu(tmpwin, PICK_ONE, &pick) > 0) {
+            dump_format = pick->item.a_int;
+            free((genericptr_t) pick);
+        }
+        destroy_nhwindow(tmpwin);
+    } else
+#endif
     if (!strcmp("menustyle", optname)) {
         const char *style_name;
         menu_item *style_pick = (menu_item *) 0;
@@ -4688,6 +4751,13 @@ char *buf;
         }
     else if (!strcmp(optname, "dogname"))
         Sprintf(buf, "%s", dogname[0] ? dogname : none);
+#ifdef DUMP_LOG
+	else if (!strcmp(optname, "dumpfile_format"))
+		Sprintf(buf, "%s", dump_format==DUMP_FORMAT_HTML ? "html" :
+		 				   (dump_format==DUMP_FORMAT_TEXT ? "text" : "both") );
+	else if (!strcmp(optname, "dumpfile"))
+		Sprintf(buf, "%s", dump_fn[0] ? dump_fn: none );
+#endif
     else if (!strcmp(optname, "dungeon"))
         Sprintf(buf, "%s", to_be_done);
     else if (!strcmp(optname, "effects"))

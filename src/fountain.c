@@ -257,7 +257,7 @@ drinkfountain()
         case 19: /* Self-knowledge */
             You_feel("self-knowledgeable...");
             display_nhwindow(WIN_MESSAGE, FALSE);
-            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS);
+            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS, TRUE);
             exercise(A_WIS, TRUE);
             pline_The("feeling subsides.");
             break;

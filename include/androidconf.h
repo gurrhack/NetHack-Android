@@ -22,6 +22,14 @@
 #define getuid() 1
 
 #undef SHELL				/* we do not support the '!' command */
+
+#define DUMP_LOG
+#undef DUMP_FN
+#define DUMP_HTML_CSS_FILE "nethack_dump.css"
+#define DUMP_HTML_CSS_EMBEDDED
+#define DUMP_HTML_LOG
+#undef DUMP_TEXT_LOG
+
 //#undef MAIL
 //#undef DEF_PAGER
 #undef DEF_MAILREADER

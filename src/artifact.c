@@ -1562,7 +1562,7 @@ struct obj *obj;
             break;
         }
         case ENLIGHTENING:
-            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS);
+            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS, TRUE);
             break;
         case CREATE_AMMO: {
             struct obj *otmp = mksobj(ARROW, TRUE, FALSE);

@@ -9,6 +9,8 @@
  */
 #include "hack.h"
 
+STATIC_DCL int FDECL(enhance_skill, (boolean));
+
 /* Categories whose names don't come from OBJ_NAME(objects[type])
  */
 #define PN_BARE_HANDED (-1) /* includes martial arts */
@@ -1009,6 +1011,23 @@ static const struct skill_range {
 int
 enhance_weapon_skill()
 {
+	return enhance_skill(FALSE);
+}
+
+/* Dump the weapon skills. */
+void
+dump_weapon_skill()
+{
+	enhance_skill(TRUE);
+}
+
+int enhance_skill(boolean want_dump)
+/* This is the original enhance_weapon_skill() function slightly modified
+ * to write the skills to the dump file. I added the wrapper functions just
+ * because it looked like the easiest way to add a parameter to the
+ * function call. - Jukka Lahtinen, August 2001
+ */
+{
     int pass, i, n, len, longest, to_advance, eventually_advance, maxxed_cnt;
     char buf[BUFSZ], sklnambuf[BUFSZ];
     const char *prefix;
@@ -1016,9 +1035,12 @@ enhance_weapon_skill()
     anything any;
     winid win;
     boolean speedy = FALSE;
+    char buf2[BUFSZ];
+    boolean logged = FALSE;
 
-    if (wizard && yn("Advance skills without practice?") == 'y')
-        speedy = TRUE;
+	if (!want_dump)
+		if (wizard && yn("Advance skills without practice?") == 'y')
+			speedy = TRUE;
 
     do {
         /* find longest available skill name, count those that can advance */
@@ -1036,32 +1058,37 @@ enhance_weapon_skill()
                 maxxed_cnt++;
         }
 
-        win = create_nhwindow(NHW_MENU);
-        start_menu(win);
+		if (want_dump) {
+			dump_title("Your skills at the end");
+			dump_html("<table class=\"nh_skills\">\n", "");
+		} else {
+			win = create_nhwindow(NHW_MENU);
+			start_menu(win);
 
-        /* start with a legend if any entries will be annotated
-           with "*" or "#" below */
-        if (eventually_advance > 0 || maxxed_cnt > 0) {
-            any = zeroany;
-            if (eventually_advance > 0) {
-                Sprintf(buf, "(Skill%s flagged by \"*\" may be enhanced %s.)",
-                        plur(eventually_advance),
-                        (u.ulevel < MAXULEV)
-                            ? "when you're more experienced"
-                            : "if skill slots become available");
-                add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
-                         MENU_UNSELECTED);
-            }
-            if (maxxed_cnt > 0) {
-                Sprintf(buf,
-                 "(Skill%s flagged by \"#\" cannot be enhanced any further.)",
-                        plur(maxxed_cnt));
-                add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
-                         MENU_UNSELECTED);
-            }
-            add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
-                     MENU_UNSELECTED);
-        }
+			/* start with a legend if any entries will be annotated
+			   with "*" or "#" below */
+			if (eventually_advance > 0 || maxxed_cnt > 0) {
+				any = zeroany;
+				if (eventually_advance > 0) {
+					Sprintf(buf, "(Skill%s flagged by \"*\" may be enhanced %s.)",
+							plur(eventually_advance),
+							(u.ulevel < MAXULEV)
+								? "when you're more experienced"
+								: "if skill slots become available");
+					add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
+							 MENU_UNSELECTED);
+				}
+				if (maxxed_cnt > 0) {
+					Sprintf(buf,
+					 "(Skill%s flagged by \"#\" cannot be enhanced any further.)",
+							plur(maxxed_cnt));
+					add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
+							 MENU_UNSELECTED);
+				}
+				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
+						 MENU_UNSELECTED);
+			}
+	    } /* want_dump or not */
 
         /* List the skills, making ones that could be advanced
            selectable.  List the miscellaneous skills first.
@@ -1072,10 +1099,29 @@ enhance_weapon_skill()
                  i++) {
                 /* Print headings for skill types */
                 any = zeroany;
-                if (i == skill_ranges[pass].first)
+                if (i == skill_ranges[pass].first) {
+					if (want_dump) {
+						dump_text("  %s\n",(char *)skill_ranges[pass].name);
+						dump_html("<tr><th>%s</th></tr>\n",(char *)skill_ranges[pass].name);
+						logged=FALSE;
+					} else
                     add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
                              skill_ranges[pass].name, MENU_UNSELECTED);
-
+				}
+				if (want_dump) {
+					if (P_SKILL(i) > P_UNSKILLED) {
+					Sprintf(buf2,"%-*s [%s]",
+						longest, P_NAME(i),skill_level_name(i, buf));
+					dump_text("    %s\n",buf2);
+					Sprintf(buf2,"<tr><td>%s</td><td>[%s]</td></tr>",
+						P_NAME(i),skill_level_name(i, buf));
+					dump_html("%s\n",buf2);
+					logged=TRUE;
+					} else if (i == skill_ranges[pass].last && !logged) {
+					dump_text("    %s\n","(none)");
+					dump_html("<tr><td>%s</td></tr>\n","(none)");
+					}
+               } else {
                 if (P_RESTRICTED(i))
                     continue;
                 /*
@@ -1130,6 +1176,7 @@ enhance_weapon_skill()
                 any.a_int = can_advance(i, speedy) ? i + 1 : 0;
                 add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
                          MENU_UNSELECTED);
+				} /* !want_dump */
             }
 
         Strcpy(buf, (to_advance > 0) ? "Pick a skill to advance:"
@@ -1137,6 +1184,11 @@ enhance_weapon_skill()
         if (wizard && !speedy)
             Sprintf(eos(buf), "  (%d slot%s available)", u.weapon_slots,
                     plur(u.weapon_slots));
+	    if (want_dump) {
+		dump_html("</table>\n", "");
+		dump("", "");
+		n=0;
+	    } else {
         end_menu(win, buf);
         n = select_menu(win, to_advance ? PICK_ONE : PICK_NONE, &selected);
         destroy_nhwindow(win);
@@ -1153,6 +1205,7 @@ enhance_weapon_skill()
                     break;
                 }
             }
+	    }
         }
     } while (speedy && n > 0);
     return 0;

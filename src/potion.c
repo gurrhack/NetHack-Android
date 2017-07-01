@@ -668,7 +668,7 @@ register struct obj *otmp;
             }
             You_feel("self-knowledgeable...");
             display_nhwindow(WIN_MESSAGE, FALSE);
-            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS);
+            enlightenment(MAGICENLIGHTENMENT, ENL_GAMEINPROGRESS, TRUE);
             pline_The("feeling subsides.");
             exercise(A_WIS, TRUE);
         }

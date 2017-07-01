@@ -553,6 +553,12 @@ time_t when;
              "Since you were in %s mode, the score list will not be checked.",
                         wizard ? "wizard" : "discover");
                 topten_print(pbuf);
+#ifdef DUMP_LOG
+		if (dump_fn[0]) {
+		  dump("", pbuf);
+		  dump("", "");
+		}
+#endif
             }
         goto showwin;
     }
@@ -573,6 +579,9 @@ time_t when;
     }
 
     HUP topten_print("");
+#ifdef DUMP_LOG
+	dump("", "");
+#endif
 
     /* assure minimum number of points */
     if (t0->points < sysopt.pointsmin)
@@ -617,6 +626,10 @@ time_t when;
                             t1->points);
                     topten_print(pbuf);
                     topten_print("");
+#ifdef DUMP_LOG
+			    dump("", pbuf);
+			    dump("", "");
+#endif
                 }
             }
             if (occ_cnt < 0) {
@@ -651,6 +664,9 @@ time_t when;
             if (rank0 > 0) {
                 if (rank0 <= 10) {
                     topten_print("You made the top ten list!");
+#ifdef DUMP_LOG
+			dump("", "You made the top ten list!");
+#endif
                 } else {
                     char pbuf[BUFSZ];
 
@@ -658,10 +674,19 @@ time_t when;
                             "You reached the %d%s place on the top %d list.",
                             rank0, ordin(rank0), sysopt.entrymax);
                     topten_print(pbuf);
+#ifdef DUMP_LOG
+			dump("", pbuf);
+#endif
                 }
                 topten_print("");
+#ifdef DUMP_LOG
+		    dump("", "");
+#endif
             }
     }
+#ifdef DUMP_LOG
+	dump_html("<pre>", "");
+#endif
     if (rank0 == 0)
         rank0 = rank1;
     if (rank0 <= 0)
@@ -686,8 +711,12 @@ time_t when;
                         : strncmp(t1->name, t0->name, NAMSZ) == 0)))
             continue;
         if (rank == rank0 - flags.end_around
-            && rank0 > flags.end_top + flags.end_around + 1 && !flags.end_own)
+            && rank0 > flags.end_top + flags.end_around + 1 && !flags.end_own) {
             topten_print("");
+#ifdef DUMP_LOG
+		dump("", "");
+#endif
+		}
         if (rank != rank0)
             outentry(rank, t1, FALSE);
         else if (!rank1)
@@ -700,6 +729,9 @@ time_t when;
     if (rank0 >= rank)
         if (!done_stopprint)
             outentry(0, t0, TRUE);
+#ifdef DUMP_LOG
+	dump_html("</pre>", "");
+#endif
 #ifdef UPDATE_RECORD_IN_PLACE
     if (flg) {
 #ifdef TRUNCATE_FILE
@@ -749,6 +781,9 @@ outheader()
         *bp++ = ' ';
     Strcpy(bp, "Hp [max]");
     topten_print(linebuf);
+#ifdef DUMP_LOG
+	dump("", linebuf);
+#endif
 }
 
 /* so>0: standout line; so=0: ordinary line */
@@ -884,8 +919,15 @@ boolean so;
                 *bp++ = ' ';
             *bp = 0;
             topten_print_bold(linebuf);
-        } else
+#ifdef DUMP_LOG
+		dump("*", linebuf[0]==' '? linebuf+1: linebuf);
+#endif
+        } else {
             topten_print(linebuf);
+#ifdef DUMP_LOG
+		dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
+#endif
+        }
         Sprintf(linebuf, "%15s %s", "", linebuf3);
         lngr = strlen(linebuf);
     }
@@ -913,6 +955,9 @@ boolean so;
         topten_print_bold(linebuf);
     } else
         topten_print(linebuf);
+#ifdef DUMP_LOG
+	dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
+#endif
 }
 
 STATIC_OVL int

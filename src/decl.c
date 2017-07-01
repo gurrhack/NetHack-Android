@@ -211,6 +211,22 @@ NEARDATA struct monst *migrating_mons = (struct monst *) 0;
 
 NEARDATA struct mvitals mvitals[NUMMONS];
 
+#ifdef DUMP_LOG
+#ifdef DUMP_FN
+char dump_fn[] = DUMP_FN;
+#else
+char dump_fn[PL_PSIZ] = DUMMY;
+#endif
+int dump_format =
+	#if defined(DUMP_HTML_LOG) && defined(DUMP_TEXT_LOG)
+		DUMP_FORMAT_BOTH;
+	#elif defined(DUMP_HTML_LOG)
+		DUMP_FORMAT_HTML;
+	#else
+		DUMP_FORMAT_TEXT;
+	#endif
+#endif /* DUMP_LOG */
+
 NEARDATA struct c_color_names c_color_names = {
     "black",  "amber", "golden", "light blue", "red",   "green",
     "silver", "blue",  "purple", "white",      "orange"

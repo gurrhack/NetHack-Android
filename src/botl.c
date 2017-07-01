@@ -123,10 +123,16 @@ STATIC_DCL const char *NDECL(rank);
 STATIC_DCL void NDECL(bot1);
 STATIC_DCL void NDECL(bot2);
 
+#ifdef DUMP_LOG
+void bot1str(char *newbot1)
+#else
 STATIC_OVL void
 bot1()
+#endif
 {
+#ifndef DUMP_LOG
     char newbot1[MAXCO];
+#endif
     register char *nb;
     register int i, j;
 
@@ -176,14 +182,29 @@ bot1()
     if (flags.showscore)
         Sprintf(nb = eos(nb), " S:%ld", botl_score());
 #endif
+#ifdef DUMP_LOG
+}
+STATIC_OVL void
+bot1()
+{
+	char newbot1[MAXCO];
+	bot1str(newbot1);
     curs(WIN_STATUS, 1, 0);
     putstr(WIN_STATUS, 0, newbot1);
 }
+#endif
 
+#ifdef DUMP_LOG
+void bot2str(newbot2)
+char* newbot2;
+#else
 STATIC_OVL void
 bot2()
+#endif
 {
+#ifndef DUMP_LOG
     char newbot2[MAXCO];
+#endif
     register char *nb;
     int hp, hpmax;
     int cap = near_capacity();
@@ -296,6 +317,15 @@ bot2()
         add_colored_text(enc_stat[cap], newbot2);
 #else
         Sprintf(nb = eos(nb), " %s", enc_stat[cap]);
+#endif
+#ifdef DUMP_LOG
+}
+STATIC_OVL void
+bot2()
+{
+	char newbot2[MAXCO];
+	int save_botlx = context.botlx;
+	bot2str(newbot2);
 #endif
     curs(WIN_STATUS, 1, 1);
 #if defined(STATUS_COLORS) && defined(TEXTCOLOR)

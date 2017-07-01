@@ -1212,6 +1212,8 @@ static const char have_been[] = "have been ", have_never[] = "have never ",
 #define you_have_X(something) \
     enl_msg(You_, have, (const char *) "", something, "")
 
+static int want_display = FALSE;
+static int want_lines = FALSE;
 static void
 enlght_line(start, middle, end, ps)
 const char *start, *middle, *end, *ps;
@@ -1219,7 +1221,13 @@ const char *start, *middle, *end, *ps;
     char buf[BUFSZ];
 
     Sprintf(buf, " %s%s%s%s.", start, middle, end, ps);
-    putstr(en_win, 0, buf);
+	if (want_display) {
+    	putstr(en_win, 0, buf);
+    }
+    if(want_lines)
+		dump_line(buf, "");
+	else
+		dump_list_item(buf);
 }
 
 /* format increased chance to hit or damage or defense (Protection) */
@@ -1335,11 +1343,14 @@ char resultbuf[]; /* should be at least [7] to hold "18/100\0" */
 }
 
 void
-enlightenment(mode, final)
+enlightenment(mode, final, want_disp)
 int mode;  /* BASICENLIGHTENMENT | MAGICENLIGHTENMENT (| both) */
 int final; /* ENL_GAMEINPROGRESS:0, ENL_GAMEOVERALIVE, ENL_GAMEOVERDEAD */
+boolean want_disp;
 {
     char buf[BUFSZ], tmpbuf[BUFSZ];
+
+	want_display = want_disp;
 
     Strcpy(tmpbuf, plname);
     *tmpbuf = highc(*tmpbuf); /* same adjustment as bottom line */
@@ -1350,9 +1361,13 @@ int final; /* ENL_GAMEINPROGRESS:0, ENL_GAMEOVERALIVE, ENL_GAMEOVERDEAD */
                 ? urole.name.f
                 : urole.name.m);
 
-    en_win = create_nhwindow(NHW_MENU);
-    /* title */
-    putstr(en_win, 0, buf); /* "Conan the Archeologist's attributes:" */
+	if (want_display) {
+	    en_win = create_nhwindow(NHW_MENU);
+		/* title */
+		putstr(en_win, 0, buf); /* "Conan the Archeologist's attributes:" */
+	}
+	dump_title(buf);
+
     /* background and characteristics; ^X or end-of-game disclosure */
     if (mode & BASICENLIGHTENMENT) {
         /* role, race, alignment, deities */
@@ -1372,8 +1387,10 @@ int final; /* ENL_GAMEINPROGRESS:0, ENL_GAMEOVERALIVE, ENL_GAMEOVERDEAD */
         /* intrinsics and other traditional enlightenment feedback */
         attributes_enlightenment(mode, final);
     }
-    display_nhwindow(en_win, TRUE);
-    destroy_nhwindow(en_win);
+	if (want_display) {
+	    display_nhwindow(en_win, TRUE);
+    	destroy_nhwindow(en_win);
+    }
     en_win = WIN_ERR;
 }
 
@@ -1394,8 +1411,13 @@ int final;
     role_titl = (innategend && urole.name.f) ? urole.name.f : urole.name.m;
     rank_titl = rank_of(u.ulevel, Role_switch, innategend);
 
-    putstr(en_win, 0, ""); /* separator after title */
-    putstr(en_win, 0, "Background:");
+	if (want_display) {
+		putstr(en_win, 0, ""); /* separator after title */
+		putstr(en_win, 0, "Background:");
+    }
+	dump_title("Background");
+    dump_blockquote_start();
+    want_lines = TRUE;
 
     /* if polymorphed, report current shape before underlying role;
        will be repeated as first status: "you are transformed" and also
@@ -1412,7 +1434,7 @@ int final;
             Sprintf(tmpbuf, "%s ", genders[flags.female ? 1 : 0].adj);
         Sprintf(buf, "%sin %s%s form", !final ? "currently " : "", tmpbuf,
                 uasmon->mname);
-        you_are(buf, "");
+		you_are(buf, "");
     }
 
     /* report role; omit gender if it's redundant (eg, "female priestess") */
@@ -1447,7 +1469,9 @@ int final;
                      /* lastly, normal case */
                      : "",
             u_gname());
-    putstr(en_win, 0, buf);
+	if (want_display)
+	    putstr(en_win, 0, buf);
+	dump_line(buf, "");
     /* show the rest of this game's pantheon (finishes previous sentence)
        [appending "also Moloch" at the end would allow for straightforward
        trailing "and" on all three aligned entries but looks too verbose] */
@@ -1463,7 +1487,9 @@ int final;
         Sprintf(eos(buf), " %s (%s)", align_gname(A_CHAOTIC),
                 align_str(A_CHAOTIC));
     Strcat(buf, "."); /* terminate sentence */
-    putstr(en_win, 0, buf);
+	if (want_display)
+	    putstr(en_win, 0, buf);
+	dump_line(buf, "");
 
     /* show original alignment,gender,race,role if any have been changed;
        giving separate message for temporary alignment change bypasses need
@@ -1483,8 +1509,14 @@ int final;
                 difgend ? genders[flags.initgend].adj : "",
                 (difgend && difalgn) ? " and " : "",
                 difalgn ? align_str(u.ualignbase[A_ORIGINAL]) : "");
-        putstr(en_win, 0, buf);
+		if (want_display)
+    	    putstr(en_win, 0, buf);
+		dump_line(buf, "");
     }
+
+    dump_blockquote_end();
+    want_lines = FALSE;
+    dump("", "");
 }
 
 /* characteristics: expanded version of bottom line strength, dexterity, &c */
@@ -1493,9 +1525,13 @@ characteristics_enlightenment(mode, final)
 int mode;
 int final;
 {
+	if(want_display) {
     putstr(en_win, 0, ""); /* separator after background */
     putstr(en_win, 0,
            final ? "Final Characteristics:" : "Current Characteristics:");
+    }
+    dump_title(final ? "Final Characteristics" : "Current Characteristics");
+    dump_list_start();
 
     /* bottom line order */
     one_characteristic(mode, final, A_STR); /* strength */
@@ -1504,6 +1540,9 @@ int final;
     one_characteristic(mode, final, A_INT); /* intelligence */
     one_characteristic(mode, final, A_WIS); /* wisdom */
     one_characteristic(mode, final, A_CHA); /* charisma */
+
+    dump_list_end();
+    dump("", "");
 }
 
 /* display one attribute value for characteristics_enlightenment() */
@@ -1629,8 +1668,12 @@ int final;
      * Status (many are abbreviated on bottom line; others are or
      *     should be discernible to the hero hence to the player)
     \*/
-    putstr(en_win, 0, ""); /* separator after title or characteristics */
-    putstr(en_win, 0, final ? "Final Status:" : "Current Status:");
+    if(want_display) {
+		putstr(en_win, 0, ""); /* separator after title or characteristics */
+		putstr(en_win, 0, final ? "Final Status:" : "Current Status:");
+    }
+    dump_title(final ? "Final Status" : "Current Status");
+    dump_list_start();
 
     Strcpy(youtoo, You_);
     /* not a traditional status but inherently obvious to player; more
@@ -1880,6 +1923,8 @@ int final;
         else
             you_are("not wearing any armor", "");
     }
+    dump_list_end();
+    dump("", "");
 }
 
 /* attributes: intrinsics and the like, other non-obvious capabilities */
@@ -1896,8 +1941,13 @@ int final;
     /*\
      *  Attributes
     \*/
-    putstr(en_win, 0, "");
-    putstr(en_win, 0, final ? "Final Attributes:" : "Current Attributes:");
+	Sprintf(buf, final ? "Final Attributes:" : "Current Attributes:");
+	if (want_display) {
+		putstr(en_win, 0, "");
+		putstr(en_win, 0, buf);
+	}
+	dump_title(buf);
+	dump_list_start();
 
     if (u.uevent.uhand_of_elbereth) {
         static const char *const hofe_titles[3] = { "the Hand of Elbereth",
@@ -2305,6 +2355,9 @@ int final;
         if (p)
             enl_msg(You_, "have been killed ", p, buf, "");
     }
+
+    dump_list_end();
+    dump("", "");
 }
 
 #if 0  /* no longer used */
@@ -2430,7 +2483,7 @@ doattributes(VOID_ARGS)
     if (wizard || discover)
         mode |= MAGICENLIGHTENMENT;
 
-    enlightenment(mode, ENL_GAMEINPROGRESS);
+    enlightenment(mode, ENL_GAMEINPROGRESS, TRUE);
     return 0;
 }
 
@@ -2499,20 +2552,28 @@ int msgflag;          /* for variant message phrasing */
 STATIC_PTR int
 doconduct(VOID_ARGS)
 {
-    show_conduct(0);
+    show_conduct(0, TRUE);
     return 0;
 }
 
 void
-show_conduct(final)
+show_conduct(final, want_disp)
 int final;
+boolean want_disp;
 {
     char buf[BUFSZ];
     int ngenocided;
 
+	want_display = want_disp;
+
     /* Create the conduct window */
-    en_win = create_nhwindow(NHW_MENU);
-    putstr(en_win, 0, "Voluntary challenges:");
+	Sprintf(buf, "Voluntary challenges:");
+	if (want_display) {
+		en_win = create_nhwindow(NHW_MENU);
+		putstr(en_win, 0, buf);
+	}
+	dump_title(buf);
+	dump_list_start();
 
     if (u.uroleplay.blind)
         you_have_been("blind from birth");
@@ -2585,9 +2646,14 @@ int final;
                     " for any artifacts", "");
     }
 
+	dump_list_end();
+	dump("", "");
+
     /* Pop up the window and wait for a key */
-    display_nhwindow(en_win, TRUE);
-    destroy_nhwindow(en_win);
+	if (want_display) {
+		display_nhwindow(en_win, TRUE);
+		destroy_nhwindow(en_win);
+	}
     en_win = WIN_ERR;
 }
 
@@ -3765,40 +3831,6 @@ int x, y, mod;
             } else if (IS_THRONE(levl[u.ux][u.uy].typ)) {
                 cmd[0] = M('s');
                 return cmd;
-#ifdef ANDROID
-            } else {
-            	cmd[0] = '.';
-            	if((u.ux == xupstair && u.uy == yupstair)
-						  || (u.ux == sstairs.sx && u.uy == sstairs.sy && sstairs.up)
-						  || (u.ux == xupladder && u.uy == yupladder)) {
-					cmd[0] = '<';
-				} else if((u.ux == xdnstair && u.uy == ydnstair)
-						  || (u.ux == sstairs.sx && u.uy == sstairs.sy && !sstairs.up)
-						  || (u.ux == xdnladder && u.uy == ydnladder)) {
-					cmd[0] = '>';
-				}
-
-				if(OBJ_AT(u.ux, u.uy))
-				{
-	            	c = 0;
-					if(cmd[0] != '.')
-					{
-						/* On stairs with object(s) */
-						c = yn_function("There are objects here. Still climb?", ynqchars, 'y');
-
-						if(c == 'n')
-							cmd[0] = Is_container(level.objects[u.ux][u.uy]) ? M('l') : ',';
-						else if(c == 'q')
-							cmd[0] = '.';
-					}
-					else
-					{
-						cmd[0] = Is_container(level.objects[u.ux][u.uy]) ? M('l') : ',';
-					}
-				}
-				return cmd;
-            }
-#else
             } else if ((u.ux == xupstair && u.uy == yupstair)
                        || (u.ux == sstairs.sx && u.uy == sstairs.sy
                            && sstairs.up)
@@ -3816,7 +3848,6 @@ int x, y, mod;
             } else {
                 return "."; /* just rest */
             }
-#endif
         }
 
         /* directional commands */

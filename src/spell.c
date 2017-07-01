@@ -1580,6 +1580,45 @@ int *spell_no;
     return FALSE;
 }
 
+/** Dump the currently known spells. */
+void
+dump_spells()
+{
+	int i;
+	char buf[BUFSZ];
+
+	if (spellid(0) == NO_SPELL) {
+	    dump("", "You didn't know any spells.");
+	    dump("", "");
+	    return;
+	}
+	dump_title("Spells known in the end");
+
+	Sprintf(buf, "%-20s   Level    %-12s Fail  Memory", "    Name", "Category");
+	dump_text("  %s\n",buf);
+	dump_html("<table class=\"nh_spells\">\n", "");
+	dump_html("<tr><th>Name</th><th>Level</th><th>Category</th><th>Fail</th><th>Memory</th></tr>\n", "");
+	for (i = 0; i < MAXSPELL && spellid(i) != NO_SPELL; i++) {
+		Sprintf(buf, "%c - %-20s  %2d%s   %-12s %3d%%" "   %3d%%",
+			spellet(i), spellname(i), spellev(i),
+			(spellknow(i) > 1000) ? " " : (spellknow(i) ? "!" : "*"),
+			spelltypemnemonic(spell_skilltype(spellid(i))),
+			100 - percent_success(i),
+			(spellknow(i) * 100 + (KEEN-1)) / KEEN);
+		dump_text("  %s\n", buf);
+		Sprintf(buf, "<tr><td>%s</td><td align=\"right\">%d%s</td><td>%s</td><td align=\"right\">%d%%</td><td align=\"right\">%d%%</td></tr>\n",
+			spellname(i), spellev(i),
+			(spellknow(i) > 1000) ? "&nbsp;" : (spellknow(i) ? "!" : "*"),
+			spelltypemnemonic(spell_skilltype(spellid(i))),
+			100 - percent_success(i),
+			(spellknow(i) * 100 + (KEEN-1)) / KEEN);
+		dump_html(buf,"");
+	}
+	dump_html("</table>\n", "");
+	dump("","");
+
+} /* dump_spells */
+
 STATIC_OVL int
 percent_success(spell)
 int spell;

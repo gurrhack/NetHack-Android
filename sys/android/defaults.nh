@@ -39,6 +39,28 @@ OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
 OPTIONS=pile_limit:2,hilite_pile,hilite_pet
 #OPTIONS=!automenu
 
+SYMBOLS=S_ghost:X,S_boulder:0
+
+# *** Dumpfile Options ***
+#
+# A dumpfile is a log that is written when the game is
+# over. It contains a view of the map and a record of the
+# player's belonging, attributes, etc.
+#
+# dumpfile: The path and name of the file where the log is
+# written. If a relative path is specified it is relative
+# to the game's data directory. Normally
+# /sdcard/Android/data/com.tbd.NetHack
+# The macros %n and %d can be used. %n is replaced by the
+# character's name and %d is replaced by the current date.
+#
+# dumpfile_format: the format of the log. It can be html,
+# text, or both. ".html" or ".txt" is appended to the
+# filename depending on format.
+#
+OPTIONS=dumpfile:nh_log
+OPTIONS=dumpfile_format:html
+
 # Colorize individual rows on a menu based on what regular expressions match its text
 # http://nethackwiki.com/wiki/Menucolors
 MENUCOLOR=" blessed "=green
@@ -70,4 +92,8 @@ STATUSCOLOR=hallu:yellow,conf:orange,stun:red&bold
 STATUSCOLOR=ill:red&inverse,foodpois:red&inverse,slime:red&inverse
 ## Other
 STATUSCOLOR=held:red&inverse,blind:red&inverse
+
+
+
+
 

@@ -184,6 +184,20 @@ int otyp;
     return bufp;
 }
 
+/* less verbose result than obj_typename(); either the actual name
+   or the description (but not both); user-assigned name is ignored */
+char *
+dump_typename(otyp)
+int otyp;
+{
+	char *p;
+	int saved_name_known = objects[otyp].oc_name_known;
+	objects[otyp].oc_name_known = 1;
+	p = simple_typename(otyp);
+	objects[otyp].oc_name_known = saved_name_known;
+	return p;
+}
+
 boolean
 obj_is_pname(obj)
 struct obj *obj;

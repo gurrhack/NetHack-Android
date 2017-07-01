@@ -150,6 +150,10 @@ E long NDECL(botl_score);
 E int FDECL(describe_level, (char *));
 E const char *FDECL(rank_of, (int, SHORT_P, BOOLEAN_P));
 E void NDECL(bot);
+#ifdef DUMP_LOG
+E void FDECL(bot1str, (char *));
+E void FDECL(bot2str, (char *));
+#endif
 #ifdef STATUS_VIA_WINDOWPORT
 E void FDECL(status_initialize, (BOOLEAN_P));
 E void NDECL(status_finish);
@@ -190,9 +194,9 @@ E void FDECL(rhack, (char *));
 E int NDECL(doextlist);
 E int NDECL(extcmd_via_menu);
 E int NDECL(enter_explore_mode);
-E void FDECL(enlightenment, (int, int));
+E void FDECL(enlightenment, (int, int, BOOLEAN_P));
 E void FDECL(youhiding, (BOOLEAN_P, int));
-E void FDECL(show_conduct, (int));
+E void FDECL(show_conduct, (int, BOOLEAN_P));
 E int FDECL(xytod, (SCHAR_P, SCHAR_P));
 E void FDECL(dtoxy, (coord *, int));
 E int FDECL(movecmd, (CHAR_P));
@@ -326,6 +330,9 @@ E void NDECL(clear_glyph_buffer);
 E void FDECL(row_refresh, (int, int, int));
 E void NDECL(cls);
 E void FDECL(flush_screen, (int));
+#ifdef DUMP_LOG
+E void NDECL(dump_screen);
+#endif
 E int FDECL(back_to_glyph, (XCHAR_P, XCHAR_P));
 E int FDECL(zapdir_to_glyph, (int, int, int));
 E int FDECL(glyph_at, (XCHAR_P, XCHAR_P));
@@ -532,6 +539,36 @@ E void FDECL(update_l_symset, (struct symparse *, int));
 E void FDECL(update_r_symset, (struct symparse *, int));
 E boolean FDECL(cursed_object_at, (int, int));
 
+/* ### dump.c ### */
+
+E void FDECL(dump, (const char *, const char *));
+E void NDECL(dump_blockquote_start);
+E void NDECL(dump_blockquote_end);
+E void FDECL(dump_text, (const char *, const char *));
+E void FDECL(dump_header_html, (const char *));
+E void FDECL(dump_html, (const char *, const char *));
+E void NDECL(dump_init);
+E void NDECL(dump_exit);
+E void FDECL(dump_object, (const char, const struct obj *, const char *));
+E void FDECL(dump_title, (char *));
+E void FDECL(dump_subtitle, (const char *));
+E void FDECL(dump_line, (const char *, const char *));
+E void NDECL(dump_list_start);
+E void FDECL(dump_list_item, (const char *));
+E void FDECL(dump_list_item_object, (struct obj *));
+E void FDECL(dump_list_item_link, (const char *, const char *));
+E void NDECL(dump_list_end);
+E void NDECL(dump_definition_list_start);
+E void FDECL(dump_definition_list_dd, (const char *));
+E void FDECL(dump_definition_list_dt, (const char *));
+E void NDECL(dump_definition_list_end);
+E void FDECL(dump_containerconts, (struct obj *,BOOLEAN_P,BOOLEAN_P,BOOLEAN_P));
+E char* FDECL(html_escape_character, (const char));
+E char* FDECL(html_link, (const char *, const char *));
+#ifdef DUMP_LOG
+E int NDECL(dumpoverview);
+#endif
+
 /* ### dungeon.c ### */
 
 E void FDECL(save_dungeon, (int, BOOLEAN_P, BOOLEAN_P));
@@ -643,7 +680,7 @@ E void VDECL(panic, (const char *, ...)) PRINTF_F(1, 2) NORETURN;
 #if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
 E void FDECL(done, (int));
 E void FDECL(container_contents, (struct obj *, BOOLEAN_P,
-                                  BOOLEAN_P, BOOLEAN_P));
+                                  BOOLEAN_P, BOOLEAN_P, BOOLEAN_P));
 E void FDECL(terminate, (int)) NORETURN;
 E int NDECL(dovanquished);
 E int NDECL(num_genocides);
@@ -931,6 +968,7 @@ E char *FDECL(xprname,
               (struct obj *, const char *, CHAR_P, BOOLEAN_P, long, long));
 E int NDECL(ddoinv);
 E char FDECL(display_inventory, (const char *, BOOLEAN_P));
+E char FDECL(dump_inventory, (const char *,BOOLEAN_P,BOOLEAN_P));
 E int FDECL(display_binventory, (int, int, BOOLEAN_P));
 E struct obj *FDECL(display_cinventory, (struct obj *));
 E struct obj *FDECL(display_minventory, (struct monst *, int, char *));
@@ -1581,6 +1619,7 @@ E void NDECL(objects_init);
 
 E char *FDECL(obj_typename, (int));
 E char *FDECL(simple_typename, (int));
+E char *FDECL(dump_typename, (int));
 E boolean FDECL(obj_is_pname, (struct obj *));
 E char *FDECL(distant_name, (struct obj *, char *(*)(OBJ_P)));
 E char *FDECL(fruitname, (BOOLEAN_P));
@@ -2207,6 +2246,7 @@ E int FDECL(spelleffects, (int, BOOLEAN_P));
 E void NDECL(losespells);
 E int NDECL(dovspell);
 E void FDECL(initialspell, (struct obj *));
+E void NDECL(dump_spells);
 
 /* ### steal.c ### */
 
@@ -2600,6 +2640,9 @@ E int NDECL(dbon);
 E void FDECL(wet_a_towel, (struct obj *, int, BOOLEAN_P));
 E void FDECL(dry_a_towel, (struct obj *, int, BOOLEAN_P));
 E int NDECL(enhance_weapon_skill);
+#ifdef DUMP_LOG
+E void NDECL(dump_weapon_skill);
+#endif
 E void FDECL(unrestrict_weapon_skill, (int));
 E void FDECL(use_skill, (int, int));
 E void FDECL(add_weapon_skill, (int));

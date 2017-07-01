@@ -62,7 +62,7 @@ STATIC_DCL void FDECL(print_branch, (winid, int, int, int, BOOLEAN_P,
 STATIC_DCL mapseen *FDECL(load_mapseen, (int));
 STATIC_DCL void FDECL(save_mapseen, (int, mapseen *));
 STATIC_DCL mapseen *FDECL(find_mapseen, (d_level *));
-STATIC_DCL void FDECL(print_mapseen, (winid, mapseen *, int, int, BOOLEAN_P));
+STATIC_DCL void FDECL(print_mapseen, (winid, mapseen *, int, int, BOOLEAN_P, BOOLEAN_P));
 STATIC_DCL boolean FDECL(interest_mapseen, (mapseen *));
 STATIC_DCL void FDECL(traverse_mapseenchn, (BOOLEAN_P, winid,
                                             int, int, int *));
@@ -2544,11 +2544,61 @@ int why, reason, *lastdun_p;
         /* only print out info for a level or a dungeon if interest */
         if (why > 0 || interest_mapseen(mptr)) {
             showheader = (boolean) (mptr->lev.dnum != *lastdun_p);
-            print_mapseen(win, mptr, why, reason, showheader);
+            print_mapseen(win, mptr, why, reason, showheader, FALSE);
             *lastdun_p = mptr->lev.dnum;
         }
     }
 }
+
+#ifdef DUMP_LOG
+int
+dumpoverview()
+{
+	mapseen *mptr;
+	boolean printdun;
+	int lastdun=-1;
+	boolean first = TRUE;
+	boolean previous_was_interesting = FALSE;
+
+	first = TRUE;
+
+	/* lazy intialization */
+	(void) recalc_mapseen();
+
+	for (mptr = mapseenchn; mptr; mptr = mptr->next) {
+		/* try to find out if the last branch printed something */
+		if (!first && lastdun != mptr->lev.dnum && previous_was_interesting) {
+			dump_html("</li>\n", "");
+			previous_was_interesting = FALSE;
+		}
+		/* only print out info for a level or a dungeon if interest */
+		if (interest_mapseen(mptr)) {
+			previous_was_interesting = TRUE;
+			printdun = (first || lastdun != mptr->lev.dnum);
+
+			if (first) {
+				/* Always print header as there will at least
+				 * be the output of the current level */
+				dump_title("Dungeon overview");
+				dump_list_start();
+			}
+			/* currently dumping is always at the end of the game */
+			print_mapseen(0, mptr, 2, 0, printdun, TRUE);
+
+			if (printdun) {
+				first = FALSE;
+				lastdun = mptr->lev.dnum;
+			}
+		}
+	}
+	if (!first) {
+		dump_html("</li>\n", "");
+		dump_list_end();
+	}
+
+	return 0;
+}
+#endif
 
 STATIC_OVL const char *
 seen_string(x, obj)
@@ -2721,12 +2771,13 @@ char *outbuf;
     } while (0)
 
 STATIC_OVL void
-print_mapseen(win, mptr, final, how, printdun)
+print_mapseen(win, mptr, final, how, printdun, dump)
 winid win;
 mapseen *mptr;
 int final; /* 0: not final; 1: game over, alive; 2: game over, dead */
 int how;   /* cause of death; only used if final==2 and mptr->lev==u.uz */
 boolean printdun;
+boolean dump; /**< if information should be dumped to file */
 {
     char buf[BUFSZ], tmpbuf[BUFSZ];
     int i, depthstart, dnum;
@@ -2756,9 +2807,19 @@ boolean printdun;
             Sprintf(buf, "%s: levels %d to %d",
                     dungeons[dnum].dname, depthstart,
                     depthstart + dungeons[dnum].dunlev_ureached - 1);
-        putstr(win, !final ? ATR_INVERSE : 0, buf);
+		if (!dump) {
+	        putstr(win, !final ? ATR_INVERSE : 0, buf);
+	    } else {
+#ifdef DUMP_LOG
+			dump_text("  %s\n", buf);
+			dump_html("<li>%s\n", buf);
+#endif
+	    }
     }
 
+#ifdef DUMP_LOG
+	dump_definition_list_start();
+#endif
     /* calculate level number */
     i = depthstart + mptr->lev.dlevel - 1;
     if (In_endgame(&mptr->lev))
@@ -2783,10 +2844,20 @@ boolean printdun;
     if (on_level(&u.uz, &mptr->lev))
         Sprintf(eos(buf), " <- You %s here.",
                 (!final || (final == 1 && how == ASCENDED)) ? "are" : "were");
-    putstr(win, !final ? ATR_BOLD : 0, buf);
+	if (!dump) {
+        putstr(win, !final ? ATR_BOLD : 0, buf);
+	} else {
+#ifdef DUMP_LOG
+		dump_definition_list_dt(buf);
+#endif
+	}
 
-    if (mptr->flags.forgot)
+    if (mptr->flags.forgot) {
+#ifdef DUMP_LOG
+		if (dump) dump_definition_list_end();
+#endif
         return;
+    }
 
     if (INTEREST(mptr->feat)) {
         buf[0] = 0;
@@ -2828,7 +2899,13 @@ boolean printdun;
         buf[i] = highc(buf[i]);
         /* capitalizing it makes it a sentence; terminate with '.' */
         Strcat(buf, ".");
-        putstr(win, 0, buf);
+		if (!dump) {
+            putstr(win, 0, buf);
+        } else {
+#ifdef DUMP_LOG
+			dump_definition_list_dd(buf);
+#endif
+        }
     }
 
     /* we assume that these are mutually exclusive */
@@ -2878,7 +2955,13 @@ boolean printdun;
         if (mptr->br->end1_up && !In_endgame(&(mptr->br->end2)))
             Sprintf(eos(buf), ", level %d", depth(&(mptr->br->end2)));
         Strcat(buf, ".");
-        putstr(win, 0, buf);
+		if (!dump) {
+            putstr(win, 0, buf);
+		} else {
+#ifdef DUMP_LOG
+			dump_definition_list_dd(buf);
+#endif
+        }
     }
 
     /* maybe print out bones details */
@@ -2914,6 +2997,9 @@ boolean printdun;
             }
         }
     }
+#ifdef DUMP_LOG
+	if (dump) dump_definition_list_end();
+#endif
 }
 
 /*dungeon.c*/
