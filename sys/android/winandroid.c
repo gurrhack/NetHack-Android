@@ -108,6 +108,8 @@ static jmethodID jShowLog;
 static jmethodID jSetUsername;
 static jmethodID jSetNumPadOption;
 static jmethodID jAskName;
+static jmethodID jLoadSound;
+static jmethodID jPlaySound;
 
 static boolean quit_if_possible;
 
@@ -171,12 +173,15 @@ void Java_com_tbd_forkfront_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstr
 	jSetUsername = (*jEnv)->GetMethodID(jEnv, jApp, "setUsername", "([B)V");
 	jSetNumPadOption = (*jEnv)->GetMethodID(jEnv, jApp, "setNumPadOption", "(I)V");
 	jAskName = (*jEnv)->GetMethodID(jEnv, jApp, "askName", "(I[Ljava/lang/String;)Ljava/lang/String;");
+	jLoadSound = (*jEnv)->GetMethodID(jEnv, jApp, "loadSound", "([B)V");
+	jPlaySound = (*jEnv)->GetMethodID(jEnv, jApp, "playSound", "([BI)V");
 
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
 			jCliparound && jDelayOutput && jShowDPad && jShowLog && jSetUsername &&
-			jSetNumPadOption && jAskName && jSetHealthColor && jRedrawStatus))
+			jSetNumPadOption && jAskName && jSetHealthColor && jRedrawStatus &&
+			jLoadSound && jPlaySound))
 	{
 		debuglog("baaaaad");
 		return;
@@ -695,6 +700,11 @@ void and_putstr_ex(winid wid, int attr, const char *str, int append)
 
 	JNICallV(jPutString, wid, attr, jstr, append, text_color);
 	destroy_jobject(jstr);
+
+#if defined(USER_SOUNDS)
+	if(wid == NHW_MESSAGE)
+		play_sound_for_message(str);
+#endif
 }
 
 void and_putstr(winid wid, int attr, const char *str)
@@ -1776,3 +1786,20 @@ int doshowlog()
 	return 0;
 }
 
+#ifdef USER_SOUNDS
+void load_usersound(const char *filename)
+{
+	//debuglog("load_usersound(%s)", filename);
+	jbyteArray jstr = create_bytearray(filename);
+	JNICallV(jLoadSound, jstr);
+	destroy_jobject(jstr);
+}
+
+void play_usersound(const char *filename, int volume)
+{
+	//debuglog("play_usersound(%s, %d)", filename, volume);
+	jbyteArray jstr = create_bytearray(filename);
+	JNICallV(jPlaySound, jstr, volume);
+	destroy_jobject(jstr);
+}
+#endif

@@ -40,5 +40,7 @@
 
 #define SELECTSAVED
 
+#define USER_SOUNDS
+
 # endif /* ANDROIDCONF_H */
 #endif /* ANDROID */

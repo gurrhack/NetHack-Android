@@ -1088,6 +1088,9 @@ dochat()
 
 #ifdef USER_SOUNDS
 
+#ifdef ANDROID
+extern void FDECL(load_usersound, (const char *));
+#endif
 extern void FDECL(play_usersound, (const char *, int));
 
 typedef struct audio_mapping_rec {
@@ -1136,6 +1139,9 @@ const char *mapping;
                 return 0;
             } else {
                 soundmap = new_map;
+#ifdef ANDROID
+                load_usersound(soundmap->filename);
+#endif
             }
         } else {
             Sprintf(text, "cannot read %.243s", filespec);
