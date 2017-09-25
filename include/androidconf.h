@@ -42,5 +42,7 @@
 
 #define USER_SOUNDS
 
+#define CHANGE_COLOR
+
 # endif /* ANDROIDCONF_H */
 #endif /* ANDROID */

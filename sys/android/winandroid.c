@@ -567,45 +567,29 @@ void and_curs(winid wid, int x, int y)
 static int text_attribs = 0;
 static int text_color = 0xffffffff;
 
+static int palette[CLR_MAX] = {
+	0xFF555555,	// CLR_BLACK
+	0xFFFF0000,	// CLR_RED
+	0xFF008800,	// CLR_GREEN
+	0xFF664411, // CLR_BROWN
+	0xFF0000FF,	// CLR_BLUE
+	0xFFFF00FF,	// CLR_MAGENTA
+	0xFF00FFFF,	// CLR_CYAN
+	0xFF888888,	// CLR_GRAY
+	0xFFFFFFFF,	// NO_COLOR
+	0xFFFF9900,	// CLR_ORANGE
+	0xFF00FF00,	// CLR_BRIGHT_GREEN
+	0xFFFFFF00,	// CLR_YELLOW
+	0xFF0088FF,	// CLR_BRIGHT_BLUE
+	0xFFFF77FF,	// CLR_BRIGHT_MAGENTA
+	0xFF77FFFF,	// CLR_BRIGHT_CYAN
+	0xFFFFFFFF	// CLR_WHITE
+};
 int nhcolor_to_RGB(int c)
 {
-	switch(c)
-	{
-	case CLR_BLACK:
-		return 0xFF555555;
-	case CLR_RED:
-		return 0xFFFF0000;
-	case CLR_GREEN:
-		return 0xFF008000;
-	case CLR_BROWN:
-		return 0xFF4d2121;//A52A2A;
-	case CLR_BLUE:
-		return 0xFF0000FF;
-	case CLR_MAGENTA:
-		return 0xFFFF00FF;
-	case CLR_CYAN:
-		return 0xFF00FFFF;
-	case CLR_GRAY:
-		return 0xFF909090;
-	case NO_COLOR:
-		return 0xFFFFFFFF;
-	case CLR_ORANGE:
-		return 0xFFFFA500;
-	case CLR_BRIGHT_GREEN:
-		return 0xFF00FF00;
-	case CLR_YELLOW:
-		return 0xFFFFFF00;
-	case CLR_BRIGHT_BLUE:
-		return 0xFF00C0FF;
-	case CLR_BRIGHT_MAGENTA:
-		return 0xFFFF80FF;
-	case CLR_BRIGHT_CYAN:
-		return 0xFF80FFFF; /* something close to aquamarine */
-	case CLR_WHITE:
-		return 0xFFFFFFFF;
-	default:
-		return 0xFF000000; /* black */
-	}
+	if(c >= 0 && c < CLR_MAX)
+		return palette[c];
+	return 0xFF000000;
 }
 
 const char* colname(int color)
@@ -1732,9 +1716,11 @@ void and_delay_output()
 
 //____________________________________________________________________________________
 #ifdef CHANGE_COLOR
-void and_change_color(int a,long b,int c)
+void and_change_color(int color_number, long rgb, int reverse)
 {
-//	debuglog("and_change_color(%d, %d, %d)", a, b, c);
+	// debuglog("and_change_color %d == 0x%X %s", color_number, rgb, reverse?" reverse":"");
+	if(color_number >= 0 && color_number < CLR_MAX)
+		palette[color_number] = 0xFF000000 | rgb;
 }
 
 //____________________________________________________________________________________
