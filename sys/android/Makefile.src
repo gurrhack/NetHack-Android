@@ -776,6 +776,7 @@ dogmove.o: dogmove.c $(HACK_H) ../include/mfndpos.h
 dokick.o: dokick.c $(HACK_H)
 dothrow.o: dothrow.c $(HACK_H)
 drawing.o: drawing.c $(HACK_H) ../include/tcap.h
+dump.o: dump.c $(HACK_H) ../include/date.h
 dungeon.o: dungeon.c $(HACK_H) ../include/dgn_file.h ../include/dlb.h \
 		../include/lev.h
 eat.o: eat.c $(HACK_H)
