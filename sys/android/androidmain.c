@@ -61,7 +61,7 @@ int NetHackMain(int argc, char** argv)
 	if(val)
 	{
 		debuglog("exiting...");
-		return;
+		return 0;
 	}
 
 
