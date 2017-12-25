@@ -2020,7 +2020,7 @@ boolean want_reply;
 long *out_cnt;
 boolean want_disp;
 {
-	display_pickinv_q(lets, want_reply, out_cnt, want_disp, 0, FALSE);
+	return display_pickinv_q(lets, want_reply, out_cnt, want_disp, 0, FALSE);
 }
 
 STATIC_OVL char
