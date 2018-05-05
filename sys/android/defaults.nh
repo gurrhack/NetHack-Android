@@ -37,7 +37,9 @@ OPTIONS=!autopickup
 
 OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
 OPTIONS=pile_limit:2,hilite_pile,hilite_pet
-#OPTIONS=!automenu
+#OPTIONS=!force_invmenu
+
+OPTIONS=!cmdassist
 
 #
 # *** Palette ***
@@ -77,25 +79,15 @@ OPTIONS=pile_limit:2,hilite_pile,hilite_pet
 
 SYMBOLS=S_ghost:X,S_boulder:0
 
-# *** Dumpfile Options ***
+# *** Dumplog ***
 #
-# A dumpfile is a log that is written when the game is
+# A dump log is a log that is written when the game is
 # over. It contains a view of the map and a record of the
 # player's belonging, attributes, etc.
 #
-# dumpfile: The path and name of the file where the log is
-# written. If a relative path is specified it is relative
-# to the game's data directory. Normally
-# /sdcard/Android/data/com.tbd.NetHack
-# The macros %n and %d can be used. %n is replaced by the
-# character's name and %d is replaced by the current date.
-#
-# dumpfile_format: the format of the log. It can be html,
-# text, or both. ".html" or ".txt" is appended to the
-# filename depending on format.
-#
-OPTIONS=dumpfile:nh_log
-OPTIONS=dumpfile_format:html
+# The logs are written to the phone's documents folder.
+# Normally /sdcard/Documents/
+#OPTIONS=dumplog
 
 # Colorize individual rows on a menu based on what regular
 # expressions match its text
@@ -107,7 +99,6 @@ MENUCOLOR=" cursed "=red
 MENUCOLOR=" unholy "=red
 MENUCOLOR=" cursed .* \(being worn\)"=red&underline
 MENUCOLOR="loadstone|wand (of|called) cancellation"=white&underline
-# color only the real Amulet
 MENUCOLOR="Amulet of Yendor named"=magenta
 MENUCOLOR="gold piece"=yellow
 

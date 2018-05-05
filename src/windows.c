@@ -1145,10 +1145,23 @@ time_t now;
     if (!sysopt.dumplogfile)
         return;
     fname = dump_fmtstr(sysopt.dumplogfile, buf);
+#elif defined(ANDROID)
+	if(iflags.dumplog)
+    {
+        char buf_[BUFSZ];
+        dump_fmtstr(DUMPLOG_FILE, buf_);
+        and_get_dumplog_dir(buf);
+        if(strlen(buf_) + strlen(buf) < BUFSZ - 1)
+	        fname = strcat(buf, buf_);
+	    else
+	    	fname = strcpy(buf, buf_);
+    }
+    else
+	    fname = 0;
 #else
     fname = dump_fmtstr(DUMPLOG_FILE, buf);
 #endif
-    dumplog_file = fopen(fname, "w");
+    dumplog_file = fname ? fopen(fname, "w") : 0;
     dumplog_windowprocs_backup = windowprocs;
 
 #else /*!DUMPLOG*/

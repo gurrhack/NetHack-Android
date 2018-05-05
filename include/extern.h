@@ -2789,6 +2789,9 @@ E void FDECL(dump_open_log, (time_t));
 E void NDECL(dump_close_log);
 E void FDECL(dump_redirect, (BOOLEAN_P));
 E void FDECL(dump_forward_putstr, (winid, int, const char*, int));
+#if defined(ANDROID) && defined(DUMPLOG)
+E void FDECL(and_get_dumplog_dir, (char *));
+#endif
 
 /* ### wizard.c ### */
 

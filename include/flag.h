@@ -426,6 +426,9 @@ struct instance_flags {
     short mines_prize_type;     /* luckstone */
     short soko_prize_type1;     /* bag of holding or    */
     short soko_prize_type2;     /* amulet of reflection */
+#ifdef ANDROID
+	boolean dumplog; /* enable/disable dump logs */
+#endif
 };
 
 /*

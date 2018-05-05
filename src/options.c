@@ -112,6 +112,9 @@ static struct Bool_Opt {
 #endif
     { "confirm", &flags.confirm, TRUE, SET_IN_GAME },
     { "dark_room", &flags.dark_room, TRUE, SET_IN_GAME },
+#ifdef ANDROID
+	{"dumplog", &iflags.dumplog, FALSE, SET_IN_FILE },
+#endif
     { "eight_bit_tty", &iflags.wc_eight_bit_input, FALSE, SET_IN_GAME }, /*WC*/
 #ifdef TTY_GRAPHICS
     { "extmenu", &iflags.extmenu, FALSE, SET_IN_GAME },
@@ -130,7 +133,11 @@ static struct Bool_Opt {
 #else
     { "flush", (boolean *) 0, FALSE, SET_IN_FILE },
 #endif
+#ifdef ANDROID
+    { "force_invmenu", &iflags.force_invmenu, TRUE, SET_IN_GAME },
+#else
     { "force_invmenu", &iflags.force_invmenu, FALSE, SET_IN_GAME },
+#endif
     { "fullscreen", &iflags.wc2_fullscreen, FALSE, SET_IN_FILE },
     { "goldX", &iflags.goldX, FALSE, SET_IN_GAME },
     { "help", &flags.help, TRUE, SET_IN_GAME },

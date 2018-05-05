@@ -166,6 +166,7 @@ static jmethodID jSetNumPadOption;
 static jmethodID jAskName;
 static jmethodID jLoadSound;
 static jmethodID jPlaySound;
+static jmethodID jGetDumplogDir;
 
 static boolean quit_if_possible;
 static boolean restoring_msghistory;
@@ -235,13 +236,14 @@ void Java_com_tbd_forkfront_NetHackIO_RunNetHack(JNIEnv* env, jobject thiz, jstr
 	jAskName = (*jEnv)->GetMethodID(jEnv, jApp, "askName", "(I[Ljava/lang/String;)Ljava/lang/String;");
 	jLoadSound = (*jEnv)->GetMethodID(jEnv, jApp, "loadSound", "([B)V");
 	jPlaySound = (*jEnv)->GetMethodID(jEnv, jApp, "playSound", "([BI)V");
+	jGetDumplogDir = (*jEnv)->GetMethodID(jEnv, jApp, "getDumplogDir", "()Ljava/lang/String;");
 
 	if(!(jReceiveKey && jReceivePosKey && jCreateWindow && jClearWindow && jDisplayWindow &&
 			jDestroyWindow && jPutString && jRawPrint && jSetCursorPos && jPrintTile &&
 			jYNFunction && jGetLine && jStartMenu && jAddMenu && jEndMenu && jSelectMenu &&
 			jCliparound && jDelayOutput && jShowDPad && jShowLog && jSetUsername &&
 			jSetNumPadOption && jAskName && jSetHealthColor && jRedrawStatus &&
-			jLoadSound && jPlaySound))
+			jLoadSound && jPlaySound && jGetDumplogDir))
 	{
 		debuglog("baaaaad");
 		return;
@@ -1270,7 +1272,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	//else
 	//	debuglog("yn %s", question);
 
-	if(1/*iflags.automenu*/ && choices && nChoices <= 4 && esc < 0 && !allow_num)
+	if(iflags.force_invmenu && choices && nChoices <= 4 && esc < 0 && !allow_num)
 	{
 		int i;
 		// pop up dialog
@@ -1312,7 +1314,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		// directional choice
 		and_clear_nhwindow(WIN_MESSAGE);
 		and_putstr(WIN_MESSAGE, ATR_BOLD, message);
-		if(1/*iflags.automenu*/)
+		if(iflags.force_invmenu)
 		{
 			JNICallV(jShowDPad);
 			ch = and_nhgetch();
@@ -1756,7 +1758,7 @@ int do_ext_cmd_text()
 
 int and_get_ext_cmd()
 {
-	if(1/*iflags.automenu*/)
+	if(iflags.force_invmenu)
 		return do_ext_cmd_menu();
 	return do_ext_cmd_text();
 }
@@ -1913,3 +1915,30 @@ void play_usersound(const char *filename, int volume)
 	destroy_jobject(jstr);
 }
 #endif
+
+#ifdef DUMPLOG
+void and_get_dumplog_dir(char* buf)
+{
+	int i, n;
+	const jchar* pChars;
+	jstring jstr;
+
+	jstr = (jstring)JNICallO(jGetDumplogDir);
+	n = (*jEnv)->GetStringLength(jEnv, jstr);
+
+	if(n > 0 && n < BUFSZ - 1)
+	{
+		pChars = (*jEnv)->GetStringChars(jEnv, jstr, 0);
+		for(i = 0; i < n; i++)
+			buf[i] = pChars[i];
+		(*jEnv)->ReleaseStringChars(jEnv, jstr, pChars);
+		if(buf[n - 1] != '/')
+			buf[n++] = '/';
+	}
+	else
+		n = 0;
+	buf[n] = 0;
+	destroy_jobject(jstr);
+}
+#endif
+

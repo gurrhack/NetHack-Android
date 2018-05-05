@@ -533,7 +533,7 @@ typedef unsigned char uchar;
    (within the same session) */
 /* #define EDIT_GETLIN */
 
-/* #define DUMPLOG */  /* End-of-game dump logs */
+#define DUMPLOG  /* End-of-game dump logs */
 #ifdef DUMPLOG
 
 #ifndef DUMPLOG_MSG_COUNT
