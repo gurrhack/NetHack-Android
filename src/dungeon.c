@@ -1,5 +1,6 @@
-/* NetHack 3.6	dungeon.c	$NHDT-Date: 1448862377 2015/11/30 05:46:17 $  $NHDT-Branch: master $:$NHDT-Revision: 1.69 $ */
+/* NetHack 3.6	dungeon.c	$NHDT-Date: 1523308357 2018/04/09 21:12:37 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.87 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -57,12 +58,14 @@ STATIC_DCL boolean FDECL(unreachable_level, (d_level *, BOOLEAN_P));
 STATIC_DCL void FDECL(tport_menu, (winid, char *, struct lchoice *, d_level *,
                                    BOOLEAN_P));
 STATIC_DCL const char *FDECL(br_string, (int));
+STATIC_DCL char FDECL(chr_u_on_lvl, (d_level *));
 STATIC_DCL void FDECL(print_branch, (winid, int, int, int, BOOLEAN_P,
                                      struct lchoice *));
 STATIC_DCL mapseen *FDECL(load_mapseen, (int));
 STATIC_DCL void FDECL(save_mapseen, (int, mapseen *));
 STATIC_DCL mapseen *FDECL(find_mapseen, (d_level *));
-STATIC_DCL void FDECL(print_mapseen, (winid, mapseen *, int, int, BOOLEAN_P, BOOLEAN_P));
+STATIC_DCL mapseen *FDECL(find_mapseen_by_str, (const char *));
+STATIC_DCL void FDECL(print_mapseen, (winid, mapseen *, int, int, BOOLEAN_P));
 STATIC_DCL boolean FDECL(interest_mapseen, (mapseen *));
 STATIC_DCL void FDECL(traverse_mapseenchn, (BOOLEAN_P, winid,
                                             int, int, int *));
@@ -246,7 +249,7 @@ dlb *stream;
         panic(
   "Premature EOF on dungeon description file!\r\nExpected %d bytes - got %d.",
               (size * nitems), (size * cnt));
-        terminate(EXIT_FAILURE);
+        nh_terminate(EXIT_FAILURE);
     }
 }
 
@@ -490,6 +493,7 @@ struct proto_dungeon *pd;
 
     branch_num = find_branch(dungeons[dgn].dname, pd);
     new_branch = (branch *) alloc(sizeof(branch));
+    (void) memset((genericptr_t)new_branch, 0, sizeof(branch));
     new_branch->next = (branch *) 0;
     new_branch->id = branch_id++;
     new_branch->type = correct_branch_type(&pd->tmpbranch[branch_num]);
@@ -545,6 +549,7 @@ struct proto_dungeon *pd;
 
     pd->final_lev[proto_index] = new_level =
         (s_level *) alloc(sizeof(s_level));
+    (void) memset((genericptr_t)new_level, 0, sizeof(s_level));
     /* load new level with data */
     Strcpy(new_level->proto, tlevel->name);
     new_level->boneid = tlevel->boneschar;
@@ -749,6 +754,9 @@ init_dungeons()
      * check_version() they will be printed using pline(), which doesn't
      * mix with the raw messages that might be already on the screen
      */
+
+    pline("hmhmhmm %d, %x", sizeof(vers_info), vers_info.incarnation);
+
     if (iflags.window_inited)
         clear_nhwindow(WIN_MAP);
     if (!check_version(&vers_info, DUNGEON_FILE, TRUE))
@@ -852,7 +860,7 @@ init_dungeons()
              * its branch.  First, the depth of the entry point:
              *
              *  depth of branch from "parent" dungeon
-             *  + -1 or 1 depending on a up or down stair or
+             *  + -1 or 1 depending on an up or down stair or
              *    0 if portal
              *
              * Followed by the depth of the top of the dungeon:
@@ -962,7 +970,7 @@ init_dungeons()
            instead of 0, so adjust the start point to shift endgame up */
         if (dunlevs_in_dungeon(&x->dlevel) > 1 - dungeons[i].depth_start)
             dungeons[i].depth_start -= 1;
-        /* TO DO: strip "dummy" out all the way here,
+        /* TODO: strip "dummy" out all the way here,
            so that it's hidden from <ctrl/O> feedback. */
     }
 
@@ -1216,16 +1224,16 @@ int upflag;
            destination instead of its enclosing region.
            Note: up vs down doesn't matter in this case
            because both specify the same exclusion area. */
-        place_lregion(dndest.nlx, dndest.nly, dndest.nhx, dndest.nhy, 0, 0, 0,
-                      0, LR_DOWNTELE, (d_level *) 0);
+        place_lregion(dndest.nlx, dndest.nly, dndest.nhx, dndest.nhy,
+                      0, 0, 0, 0, LR_DOWNTELE, (d_level *) 0);
     else if (up)
-        place_lregion(updest.lx, updest.ly, updest.hx, updest.hy, updest.nlx,
-                      updest.nly, updest.nhx, updest.nhy, LR_UPTELE,
-                      (d_level *) 0);
+        place_lregion(updest.lx, updest.ly, updest.hx, updest.hy,
+                      updest.nlx, updest.nly, updest.nhx, updest.nhy,
+                      LR_UPTELE, (d_level *) 0);
     else
-        place_lregion(dndest.lx, dndest.ly, dndest.hx, dndest.hy, dndest.nlx,
-                      dndest.nly, dndest.nhx, dndest.nhy, LR_DOWNTELE,
-                      (d_level *) 0);
+        place_lregion(dndest.lx, dndest.ly, dndest.hx, dndest.hy,
+                      dndest.nlx, dndest.nly, dndest.nhx, dndest.nhy,
+                      LR_DOWNTELE, (d_level *) 0);
 }
 
 /* place you on the special staircase */
@@ -1604,6 +1612,25 @@ level_difficulty()
              * The same applies to Vlad's Tower, although the increment
              * there is inconsequential compared to overall depth.
              */
+#if 0
+        /*
+         * The inside of the Wizard's Tower is also effectively a
+         * builds-up area, reached from a portal an arbitrary distance
+         * below rather than stairs 1 level beneath the entry level.
+         */
+        else if (On_W_tower_level(&u.uz) && In_W_tower(some_X, some_Y, &u.uz))
+            res += (fakewiz1.dlev - u.uz.dlev);
+            /*
+             * Handling this properly would need more information here:
+             * an inside/outside flag, or coordinates to calculate it.
+             * Unfortunately level difficulty may be wanted before
+             * coordinates have been chosen so simply extending this
+             * routine to take extra arguments is not sufficient to cope.
+             * The difference beyond naive depth-from-surface is small
+             * relative to the overall depth, so just ignore complications
+             * posed by W_tower.
+             */
+#endif /*0*/
     }
     return (xchar) res;
 }
@@ -1616,30 +1643,40 @@ lev_by_name(nam)
 const char *nam;
 {
     schar lev = 0;
-    s_level *slev;
+    s_level *slev = (s_level *)0;
     d_level dlev;
     const char *p;
     int idx, idxtoo;
     char buf[BUFSZ];
+    mapseen *mseen;
 
-    /* allow strings like "the oracle level" to find "oracle" */
-    if (!strncmpi(nam, "the ", 4))
-        nam += 4;
-    if ((p = strstri(nam, " level")) != 0 && p == eos((char *) nam) - 6) {
-        nam = strcpy(buf, nam);
-        *(eos(buf) - 6) = '\0';
-    }
-    /* hell is the old name, and wouldn't match; gehennom would match its
-       branch, yielding the castle level instead of the valley of the dead */
-    if (!strcmpi(nam, "gehennom") || !strcmpi(nam, "hell")) {
-        if (In_V_tower(&u.uz))
-            nam = " to Vlad's tower"; /* branch to... */
-        else
-            nam = "valley";
+    /* look at the player's custom level annotations first */
+    if ((mseen = find_mapseen_by_str(nam)) != 0) {
+        dlev = mseen->lev;
+    } else {
+        /* no matching annotation, check whether they used a name we know */
+
+        /* allow strings like "the oracle level" to find "oracle" */
+        if (!strncmpi(nam, "the ", 4))
+            nam += 4;
+        if ((p = strstri(nam, " level")) != 0 && p == eos((char *) nam) - 6) {
+            nam = strcpy(buf, nam);
+            *(eos(buf) - 6) = '\0';
+        }
+        /* hell is the old name, and wouldn't match; gehennom would match its
+           branch, yielding the castle level instead of the valley of the dead */
+        if (!strcmpi(nam, "gehennom") || !strcmpi(nam, "hell")) {
+            if (In_V_tower(&u.uz))
+                nam = " to Vlad's tower"; /* branch to... */
+            else
+                nam = "valley";
+        }
+
+        if ((slev = find_level(nam)) != 0)
+            dlev = slev->dlevel;
     }
 
-    if ((slev = find_level(nam)) != 0) {
-        dlev = slev->dlevel;
+    if (mseen || slev) {
         idx = ledger_no(&dlev);
         if ((dlev.dnum == u.uz.dnum
              /* within same branch, or else main dungeon <-> gehennom */
@@ -1651,7 +1688,7 @@ const char *nam;
                 wizard
                 || (level_info[idx].flags & (FORGOTTEN | VISITED))
                        == VISITED)) {
-            lev = depth(&slev->dlevel);
+            lev = depth(&dlev);
         }
     } else { /* not a specific level; try branch names */
         idx = find_branch(nam, (struct proto_dungeon *) 0);
@@ -1762,6 +1799,13 @@ int type;
     return " (unknown)";
 }
 
+STATIC_OVL char
+chr_u_on_lvl(dlev)
+d_level *dlev;
+{
+    return u.uz.dnum == dlev->dnum && u.uz.dlevel == dlev->dlevel ? '*' : ' ';
+}
+
 /* Print all child branches between the lower and upper bounds. */
 STATIC_OVL void
 print_branch(win, dnum, lower_bound, upper_bound, bymenu, lchoices_p)
@@ -1779,7 +1823,9 @@ struct lchoice *lchoices_p;
     for (br = branches; br; br = br->next) {
         if (br->end1.dnum == dnum && lower_bound < br->end1.dlevel
             && br->end1.dlevel <= upper_bound) {
-            Sprintf(buf, "   %s to %s: %d", br_string(br->type),
+            Sprintf(buf, "%c %s to %s: %d",
+                    bymenu ? chr_u_on_lvl(&br->end1) : ' ',
+                    br_string(br->type),
                     dungeons[br->end2.dnum].dname, depth(&br->end1));
             if (bymenu)
                 tport_menu(win, buf, lchoices_p, &br->end1,
@@ -1806,8 +1852,8 @@ xchar *rdgn;
     branch *br;
     anything any;
     struct lchoice lchoices;
-
     winid win = create_nhwindow(NHW_MENU);
+
     if (bymenu) {
         start_menu(win);
         lchoices.idx = 0;
@@ -1853,7 +1899,9 @@ xchar *rdgn;
             print_branch(win, i, last_level, slev->dlevel.dlevel, bymenu,
                          &lchoices);
 
-            Sprintf(buf, "   %s: %d", slev->proto, depth(&slev->dlevel));
+            Sprintf(buf, "%c %s: %d",
+                    chr_u_on_lvl(&slev->dlevel),
+                    slev->proto, depth(&slev->dlevel));
             if (Is_stronghold(&slev->dlevel))
                 Sprintf(eos(buf), " (tune %s)", tune);
             if (bymenu)
@@ -1908,26 +1956,35 @@ xchar *rdgn;
         Sprintf(buf, "Invocation position @ (%d,%d), hero @ (%d,%d)",
                 inv_pos.x, inv_pos.y, u.ux, u.uy);
         putstr(win, 0, buf);
-    }
-    /*
-     * The following is based on the assumption that the inter-level portals
-     * created by the level compiler (not the dungeon compiler) only exist
-     * one per level (currently true, of course).
-     */
-    else if (Is_earthlevel(&u.uz) || Is_waterlevel(&u.uz)
-             || Is_firelevel(&u.uz) || Is_airlevel(&u.uz)) {
+    } else {
         struct trap *trap;
+
+        /* if current level has a magic portal, report its location;
+           this assumes that there is at most one magic portal on any
+           given level; quest and ft.ludios have pairs (one in main
+           dungeon matched with one in the corresponding branch), the
+           elemental planes have singletons (connection to next plane) */
+        *buf = '\0';
         for (trap = ftrap; trap; trap = trap->ntrap)
             if (trap->ttyp == MAGIC_PORTAL)
                 break;
 
-        putstr(win, 0, "");
         if (trap)
-            Sprintf(buf, "Portal @ (%d,%d), hero @ (%d,%d)", trap->tx,
-                    trap->ty, u.ux, u.uy);
-        else
-            Sprintf(buf, "No portal found.");
-        putstr(win, 0, buf);
+            Sprintf(buf, "Portal @ (%d,%d), hero @ (%d,%d)",
+                    trap->tx, trap->ty, u.ux, u.uy);
+
+        /* only report "no portal found" when actually expecting a portal */
+        else if (Is_earthlevel(&u.uz) || Is_waterlevel(&u.uz)
+                 || Is_firelevel(&u.uz) || Is_airlevel(&u.uz)
+                 || Is_qstart(&u.uz) || at_dgn_entrance("The Quest")
+                 || Is_knox(&u.uz))
+            Strcpy(buf, "No portal found.");
+
+        /* only give output if we found a portal or expected one and didn't */
+        if (*buf) {
+            putstr(win, 0, "");
+            putstr(win, 0, buf);
+        }
     }
 
     display_nhwindow(win, TRUE);
@@ -1995,15 +2052,28 @@ donamelevel()
     if (!(mptr = find_mapseen(&u.uz)))
         return 0;
 
+    nbuf[0] = '\0';
+#ifdef EDIT_GETLIN
+    if (mptr->custom) {
+        (void) strncpy(nbuf, mptr->custom, BUFSZ);
+        nbuf[BUFSZ - 1] = '\0';
+    }
+#else
     if (mptr->custom) {
         char tmpbuf[BUFSZ];
+
         Sprintf(tmpbuf, "Replace annotation \"%.30s%s\" with?", mptr->custom,
-                strlen(mptr->custom) > 30 ? "..." : "");
+                (strlen(mptr->custom) > 30) ? "..." : "");
         getlin(tmpbuf, nbuf);
     } else
+#endif
         getlin("What do you want to call this dungeon level?", nbuf);
-    if (index(nbuf, '\033'))
+
+    /* empty input or ESC means don't add or change annotation;
+       space-only means discard current annotation without adding new one */
+    if (!*nbuf || *nbuf == '\033')
         return 0;
+    /* strip leading and trailing spaces, compress out consecutive spaces */
     (void) mungspaces(nbuf);
 
     /* discard old annotation, if any */
@@ -2012,7 +2082,8 @@ donamelevel()
         mptr->custom = (char *) 0;
         mptr->custom_lth = 0;
     }
-    /* add new annotation, unless it's empty or a single space */
+    /* add new annotation, unless it's all spaces (which will be an
+       empty string after mungspaces() above) */
     if (*nbuf && strcmp(nbuf, " ")) {
         mptr->custom = dupstr(nbuf);
         mptr->custom_lth = strlen(mptr->custom);
@@ -2033,6 +2104,20 @@ d_level *lev;
 
     return mptr;
 }
+
+STATIC_OVL mapseen *
+find_mapseen_by_str(s)
+const char *s;
+{
+    mapseen *mptr;
+
+    for (mptr = mapseenchn; mptr; mptr = mptr->next)
+        if (mptr->custom && !strcmpi(s, mptr->custom))
+            break;
+
+    return mptr;
+}
+
 
 void
 forget_mapseen(ledger_num)
@@ -2060,6 +2145,39 @@ int ledger_num;
         (void) memset((genericptr_t) mptr->msrooms, 0, sizeof mptr->msrooms);
         for (bp = mptr->final_resting_place; bp; bp = bp->next)
             bp->bonesknown = FALSE;
+    }
+}
+
+void
+rm_mapseen(ledger_num)
+int ledger_num;
+{
+    mapseen *mptr, *mprev = (mapseen *)0;
+    struct cemetery *bp, *bpnext;
+
+    for (mptr = mapseenchn; mptr; mprev = mptr, mptr = mptr->next)
+        if (dungeons[mptr->lev.dnum].ledger_start + mptr->lev.dlevel == ledger_num)
+            break;
+
+    if (!mptr)
+        return;
+
+    if (mptr->custom)
+        free((genericptr_t) mptr->custom);
+
+    bp = mptr->final_resting_place;
+    while (bp) {
+        bpnext = bp->next;
+        free(bp);
+        bp = bpnext;
+    }
+
+    if (mprev) {
+        mprev->next = mptr->next;
+        free(mptr);
+    } else {
+        mapseenchn = mptr->next;
+        free(mptr);
     }
 }
 
@@ -2117,6 +2235,50 @@ int fd;
     restcemetery(fd, &load->final_resting_place);
 
     return load;
+}
+
+/* to support '#stats' wizard-mode command */
+void
+overview_stats(win, statsfmt, total_count, total_size)
+winid win;
+const char *statsfmt;
+long *total_count, *total_size;
+{
+    char buf[BUFSZ], hdrbuf[QBUFSZ];
+    long ocount, osize, bcount, bsize, acount, asize;
+    struct cemetery *ce;
+    mapseen *mptr = find_mapseen(&u.uz);
+
+    ocount = bcount = acount = osize = bsize = asize = 0L;
+    for (mptr = mapseenchn; mptr; mptr = mptr->next) {
+        ++ocount;
+        osize += (long) sizeof *mptr;
+        for (ce = mptr->final_resting_place; ce; ce = ce->next) {
+            ++bcount;
+            bsize += (long) sizeof *ce;
+        }
+        if (mptr->custom_lth) {
+            ++acount;
+            asize += (long) (mptr->custom_lth + 1);
+        }
+    }
+
+    Sprintf(hdrbuf, "general, size %ld", (long) sizeof (mapseen));
+    Sprintf(buf, statsfmt, hdrbuf, ocount, osize);
+    putstr(win, 0, buf);
+    if (bcount) {
+        Sprintf(hdrbuf, "cemetery, size %ld",
+                (long) sizeof (struct cemetery));
+        Sprintf(buf, statsfmt, hdrbuf, bcount, bsize);
+        putstr(win, 0, buf);
+    }
+    if (acount) {
+        Sprintf(hdrbuf, "annotations, text");
+        Sprintf(buf, statsfmt, hdrbuf, acount, asize);
+        putstr(win, 0, buf);
+    }
+    *total_count += ocount + bcount + acount;
+    *total_size += osize + bsize + asize;
 }
 
 /* Remove all mapseen objects for a particular dnum.
@@ -2421,6 +2583,9 @@ recalc_mapseen()
             /*  An automatic annotation is added to the Castle and
              *  to Fort Ludios once their structure's main entrance
              *  has been seen (in person or via magic mapping).
+             *  For the Fort, that entrance is just a secret door
+             *  which will be converted into a regular one when
+             *  located (or destroyed).
              * DOOR: possibly a lowered drawbridge's open portcullis;
              * DBWALL: a raised drawbridge's "closed door";
              * DRAWBRIDGE_DOWN: the span provided by lowered bridge,
@@ -2430,15 +2595,33 @@ recalc_mapseen()
              *  the adjacent DBWALL has been seen.
              */
             case DOOR:
+                if (Is_knox(&u.uz)) {
+                    int ty, tx = x - 4;
+
+                    /* Throne is four columns left, either directly in
+                     * line or one row higher or lower, and doesn't have
+                     * to have been seen yet.
+                     *   ......|}}}.
+                     *   ..\...S}...
+                     *   ..\...S}...
+                     *   ......|}}}.
+                     * For 3.6.0 and earlier, it was always in direct line:
+                     * both throne and door on the lower of the two rows.
+                     */
+                    for (ty = y - 1; ty <= y + 1; ++ty)
+                        if (isok(tx, ty) && IS_THRONE(levl[tx][ty].typ)) {
+                            mptr->flags.ludios = 1;
+                            break;
+                        }
+                    break;
+                }
                 if (is_drawbridge_wall(x, y) < 0)
                     break;
-            /* else FALLTHRU */
+                /*FALLTHRU*/
             case DBWALL:
             case DRAWBRIDGE_DOWN:
                 if (Is_stronghold(&u.uz))
                     mptr->flags.castle = 1, mptr->flags.castletune = 1;
-                else if (Is_knox(&u.uz))
-                    mptr->flags.ludios = 1;
                 break;
             default:
                 break;
@@ -2544,61 +2727,11 @@ int why, reason, *lastdun_p;
         /* only print out info for a level or a dungeon if interest */
         if (why > 0 || interest_mapseen(mptr)) {
             showheader = (boolean) (mptr->lev.dnum != *lastdun_p);
-            print_mapseen(win, mptr, why, reason, showheader, FALSE);
+            print_mapseen(win, mptr, why, reason, showheader);
             *lastdun_p = mptr->lev.dnum;
         }
     }
 }
-
-#ifdef DUMP_LOG
-int
-dumpoverview()
-{
-	mapseen *mptr;
-	boolean printdun;
-	int lastdun=-1;
-	boolean first = TRUE;
-	boolean previous_was_interesting = FALSE;
-
-	first = TRUE;
-
-	/* lazy intialization */
-	(void) recalc_mapseen();
-
-	for (mptr = mapseenchn; mptr; mptr = mptr->next) {
-		/* try to find out if the last branch printed something */
-		if (!first && lastdun != mptr->lev.dnum && previous_was_interesting) {
-			dump_html("</li>\n", "");
-			previous_was_interesting = FALSE;
-		}
-		/* only print out info for a level or a dungeon if interest */
-		if (interest_mapseen(mptr)) {
-			previous_was_interesting = TRUE;
-			printdun = (first || lastdun != mptr->lev.dnum);
-
-			if (first) {
-				/* Always print header as there will at least
-				 * be the output of the current level */
-				dump_title("Dungeon overview");
-				dump_list_start();
-			}
-			/* currently dumping is always at the end of the game */
-			print_mapseen(0, mptr, 2, 0, printdun, TRUE);
-
-			if (printdun) {
-				first = FALSE;
-				lastdun = mptr->lev.dnum;
-			}
-		}
-	}
-	if (!first) {
-		dump_html("</li>\n", "");
-		dump_list_end();
-	}
-
-	return 0;
-}
-#endif
 
 STATIC_OVL const char *
 seen_string(x, obj)
@@ -2771,13 +2904,12 @@ char *outbuf;
     } while (0)
 
 STATIC_OVL void
-print_mapseen(win, mptr, final, how, printdun, dump)
+print_mapseen(win, mptr, final, how, printdun)
 winid win;
 mapseen *mptr;
 int final; /* 0: not final; 1: game over, alive; 2: game over, dead */
 int how;   /* cause of death; only used if final==2 and mptr->lev==u.uz */
 boolean printdun;
-boolean dump; /**< if information should be dumped to file */
 {
     char buf[BUFSZ], tmpbuf[BUFSZ];
     int i, depthstart, dnum;
@@ -2807,28 +2939,14 @@ boolean dump; /**< if information should be dumped to file */
             Sprintf(buf, "%s: levels %d to %d",
                     dungeons[dnum].dname, depthstart,
                     depthstart + dungeons[dnum].dunlev_ureached - 1);
-		if (!dump) {
-	        putstr(win, !final ? ATR_INVERSE : 0, buf);
-	    } else {
-#ifdef DUMP_LOG
-			dump_text("  %s\n", buf);
-			dump_html("<li>%s\n", buf);
-#endif
-	    }
+        putstr(win, !final ? ATR_INVERSE : 0, buf);
     }
 
-#ifdef DUMP_LOG
-	dump_definition_list_start();
-#endif
     /* calculate level number */
     i = depthstart + mptr->lev.dlevel - 1;
     if (In_endgame(&mptr->lev))
         Sprintf(buf, "%s%s:", TAB, endgamelevelname(tmpbuf, i));
     else
-        /* FIXME: when this branch has only one level (Ft.Ludios),
-         * listing "Level 1:" for it might confuse inexperienced
-         * players into thinking there's more than one.
-         */
         Sprintf(buf, "%sLevel %d:", TAB, i);
 
     /* wizmode prints out proto dungeon names for clarity */
@@ -2840,24 +2958,16 @@ boolean dump; /**< if information should be dumped to file */
     }
     /* [perhaps print custom annotation on its own line when it's long] */
     if (mptr->custom)
-        Sprintf(eos(buf), " (%s)", mptr->custom);
+        Sprintf(eos(buf), " \"%s\"", mptr->custom);
     if (on_level(&u.uz, &mptr->lev))
         Sprintf(eos(buf), " <- You %s here.",
-                (!final || (final == 1 && how == ASCENDED)) ? "are" : "were");
-	if (!dump) {
-        putstr(win, !final ? ATR_BOLD : 0, buf);
-	} else {
-#ifdef DUMP_LOG
-		dump_definition_list_dt(buf);
-#endif
-	}
+                (!final || (final == 1 && how == ASCENDED)) ? "are"
+                  : (final == 1 && how == ESCAPED) ? "left from"
+                    : "were");
+    putstr(win, !final ? ATR_BOLD : 0, buf);
 
-    if (mptr->flags.forgot) {
-#ifdef DUMP_LOG
-		if (dump) dump_definition_list_end();
-#endif
+    if (mptr->flags.forgot)
         return;
-    }
 
     if (INTEREST(mptr->feat)) {
         buf[0] = 0;
@@ -2899,13 +3009,7 @@ boolean dump; /**< if information should be dumped to file */
         buf[i] = highc(buf[i]);
         /* capitalizing it makes it a sentence; terminate with '.' */
         Strcat(buf, ".");
-		if (!dump) {
-            putstr(win, 0, buf);
-        } else {
-#ifdef DUMP_LOG
-			dump_definition_list_dd(buf);
-#endif
-        }
+        putstr(win, 0, buf);
     }
 
     /* we assume that these are mutually exclusive */
@@ -2919,8 +3023,6 @@ boolean dump; /**< if information should be dumped to file */
         Sprintf(buf, "%sA very big room.", PREFIX);
     } else if (mptr->flags.roguelevel) {
         Sprintf(buf, "%sA primitive area.", PREFIX);
-    } else if (mptr->flags.quest_summons) {
-        Sprintf(buf, "%sSummoned by %s.", PREFIX, ldrname());
     } else if (on_level(&mptr->lev, &qstart_level)) {
         Sprintf(buf, "%sHome%s.", PREFIX,
                 mptr->flags.unreachable ? " (no way back...)" : "");
@@ -2942,6 +3044,11 @@ boolean dump; /**< if information should be dumped to file */
     }
     if (*buf)
         putstr(win, 0, buf);
+    /* quest entrance is not mutually-exclusive with bigroom or rogue level */
+    if (mptr->flags.quest_summons) {
+        Sprintf(buf, "%sSummoned by %s.", PREFIX, ldrname());
+        putstr(win, 0, buf);
+    }
 
     /* print out branches */
     if (mptr->br) {
@@ -2955,13 +3062,7 @@ boolean dump; /**< if information should be dumped to file */
         if (mptr->br->end1_up && !In_endgame(&(mptr->br->end2)))
             Sprintf(eos(buf), ", level %d", depth(&(mptr->br->end2)));
         Strcat(buf, ".");
-		if (!dump) {
-            putstr(win, 0, buf);
-		} else {
-#ifdef DUMP_LOG
-			dump_definition_list_dd(buf);
-#endif
-        }
+        putstr(win, 0, buf);
     }
 
     /* maybe print out bones details */
@@ -2978,7 +3079,7 @@ boolean dump; /**< if information should be dumped to file */
             if (died_here) {
                 /* disclosure occurs before bones creation, so listing dead
                    hero here doesn't give away whether bones are produced */
-                formatkiller(tmpbuf, sizeof tmpbuf, how);
+                formatkiller(tmpbuf, sizeof tmpbuf, how, TRUE);
                 /* rephrase a few death reasons to work with "you" */
                 (void) strsubst(tmpbuf, " himself", " yourself");
                 (void) strsubst(tmpbuf, " herself", " yourself");
@@ -2997,9 +3098,6 @@ boolean dump; /**< if information should be dumped to file */
             }
         }
     }
-#ifdef DUMP_LOG
-	if (dump) dump_definition_list_end();
-#endif
 }
 
 /*dungeon.c*/

@@ -1,4 +1,7 @@
-/* NetHack 3.6  tile.h       $NHDT-Date: 1432512803 2015/05/25 00:13:23 $  $NHDT-Branch: master $:$NHDT-Revision: 1.10 $ */
+/* NetHack 3.6  tile.h       $NHDT-Date: 1524689272 2018/04/25 20:47:52 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.13 $ */
+/*      Copyright (c) 2016 by Michael Allison             */
+/* NetHack may be freely redistributed.  See license for details. */
+
 typedef unsigned char pixval;
 
 typedef struct pixel_s {
@@ -35,6 +38,7 @@ extern boolean FDECL(read_text_tile, (pixel(*) [TILE_X]));
 extern boolean FDECL(write_text_tile, (pixel(*) [TILE_X]));
 extern int NDECL(fclose_text_file);
 
+extern void FDECL(set_grayscale, (int));
 extern void NDECL(init_colormap);
 extern void NDECL(merge_colormap);
 

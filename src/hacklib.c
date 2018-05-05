@@ -1,5 +1,6 @@
-/* NetHack 3.6	hacklib.c	$NHDT-Date: 1446336792 2015/11/01 00:13:12 $  $NHDT-Branch: master $:$NHDT-Revision: 1.44 $ */
+/* NetHack 3.6	hacklib.c	$NHDT-Date: 1518922474 2018/02/18 02:54:34 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.54 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2007. */
 /* Copyright (c) Robert Patrick Rankin, 1991                      */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,6 +19,9 @@
         char *          ucase           (char *)
         char *          upstart         (char *)
         char *          mungspaces      (char *)
+        char *          trimspaces      (char *)
+        char *          strip_newline   (char *)
+        char *          stripchars      (char *, const char *, const char *)
         char *          eos             (char *)
         boolean         str_end_is      (const char *, const char *)
         char *          strkitten       (char *,char)
@@ -31,6 +35,7 @@
         char *          tabexpand       (char *)
         char *          visctrl         (char)
         char *          strsubst        (char *, const char *, const char *)
+        int             strNsubst       (char *,const char *,const char *,int)
         const char *    ordin           (int)
         char *          sitoa           (int)
         int             sgn             (int)
@@ -43,7 +48,7 @@
         boolean         pmatchz         (const char *, const char *)
         int             strncmpi        (const char *, const char *, int)
         char *          strstri         (const char *, const char *)
-        boolean         fuzzymatch      (const char *,const char *,
+        boolean         fuzzymatch      (const char *, const char *,
                                          const char *, boolean)
         void            setrandom       (void)
         time_t          getnow          (void)
@@ -57,6 +62,11 @@
         boolean         friday_13th     (void)
         int             night           (void)
         int             midnight        (void)
+        void            strbuf_init     (strbuf *, const char *)
+        void            strbuf_append   (strbuf *, const char *)
+        void            strbuf_reserve  (strbuf *, int)
+        void            strbuf_empty    (strbuf *)
+        void            strbuf_nl_to_crlf (strbuf_t *)
 =*/
 #ifdef LINT
 #define Static /* pacify lint */
@@ -156,6 +166,37 @@ char *bp;
         p2--;
     *p2 = '\0';
     return bp;
+}
+
+/* remove leading and trailing whitespace, in place */
+char*
+trimspaces(txt)
+char* txt;
+{
+    char* end;
+
+    while (*txt == ' ' || *txt == '\t')
+        txt++;
+    end = eos(txt);
+    while (--end >= txt && (*end == ' ' || *end == '\t'))
+        *end = '\0';
+
+    return txt;
+}
+
+/* remove \n from end of line; remove \r too if one is there */
+char *
+strip_newline(str)
+char *str;
+{
+    char *p = rindex(str, '\n');
+
+    if (p) {
+        if (p > str && *(p - 1) == '\r')
+            --p;
+        *p = '\0';
+    }
+    return str;
 }
 
 /* return the end of a string (pointing at '\0') */
@@ -281,7 +322,7 @@ char *
 ing_suffix(s)
 const char *s;
 {
-    const char *vowel = "aeiouy";
+    static const char vowel[] = "aeiouwy";
     static char buf[BUFSZ];
     char onoff[10];
     char *p;
@@ -289,21 +330,22 @@ const char *s;
     Strcpy(buf, s);
     p = eos(buf);
     onoff[0] = *p = *(p + 1) = '\0';
-    if ((strlen(buf) > 4)
-        && (!strcmpi(p - 3, " on") || !strcmpi(p - 4, " off")
-            || !strcmpi(p - 5, " with"))) {
-        p = strrchr(buf, ' ');
+    if ((p >= &buf[3] && !strcmpi(p - 3, " on"))
+        || (p >= &buf[4] && !strcmpi(p - 4, " off"))
+        || (p >= &buf[5] && !strcmpi(p - 5, " with"))) {
+        p = rindex(buf, ' ');
         Strcpy(onoff, p);
+        *p = '\0';
     }
-    if (!index(vowel, *(p - 1)) && index(vowel, *(p - 2))
-        && !index(vowel, *(p - 3))) {
+    if (p >= &buf[3] && !index(vowel, *(p - 1))
+        && index(vowel, *(p - 2)) && !index(vowel, *(p - 3))) {
         /* tip -> tipp + ing */
         *p = *(p - 1);
         *(p + 1) = '\0';
-    } else if (!strcmpi(p - 2, "ie")) { /* vie -> vy + ing */
+    } else if (p >= &buf[2] && !strcmpi(p - 2, "ie")) { /* vie -> vy + ing */
         *(p - 2) = 'y';
         *(p - 1) = '\0';
-    } else if (*(p - 1) == 'e') /* grease -> greas + ing */
+    } else if (p >= &buf[1] && *(p - 1) == 'e') /* grease -> greas + ing */
         *(p - 1) = '\0';
     Strcat(buf, "ing");
     if (onoff[0])
@@ -368,26 +410,59 @@ char *sbuf;
     return strcpy(sbuf, buf);
 }
 
+#define VISCTRL_NBUF 5
 /* make a displayable string from a character */
 char *
 visctrl(c)
 char c;
 {
-    Static char ccc[3];
+    Static char visctrl_bufs[VISCTRL_NBUF][5];
+    static int nbuf = 0;
+    register int i = 0;
+    char *ccc = visctrl_bufs[nbuf];
+    nbuf = (nbuf + 1) % VISCTRL_NBUF;
 
-    c &= 0177;
-    ccc[2] = '\0';
-    if (c < 040) {
-        ccc[0] = '^';
-        ccc[1] = c | 0100; /* letter */
-    } else if (c == 0177) {
-        ccc[0] = '^';
-        ccc[1] = c & ~0100; /* '?' */
-    } else {
-        ccc[0] = c; /* printable character */
-        ccc[1] = '\0';
+    if ((uchar) c & 0200) {
+        ccc[i++] = 'M';
+        ccc[i++] = '-';
     }
+    c &= 0177;
+    if (c < 040) {
+        ccc[i++] = '^';
+        ccc[i++] = c | 0100; /* letter */
+    } else if (c == 0177) {
+        ccc[i++] = '^';
+        ccc[i++] = c & ~0100; /* '?' */
+    } else {
+        ccc[i++] = c; /* printable character */
+    }
+    ccc[i] = '\0';
     return ccc;
+}
+
+/* strip all the chars in stuff_to_strip from orig */
+/* caller is responsible for ensuring that bp is a
+   valid pointer to a BUFSZ buffer */
+char *
+stripchars(bp, stuff_to_strip, orig)
+char *bp;
+const char *stuff_to_strip, *orig;
+{
+    int i = 0;
+    char *s = bp;
+
+    if (s) {
+        while (*orig && i < (BUFSZ - 1)) {
+            if (!index(stuff_to_strip, *orig)) {
+                *s++ = *orig;
+                i++;
+            }
+            orig++;
+        }
+        *s = '\0';
+    } else
+        impossible("no output buf in stripchars");
+    return bp;
 }
 
 /* substitute a word or phrase in a string (in place) */
@@ -400,6 +475,7 @@ const char *orig, *replacement;
     char *found, buf[BUFSZ];
 
     if (bp) {
+        /* [this could be replaced by strNsubst(bp, orig, replacement, 1)] */
         found = strstr(bp, orig);
         if (found) {
             Strcpy(buf, found + strlen(orig));
@@ -408,6 +484,52 @@ const char *orig, *replacement;
         }
     }
     return bp;
+}
+
+/* substitute the Nth occurrence of a substring within a string (in place);
+   if N is 0, substitute all occurrences; returns the number of subsitutions;
+   maximum output length is BUFSZ (BUFSZ-1 chars + terminating '\0') */
+int
+strNsubst(inoutbuf, orig, replacement, n)
+char *inoutbuf; /* current string, and result buffer */
+const char *orig, /* old substring; if "" then insert in front of Nth char */
+           *replacement; /* new substring; if "" then delete old substring */
+int n; /* which occurrence to replace; 0 => all */
+{
+    char *bp, *op, workbuf[BUFSZ];
+    const char *rp;
+    unsigned len = (unsigned) strlen(orig);
+    int ocount = 0, /* number of times 'orig' has been matched */
+        rcount = 0; /* number of subsitutions made */
+
+    for (bp = inoutbuf, op = workbuf; *bp && op < &workbuf[BUFSZ - 1]; ) {
+        if ((!len || !strncmp(bp, orig, len)) && (++ocount == n || n == 0)) {
+            /* Nth match found */
+            for (rp = replacement; *rp && op < &workbuf[BUFSZ - 1]; )
+                *op++ = *rp++;
+            ++rcount;
+            if (len) {
+                bp += len; /* skip 'orig' */
+                continue;
+            }
+        }
+        /* no match (or len==0) so retain current character */
+        *op++ = *bp++;
+    }
+    if (!len && n == ocount + 1) {
+        /* special case: orig=="" (!len) and n==strlen(inoutbuf)+1,
+           insert in front of terminator (in other words, append);
+           [when orig=="", ocount will have been incremented once for
+           each input char] */
+        for (rp = replacement; *rp && op < &workbuf[BUFSZ - 1]; )
+            *op++ = *rp++;
+        ++rcount;
+    }
+    if (rcount) {
+        *op = '\0';
+        Strcpy(inoutbuf, workbuf);
+    }
+    return rcount;
 }
 
 /* return the ordinal suffix of a number */
@@ -983,6 +1105,85 @@ int
 midnight()
 {
     return (getlt()->tm_hour == 0);
+}
+
+/* strbuf_init() initializes strbuf state for use */
+void
+strbuf_init(strbuf)
+strbuf_t *strbuf;
+{
+    strbuf->str = NULL;
+    strbuf->len = 0;
+}
+
+/* strbuf_append() appends given str to strbuf->str */
+void
+strbuf_append(strbuf, str)
+strbuf_t *strbuf;
+const char *str;
+{
+    int len = (int) strlen(str) + 1;
+
+    strbuf_reserve(strbuf,
+                   len + (strbuf->str ? (int) strlen(strbuf->str) : 0));
+    Strcat(strbuf->str, str);
+}
+
+/* strbuf_reserve() ensure strbuf->str has storage for len characters */
+void
+strbuf_reserve(strbuf, len)
+strbuf_t *strbuf;
+int len;
+{
+    if (strbuf->str == NULL) {
+        strbuf->str = strbuf->buf;
+        strbuf->str[0] = '\0';
+        strbuf->len = (int) sizeof strbuf->buf;
+    }
+
+    if (len > strbuf->len) {
+        char *oldbuf = strbuf->str;
+
+        strbuf->len = len + (int) sizeof strbuf->buf;
+        strbuf->str = (char *) alloc(strbuf->len);
+        Strcpy(strbuf->str, oldbuf);
+        if (oldbuf != strbuf->buf)
+            free((genericptr_t) oldbuf);
+    }
+}
+
+/* strbuf_empty() frees allocated memory and set strbuf to initial state */
+void
+strbuf_empty(strbuf)
+strbuf_t *strbuf;
+{
+    if (strbuf->str != NULL && strbuf->str != strbuf->buf)
+        free((genericptr_t) strbuf->str);
+    strbuf_init(strbuf);
+}
+
+/* strbuf_nl_to_crlf() converts all occurences of \n to \r\n */
+void
+strbuf_nl_to_crlf(strbuf)
+strbuf_t *strbuf;
+{
+    if (strbuf->str) {
+        int len = (int) strlen(strbuf->str);
+        int count = 0;
+        char *cp = strbuf->str;
+
+        while (*cp)
+            if (*cp++ == '\n')
+                count++;
+        if (count) {
+            strbuf_reserve(strbuf, len + count + 1);
+            for (cp = strbuf->str + len + count; count; --cp)
+                if ((*cp = cp[-count]) == '\n') {
+                    *--cp = '\r';
+                    --count;
+                }
+        }
+    }
 }
 
 /*hacklib.c*/

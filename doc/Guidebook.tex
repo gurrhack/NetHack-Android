@@ -1,5 +1,5 @@
 \documentstyle[titlepage,longtable]{article}
-% NetHack 3.6  Guidebook.tex $NHDT-Date: 1431192762 2015/05/09 17:32:42 $  $NHDT-Branch: master $:$NHDT-Revision: 1.60 $ */
+% NetHack 3.6  Guidebook.tex $NHDT-Date: 1431192762 2015/12/16 17:32:42 $  $NHDT-Branch: master $:$NHDT-Revision: 1.60 $ */
 %+% we're still limping along in LaTeX 2.09 compatibility mode
 %-%\documentclass{article}
 %-%\usepackage{hyperref} % before longtable
@@ -45,17 +45,9 @@
 %.au
 \author{Original version - Eric S. Raymond\\
 (Edited and expanded for 3.6 by Mike Stephenson and others)}
-\date{December 7, 2015}
+\date{April 27, 2018}
 
 \maketitle
-
-%.hn 1
-\section{Preface - Version 3.6}
-%.pg
-This version of the game is special in a particular way.  Near the end of 
-the development of 3.6, one of the significant inspirations for many of the 
-humorous and fun features found in the game, author {\it Terry Pratchett}, 
-passed away.  We have dedicated this version of the game in his memory.
 
 %.pg
 %.hn 1
@@ -63,23 +55,23 @@ passed away.  We have dedicated this version of the game in his memory.
 
 %.pg
 
-Recently, you have begun to find yourself unfulfilled and distant 
-in your daily occupation.  Strange dreams of prospecting, stealing, 
-crusading, and combat have haunted you in your sleep for many months, 
-but you aren't sure of the reason.  You wonder whether you have in 
-fact been having those dreams all your life, and somehow managed to 
+Recently, you have begun to find yourself unfulfilled and distant
+in your daily occupation.  Strange dreams of prospecting, stealing,
+crusading, and combat have haunted you in your sleep for many months,
+but you aren't sure of the reason.  You wonder whether you have in
+fact been having those dreams all your life, and somehow managed to
 forget about them until now.  Some nights you awaken suddenly
-and cry out, terrified at the vivid recollection of the strange and 
-powerful creatures that seem to be lurking behind every corner of the 
-dungeon in your dream.  Could these details haunting your dreams be real?  
-As each night passes, you feel the desire to enter the mysterious caverns 
-near the ruins grow stronger.  Each morning, however, you quickly put 
-the idea out of your head as you recall the tales of those who entered 
-the caverns before you and did not return.  Eventually you can resist 
-the yearning to seek out the fantastic place in your dreams no longer.  
-After all, when other adventurers came back this way after spending time 
-in the caverns, they usually seemed better off than when they passed 
-through the first time.  And who was to say that all of those who did 
+and cry out, terrified at the vivid recollection of the strange and
+powerful creatures that seem to be lurking behind every corner of the
+dungeon in your dream.  Could these details haunting your dreams be real?
+As each night passes, you feel the desire to enter the mysterious caverns
+near the ruins grow stronger.  Each morning, however, you quickly put
+the idea out of your head as you recall the tales of those who entered
+the caverns before you and did not return.  Eventually you can resist
+the yearning to seek out the fantastic place in your dreams no longer.
+After all, when other adventurers came back this way after spending time
+in the caverns, they usually seemed better off than when they passed
+through the first time.  And who was to say that all of those who did
 not return had not just kept going?
 %.pg
 
@@ -88,23 +80,23 @@ which, if you can find it, will bring you great wealth.  One legend you were
 told even mentioned that the one who finds the amulet will be granted
 immortality by the gods.  The amulet is rumored to be somewhere beyond the
 Valley of Gehennom, deep within the Mazes of Menace.  Upon hearing the
-legends, you immediately realize that there is some profound and 
-undiscovered reason that you are to descend into the caverns and seek 
-out that amulet of which they spoke.  Even if the rumors of the amulet's 
-powers are untrue, you decide that you should at least be able to sell the 
-tales of your adventures to the local minstrels for a tidy sum, especially 
-if you encounter any of the terrifying and magical creatures of 
-your dreams along the way.  You spend one last night fortifying yourself 
-at the local inn, becoming more and more depressed as you watch the odds 
-of your success being posted on the inn's walls getting lower and lower.  
+legends, you immediately realize that there is some profound and
+undiscovered reason that you are to descend into the caverns and seek
+out that amulet of which they spoke.  Even if the rumors of the amulet's
+powers are untrue, you decide that you should at least be able to sell the
+tales of your adventures to the local minstrels for a tidy sum, especially
+if you encounter any of the terrifying and magical creatures of
+your dreams along the way.  You spend one last night fortifying yourself
+at the local inn, becoming more and more depressed as you watch the odds
+of your success being posted on the inn's walls getting lower and lower.
 
 %.pg
-\nd In the morning you awake, collect your belongings, and 
-set off for the dungeon.  After several days of uneventful 
-travel, you see the ancient ruins that mark the entrance to the 
-Mazes of Menace.  It is late at night, so you make camp at the entrance 
-and spend the night sleeping under the open skies.  In the morning, you 
-gather your gear, eat what may be your last meal outside, and enter the 
+\nd In the morning you awake, collect your belongings, and
+set off for the dungeon.  After several days of uneventful
+travel, you see the ancient ruins that mark the entrance to the
+Mazes of Menace.  It is late at night, so you make camp at the entrance
+and spend the night sleeping under the open skies.  In the morning, you
+gather your gear, eat what may be your last meal outside, and enter the
 dungeon\ldots
 
 %.hn 1
@@ -113,7 +105,7 @@ dungeon\ldots
 %.pg
 You have just begun a game of {\it NetHack}.  Your goal is to grab as much
 treasure as you can, retrieve the Amulet of Yendor, and escape the
-Mazes of Menace alive.  
+Mazes of Menace alive.
 
 %.pg
 Your abilities and strengths for dealing with the hazards of adventure
@@ -245,8 +237,8 @@ The armor and weapons fashioned by the Orcs are typically of inferior quality.
 %.hn 1
 \section{What do all those things on the screen mean?}
 %.pg
-On the screen is kept a map of where you have been and what you have 
-seen on the current dungeon level; as you explore more of the level, 
+On the screen is kept a map of where you have been and what you have
+seen on the current dungeon level; as you explore more of the level,
 it appears on the screen in front of you.
 
 %.pg
@@ -346,6 +338,9 @@ do other tasks requiring agility or manipulation of objects.
 \item[\bb{Constitution}]
 Constitution affects your ability to recover from injuries and other
 strains on your stamina.
+When strength is low or modest, constitution also affects how much you
+can carry.  With sufficiently high strength, the contribution to
+carrying capacity from your constitution no longer matters.
 %.lp
 \item[\bb{Intelligence}]
 Intelligence affects your ability to cast spells and read spellbooks.
@@ -405,16 +400,42 @@ show only your experience level here.
 The number of turns elapsed so far, displayed if you have the
 {\it time\/} option set.
 %.lp
-\item[\bb{Hunger Status}]
-Your current hunger status, ranging from %
-{\it Satiated\/} down to {\it Fainting}.  If your hunger status is normal,
-it is not displayed.
-%.pg
-Additional status flags may appear after the hunger status:
-{\it Conf\/} when you're confused, {\it FoodPois\/} or {\it Ill\/}
-when sick, {\it Blind\/}
-when you can't see, {\it Stun\/} when stunned, and {\it Hallu\/} when
-hallucinating.
+\item[\bb{Status}]
+Hunger:
+your current hunger status.
+Values are {\it Satiated}, {\it Not~Hungry\/} (or {\it Normal\/}),
+{\it Hungry}, {\it Weak}, and {\it Fainting}.
+%.\" not mentioned: Fainted
+Not shown when {\it Normal}.
+
+%.lp ""
+Encumbrance:
+an indication of how what you are carrying affects your ability to move.
+Values are {\it Unencumbered}, {\it Encumbered}, {\it Stressed},
+{\it Strained}, {\it Overtaxed}, and {\it Overloaded}.
+Not shown when {\it Unencumbered}.
+
+%.lp ""
+Fatal~conditions:
+{\it Stone\/} (aka {\it Petrifying}, turning to stone),
+{\it Slime\/} (turning into green slime),
+{\it Strngl\/} (being strangled),
+{\it FoodPois\/} (suffering from acute food poisoning),
+{\it TermIll\/} (suffering from a terminal illness).
+
+%.lp ""
+Non-fatal~conditions:
+{\it Blind\/} (can't see), {\it Deaf\/} (can't hear),
+{\it Stun\/} (stunned), {\it Conf\/} (confused), {\it Hallu\/} (hallucinating).
+
+%.lp ""
+Movement~modifiers:
+{\it Lev\/} (levitating), {\it Fly\/} (flying), {\it Ride\/} (riding).
+
+%.lp ""
+Other conditions and modifiers exist, but there isn't enough room to
+display them with the other status fields.  The `{\tt \^{}X}' command shows
+all relevant status conditions.
 \elist
 
 %.hn 2
@@ -529,8 +550,8 @@ Sometimes, however, they can be helpful.
 %.lp
 \item[\tb{I}]
 This marks the last known location of an invisible or otherwise unseen
-monster.  Note that the monster could have moved.  The `F' and `m' commands
-may be useful here.
+monster.  Note that the monster could have moved.
+The `{\tt F}' and `{\tt m}' commands may be useful here.
 
 \elist
 %.pg
@@ -542,13 +563,15 @@ more info).
 \section{Commands}
 
 %.pg
-Commands are initiated by typing one or two characters.  Some commands,
+Commands can be initiated by typing one or two characters to which
+the command is bound to, or typing the command name in the extended
+commands entry.  Some commands,
 like ``{\tt search}'', do not require that any more information be collected
 by {\it NetHack\/}.  Other commands might require additional information, for
 example a direction, or an object to be used.  For those commands that
-require additional information, {\it NetHack\/} will present you with either 
-a menu of choices, or with a command line prompt requesting information.  Which
-you are presented with will depend chiefly on how you have set the
+require additional information, {\it NetHack\/} will present you with either
+a menu of choices, or with a command line prompt requesting information.
+Which you are presented with will depend chiefly on how you have set the
 `{\it menustyle\/}'
 option.
 
@@ -578,7 +601,7 @@ greater control (see below).  To cancel a count or a prefix, press the
 %.pg
 The list of commands is rather long, but it can be read at any time
 during the game through the `{\tt ?}' command, which accesses a menu of
-helpful texts.  Here are the commands for your reference:
+helpful texts.  Here are the default key bindings for your reference:
 
 \blist{}
 %.lp
@@ -586,24 +609,44 @@ helpful texts.  Here are the commands for your reference:
 Help menu:  display one of several help texts available.
 %.lp
 \item[\tb{/}]
-Tell what a symbol represents.  You may choose to specify a location
+The {\tt whatis} command, to
+tell what a symbol represents.  You may choose to specify a location
 or type a symbol (or even a whole word) to explain.
 Specifying a location is done by moving the cursor to a particular spot
 on the map and then pressing one of `{\tt .}', `{\tt ,}', `{\tt ;}',
 or `{\tt :}'.  `{\tt .}' will explain the symbol at the chosen location,
+information, then let you pick another location;
 conditionally check for ``{\tt More info?}'' depending upon whether the
-{\it help\/}
+`{\it help\/}'
 option is on, and then you will be asked to pick another location;
 `{\tt ,}' will explain the symbol but skip any additional
-information; `{\tt ;}' will skip additional info and also not bother asking
+`{\tt ;}' will skip additional info and also not bother asking
 you to choose another location to examine; `{\tt :}' will show additional
 info, if any, without asking for confirmation.  When picking a location,
 pressing the {\tt ESC} key will terminate this command, or pressing `{\tt ?}'
 will give a brief reminder about how it works.
 
-%.pg
+%.lp ""
+If the
+{\it autodescribe\/}
+option is on, a short description of what you see at each location is
+shown as you move the cursor.  Typing `{\tt \#}' while picking a location will
+toggle that option on or off.
+The
+{\it whatis\verb+_+coord\/}
+option controls whether the short description includes map coordinates.
+
+%.lp ""
 Specifying a name rather than a location
 always gives any additional information available about that name.
+
+%.lp ""
+You may also request a description of nearby monsters,
+all monsters currently displayed, nearby objects, or all objects.
+The
+{\it whatis\verb+_+coord\/}
+option controls which format of map coordinate is included with their
+descriptions.
 %.lp
 \item[\tb{\&}]
 Tell what a command does.
@@ -641,10 +684,25 @@ Go in that direction until you hit a wall or run into something.
 %.lp
 \item[\tb{m[yuhjklbn]}]
 Prefix:  move without picking up objects or fighting (even if you remember
-a monster there)
+a monster there).\\
+%.lp ""
+A few non-movement commands use the `{\tt m}' prefix to request operating
+via menu (to temporarily override the
+{\it menustyle:Traditional\/}
+option).
+Primarily useful for `{\tt ,}' (pickup) when there is only one class of
+objects present (where there won't be any ``what kinds of objects?'' prompt,
+so no opportunity to answer `{\tt m}' at that prompt).\\
+%.lp ""
+A few other commands (eat food, offer sacrifice, apply tinning-kit) use
+the `{\tt m}' prefix to skip checking for applicable objects on the floor
+and go straight to checking inventory,
+or (for ``{\tt \#loot}'' to remove a saddle),
+skip containers and go straight to adjacent monsters. The prefix will
+make ``{\tt \#travel}'' command show a menu of interesting targets in sight.
 %.lp
 \item[\tb{F[yuhjklbn]}]
-Prefix:  fight a monster (even if you only guess one is there)
+Prefix:  fight a monster (even if you only guess one is there).
 %.lp
 \item[\tb{M[yuhjklbn]}]
 Prefix:  Move far, no pickup.
@@ -662,22 +720,25 @@ Travel to a map location via a shortest-path algorithm.\\
 The shortest path
 is computed over map locations the hero knows about (e.g. seen or
 previously traversed).  If there is no known path, a guess is made instead.
-Stops on most of 
+Stops on most of
 the same conditions as the `G' command, but without picking up
-objects, similar to the `M' command.  For ports with mouse 
-support, the command is also invoked when a mouse-click takes place on a 
+objects, similar to the `M' command.  For ports with mouse
+support, the command is also invoked when a mouse-click takes place on a
 location other than the current position.
 %.lp
 \item[\tb{.}]
-Rest, do nothing for one turn.
+Wait or rest, do nothing for one turn.
 %.lp
 \item[\tb{a}]
-Apply (use) a tool (pick-axe, key, lamp \ldots).
+Apply (use) a tool (pick-axe, key, lamp \ldots).\\
+%.lp ""
+If used on a wand, that wand will be broken, releasing its magic in the
+process.  Confirmation is required.
 %.lp
 \item[\tb{A}]
 Remove one or more worn items, such as armor.\\
 %.lp ""
-Use `{\tt T}' (take off) to take off only one piece of armor 
+Use `{\tt T}' (take off) to take off only one piece of armor
 or `{\tt R}' (remove) to take off only one accessory.
 %.lp
 \item[\tb{\^{}A}]
@@ -726,7 +787,12 @@ the bless\-ed/\-un\-curs\-ed/\-curs\-ed groups may be typed.\\
 Kick something (usually a door).
 %.lp
 \item[\tb{e}]
-Eat food.
+Eat food.\\
+%.lp ""
+Normally checks for edible item(s) on the floor, then if none are found
+or none are chosen, checks for edible item(s) in inventory.
+Precede `{\tt e}' with the `{\tt m}' prefix to bypass attempting to eat
+anything off the floor.
 %.lp
 % Make sure Elbereth is not hyphenated below, the exact spelling matters.
 % (Only specified here to parallel Guidebook.mn; use of \tt font implicity
@@ -742,8 +808,7 @@ Engrave a message on the floor.\\
 %.lp ""
 Engraving the word ``{\tt Elbereth}'' will cause most monsters to not attack
 you hand-to-hand (but if you attack, you will rub it out); this is
-often useful to give yourself a breather.  (This feature may be compiled out
-of the game, so your version might not have it.)
+often useful to give yourself a breather.
 %.lp
 \item[\tb{f}]
 Fire one of the objects placed in your quiver (or quiver sack, or that you
@@ -786,6 +851,15 @@ The available options
 are listed later in this Guidebook.  Options are usually set before the
 game rather than with the `{\tt O}' command; see the section on options below.
 %.lp
+\item[\tb{\^{}O}]
+Show overview or show dungeon layout\\
+%.lp ""
+In normal play and in explore mode, a shortcut for the ``{\tt \#overview}''
+extended command to list interesting dungeon levels visited.\\
+%.lp ""
+In debug mode, an extra command which lists the placement of all special
+levels.
+%.lp
 \item[\tb{p}]
 Pay your shopping bill.
 %.lp
@@ -802,7 +876,7 @@ choices but will accept an accessory and attempt to put that on.)
 Repeat previous message.\\
 %.lp ""
 Subsequent {\tt \^{}P}'s repeat earlier messages.
-The behavior can be varied via the {\it msg\verb+_+window} option.
+The behavior can be varied via the {\it msg\verb+_+window\/} option.
 %.lp
 \item[\tb{q}]
 Quaff (drink) something (potion, water, etc).
@@ -904,10 +978,11 @@ the exchange still takes place.
 \item[\tb{X}]
 Toggle two-weapon combat, if your character can do it.  Also available
 via the ``{\tt \#twoweapon}'' extended command.\\
-+.lp ""
-+(In versions prior to 3.6 this was the command to switch from normal
-+play to ``explore mode'', also known as ``discovery mode'', which has now
-+been moved to ``{\tt \#explore}''.)
+%.lp ""
+
+(In versions prior to 3.6 this was the command to switch from normal
+play to ``explore mode'', also known as ``discovery mode'', which has now
+been moved to ``{\tt \#exploremode}''.)
 %.lp
 \item[\tb{\^{}X}]
 Display basic information about your character.\\
@@ -953,7 +1028,7 @@ May be preceded by `{\tt m}' to force a selection menu.
 Toggle the {\it autopickup\/} option on and off.
 %.lp
 \item[\tb{\^{}}]
-Ask for the type of a trap you found earlier.
+Ask for the type of an adjacent trap you found earlier.
 %.lp
 \item[\tb{)}]
 Tell what weapon you are wielding.
@@ -1014,58 +1089,177 @@ the game was compiled with.
 \item[\tb{\#adjust}]
 Adjust inventory letters (most useful when the
 {\it fixinv\/}
-option is ``on'').\\
+option is ``on''). Autocompletes. Default key is '{\tt M-a}'.\\
 %.lp ""
 This command allows you to move an item from one particular inventory
 slot to another so that it has a letter which is more meaningful for you
 or that it will appear in a particular location when inventory listings
 are displayed.
+You can move to a currently empty slot, or if the destination is
+occupied--and won't merge--the item there will swap slots with the one
+being moved.
 ``{\tt \#adjust}'' can also be used to split a stack of objects; when
-choosing the item to adjust, enter a count prior to its letter.
+choosing the item to adjust, enter a count prior to its letter.\\
+%.lp ""
+Adjusting without a count used to collect all compatible stacks when
+moving to the destination.  That behavior has been changed; to gather
+compatible stacks, ``{\tt \#adjust}'' a stack into its own inventory slot.
+If it has a name assigned, other stacks with the same name or with
+no name will merge provided that all their other attributes match.
+If it does not have a name, only other stacks with no name are eligible.
+In either case, otherwise compatible stacks with a different name
+will not be merged.  This contrasts with using ``{\tt \#adjust}'' to move
+from one slot to a different slot.  In that situation, moving (no
+count given) a compatible stack will merge if either stack has a
+name when the other doesn't and give that name to the result, while
+splitting (count given) will ignore the source stack's name when
+deciding whether to merge with the destination stack.
 %.lp
 \item[\tb{\#annotate}]
 Allows you to specify one line of text to associate with the current
 dungeon level.  All levels with annotations are displayed by the
-``{\tt \#overview}'' command.
+``{\tt \#overview}'' command. Autocompletes. Default key is '{\tt M-A}',
+and '{\tt \^{}N}' if {\it number\verb+_+pad\/} is on.
+%.lp
+\item[\tb{\#apply}]
+Apply (use) a tool such as a pick-axe, a key, or a lamp.
+Default key is '{\tt a}'.\\
+If the tool used acts on items on the floor, using the `{\tt m}' prefix
+skips those items.\\
+%.lp ""
+If used on a wand, that wand will be broken, releasing its magic in the
+process.  Confirmation is required.
+%.lp
+\item[\tb{\#attributes}]
+Show your attributes. Default key is '{\tt \^{}X}'.\\
+%.lp
+\item[\tb{\#autopickup}]
+Toggle the {\it autopickup\/} -option. Default key is '{\tt @}'.\\
+%.lp
+\item[\tb{\#call}]
+Call (name) a monster, or an object in inventory, on the floor,
+or in the discoveries list, or add an annotation for the
+current level (same as ``{\tt \#annotate}''). Default key is '{\tt C}'.
+%.lp
+\item[\tb{\#cast}]
+Cast a spell. Default key is '{\tt Z}'.\\
 %.lp
 \item[\tb{\#chat}]
-Talk to someone.
+Talk to someone. Default key is '{\tt M-c}'.\\
+%.lp
+\item[\tb{\#close}]
+Close a door. Default key is '{\tt c}'.\\
 %.lp
 \item[\tb{\#conduct}]
-List voluntary challenges you have maintained.\\
+List voluntary challenges you have maintained. Autocompletes.
+Default key is '{\tt M-C}'.\\
 %.lp ""
 See the section below entitled ``Conduct'' for details.
 %.lp
 \item[\tb{\#dip}]
-Dip an object into something.
+Dip an object into something. Autocompletes. Default key is '{\tt M-d}'.
+%.lp
+\item[\tb{\#down}]
+Go down a staircase. Default key is '{\tt >}'.
+%.lp
+\item[\tb{\#drop}]
+Drop an item. Default key is '{\tt d}'.
+%.lp
+\item[\tb{\#droptype}]
+Drop specific item types. Default key is '{\tt D}'.
+%.lp
+\item[\tb{\#eat}]
+Eat something. Default key is '{\tt e}'.
+The `{\tt m}' prefix skips eating items on the floor.
+%.lp
+\item[\tb{\#engrave}]
+Engrave writing on the floor. Default key is '{\tt E}'.
 %.lp
 \item[\tb{\#enhance}]
-Advance or check weapon and spell skills.
+Advance or check weapon and spell skills. Autocompletes.
+Default key is '{\tt M-e}'.
+%.lp
+\item[\tb{\#exploremode}]
+Enter the explore mode.
+%.lp
+\item[\tb{\#fire}]
+Fire ammunition from quiver. Default key is '{\tt f}'.
 %.lp
 \item[\tb{\#force}]
-Force a lock.
+Force a lock. Autocompletes. Default key is '{\tt M-f}'.
+%.lp
+\item[\tb{\#glance}]
+Show what type of thing a map symbol corresponds to. Default key is '{\tt ;}'.
+%.lp
+\item[\tb{\#help}]
+Show the help menu. Default key is '{\tt ?}', and '{\tt h}' if {\it number\verb+_+pad\/} is on.
+%.lp
+\item[\tb{\#herecmdmenu}]
+Show a menu of possible actions in your current location.
+%.lp
+\item[\tb{\#history}]
+Show long version and game history. Default key is '{\tt V}'.
+%.lp
+\item[\tb{\#inventory}]
+Show your inventory. Default key is '{\tt i}'.
+%.lp
+\item[\tb{\#inventtype}]
+Inventory specific item types. Default key is '{\tt I}'.
 %.lp
 \item[\tb{\#invoke}]
-Invoke an object's special powers.
+Invoke an object's special powers. Autocompletes. Default key is '{\tt M-i}'.
 %.lp
 \item[\tb{\#jump}]
-Jump to another location.
+Jump to another location. Autocompletes. Default key is '{\tt M-j}', and '{\tt j}' if {\it number\verb+_+pad\/} is on.
+%.lp
+\item[\tb{\#kick}]
+Kick something. Default key is '{\tt \^{}D}', and '{\tt k}' if {\it number\verb+_+pad\/} is on.
+%.lp
+\item[\tb{\#known}]
+Show what object types have been discovered. Default key is '{\tt $\backslash$}'.
+%.lp
+\item[\tb{\#knownclass}]
+Show discovered types for one class of objects. Default key is '{\tt `}'.
+%.lp
+\item[\tb{\#levelchange}]
+Change your experience level. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#lightsources}]
+Show mobile light sources. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#look}]
+Look at what is here, under you. Default key is '{\tt :}'.
 %.lp
 \item[\tb{\#loot}]
-Loot a box or bag on the floor beneath you, or the saddle 
-from a steed standing next to you.
+Loot a box or bag on the floor beneath you, or the saddle
+from a steed standing next to you. Autocompletes.
+Default key is '{\tt M-l}', and '{\tt l}' if {\it number\verb+_+pad\/} is on.
+Precede with the `{\tt m}' prefix to skip containers at your location
+and go directly to removing a saddle.
+%.lp
+\item[\tb{\#monpolycontrol}]
+Control monster polymorphs. Autocompletes. Wizard-mode only.
 %.lp
 \item[\tb{\#monster}]
 Use a monster's special ability (when polymorphed into monster form).
+Autocompletes. Default key is '{\tt M-m}'.
 %.lp
 \item[\tb{\#name}]
-Name a monster, an individual object, or a type of object.  Same as `{\tt C}'.
+Name a monster, an individual object, or a type of object.  Same as `{\tt \#call}'.
+Autocompletes. Default keys are '{\tt N}', '{\tt M-n}', and '{\tt M-N}'.
 %.lp
 \item[\tb{\#offer}]
-Offer a sacrifice to the gods.\\
+Offer a sacrifice to the gods. Autocompletes. Default key is '{\tt M-o}'.\\
+The `{\tt m}' prefix skips offering items on the altar.
 %.lp ""
 You'll need to find an altar to have any chance at success.
 Corpses of recently killed monsters are the fodder of choice.
+%.lp
+\item[\tb{\#open}]
+Open a door. Default key is '{\tt o}'.
+%.lp
+\item[\tb{\#options}]
+Show and change option settings. Default key is '{\tt O}'.
 %.lp
 \item[\tb{\#overview}]
 Display information you've discovered about the dungeon.  Any visited
@@ -1073,10 +1267,24 @@ level (unless forgotten due to amnesia) with an annotation is included,
 and many things (altars, thrones, fountains, and so on; extra stairs
 leading to another dungeon branch) trigger an automatic annotation.
 If dungeon overview is chosen during end-of-game disclosure, every visited
-level will be included regardless of annotations.
+level will be included regardless of annotations. Autocompletes.
+Default keys are '{\tt \^{}O}', and '{\tt M-O}'.
+%.lp
+\item[\tb{\#panic}]
+Test the panic routine. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#pay}]
+Pay your shopping bill. Default key is '{\tt p}'.
+%.lp
+\item[\tb{\#pickup}]
+Pick up things at the current location. Default key is '{\tt ,}'.
+The `{\tt m}' prefix forces use of a menu.
+%.lp
+\item[\tb{\#polyself}]
+Polymorph self. Autocompletes. Wizard-mode only.
 %.lp
 \item[\tb{\#pray}]
-Pray to the gods for help.\\
+Pray to the gods for help. Autocompletes. Default key is '{\tt M-p}'.\\
 %.lp ""
 Praying too soon after receiving prior help is a bad idea.
 (Hint: entering the dungeon alive is treated as having received help.
@@ -1087,8 +1295,18 @@ by default, and you can reset the
 {\it paranoid\verb+_+confirmation\/}
 option to disable it.
 %.lp
+\item[\tb{\#prevmsg}]
+Show previously displayed game messages. Default key is '{\tt \^{}P}'.
+%.lp
+\item[\tb{\#puton}]
+Put on an accessory (ring, amulet, etc). Default key is '{\tt P}'.
+%.lp
+\item[\tb{\#quaff}]
+Quaff (drink) something. Default key is '{\tt q}'.
+%.lp
 \item[\tb{\#quit}]
-Quit the program without saving your game.\\
+Quit the program without saving your game. Autocompletes.
+Default key is '{\tt M-q}'.
 %.lp ""
 Since using this command by accident would throw away the current game,
 you are asked to confirm your intent before quitting.  By default a
@@ -1096,40 +1314,202 @@ response of `{\tt y}' acknowledges that intent.  You can set the
 {\it paranoid\verb+_+confirmation\/}
 option to require a response of ``{\tt yes}'' instead.
 %.lp
+\item[\tb{\#quiver}]
+Select ammunition for quiver. Default key is '{\tt Q}'.
+%.lp
+\item[\tb{\#read}]
+Read a scroll, a spellbook, or something else. Default key is '{\tt r}'.
+%.lp
+\item[\tb{\#redraw}]
+Redraw the screen. Default key is '{\tt \^{}R}', and '{\tt \^{}L}' if {\it number\verb+_+pad\/} is on.
+%.lp
+\item[\tb{\#remove}]
+Remove an accessory (ring, amulet, etc). Default key is '{\tt R}'.
+%.lp
 \item[\tb{\#ride}]
-Ride (or stop riding) a saddled creature.
+Ride (or stop riding) a saddled creature. Autocompletes.
+Default key is '{\tt M-R}'.
 %.lp
 \item[\tb{\#rub}]
-Rub a lamp or a stone.
+Rub a lamp or a stone. Autocompletes. Default key is '{\tt M-r}'.
+%.lp
+\item[\tb{\#save}]
+Save the game. Default key is '{\tt S}'.
+%.lp
+\item[\tb{\#search}]
+Search for traps and secret doors around you. Default key is '{\tt s}'.
+%.lp
+\item[\tb{\#seeall}]
+Show all equipment in use. Default key is '{\tt *}'.
+%.lp
+\item[\tb{\#seeamulet}]
+Show the amulet currently worn. Default key is '{\tt "}'.
+%.lp
+\item[\tb{\#seearmor}]
+Show the armor currently worn. Default key is '{\tt [}'.
+%.lp
+\item[\tb{\#seegold}]
+Count your gold. Default key is '{\tt \$}'.
+%.lp
+\item[\tb{\#seenv}]
+Show seen vectors. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#seerings}]
+Show the ring(s) currently worn. Default key is '{\tt =}'.
+%.lp
+\item[\tb{\#seespells}]
+List and reorder known spells. Default key is '{\tt +}'.
+%.lp
+\item[\tb{\#seetools}]
+Show the tools currently in use. Default key is '{\tt (}'.
+%.lp
+\item[\tb{\#seetrap}]
+Show the type of an adjacent trap. Default key is '{\tt \^{}}'.
+%.lp
+\item[\tb{\#seeweapon}]
+Show the weapon currently wielded. Default key is '{\tt )}'.
+%.lp
+\item[\tb{\#shell}]
+Do a shell escape. Default key is '{\tt !}'.
 %.lp
 \item[\tb{\#sit}]
-Sit down.
+Sit down. Autocompletes. Default key is '{\tt M-s}'.
+%.lp
+\item[\tb{\#stats}]
+Show memory statistics. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#suspend}]
+Suspend the game. Default key is '{\tt \^{}Z}'.
+%.lp
+\item[\tb{\#swap}]
+Swap wielded and secondary weapons. Default key is '{\tt x}'.
+%.lp
+\item[\tb{\#takeoff}]
+Take off one piece of armor. Default key is '{\tt T}'.
+%.lp
+\item[\tb{\#takeoffall}]
+Remove all armor. Default key is '{\tt A}'.
+%.lp
+\item[\tb{\#teleport}]
+Teleport around the level. Default key is '{\tt \^{}T}'.
 %.lp
 \item[\tb{\#terrain}]
 Show bare map without displaying monsters, objects, or traps.
+Autocompletes.
+%.lp
+\item[\tb{\#therecmdmenu}]
+Show a menu of possible actions in a location next to you.
+%.lp
+\item[\tb{\#throw}]
+Throw something. Default key is '{\tt t}'.
+%.lp
+\item[\tb{\#timeout}]
+Look at the timeout queue. Autocompletes. Wizard-mode only.
+%.lp
 \item[\tb{\#tip}]
 Tip over a container (bag or box) to pour out its contents.
+Autocompletes. Default key is '{\tt M-T}'.
+The `{\tt m}' prefix makes the command use a menu.
+%.lp
+\item[\tb{\#travel}]
+Travel to a specific location on the map. Default key is '{\tt _}'.
+Using the ``request menu'' prefix shows a menu of interesting targets in sight
+without asking to move the cursor. When picking a target with cursor and
+the {\it autodescribe\/}-option is on, the top line will show "(no travel path)" if
+your character does not know of a path to that location.
 %.lp
 \item[\tb{\#turn}]
-Turn undead.
+Turn undead away. Autocompletes. Default key is '{\tt M-t}'.
 %.lp
 \item[\tb{\#twoweapon}]
-Toggle two-weapon combat on or off.\\
+Toggle two-weapon combat on or off. Autocompletes. Default keys are '{\tt X}',
+and '{\tt M-2}'.
 %.lp ""
 Note that you must
 use suitable weapons for this type of combat, or it will
 be automatically turned off.
 %.lp
 \item[\tb{\#untrap}]
-Untrap something (trap, door, or chest).\\
+Untrap something (trap, door, or chest). Default key is '{\tt M-u}', and '{\tt u}' if {\it number\verb+_+pad\/} is on.
 %.lp ""
 In some circumstancs it can also be used to rescue trapped monsters.
 %.lp
+\item[\tb{\#up}]
+Go up a staircase. Default key is '{\tt <}'.
+%.lp
+\item[\tb{\#vanquished}]
+List vanquished monsters. Autocompletes. Wizard-mode only.
+%.lp
 \item[\tb{\#version}]
-Print compile time options for this version of {\it NetHack}.
+Print compile time options for this version of {\it NetHack\/}.
+Autocompletes. Default key is '{\tt M-v}'.
+%.lp
+\item[\tb{\#versionshort}]
+Show version string. Default key is '{\tt v}'.
+%.lp
+\item[\tb{\#vision}]
+Show vision array. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wait}]
+Rest one move while doing nothing. Default key is '{\tt .}', and '{\tt{ }}' if {\it rest\verb+_+on\verb+_+space\/} is on.
+%.lp
+\item[\tb{\#wear}]
+Wear a piece of armor. Default key is '{\tt W}'.
+%.lp
+\item[\tb{\#whatdoes}]
+Tell what a key does. Default key is '{\tt \&}'.
+%.lp
+\item[\tb{\#whatis}]
+Show what type of thing a symbol corresponds to. Default key is '{\tt /}'.
+%.lp
+\item[\tb{\#wield}]
+Wield a weapon. Default key is '{\tt w}'.
 %.lp
 \item[\tb{\#wipe}]
-Wipe off your face.
+Wipe off your face. Autocompletes. Default key is '{\tt M-w}'.
+%.lp
+\item[\tb{\#wizdebug\verb+_+bury}]
+Bury objects under and around you. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizdebug\verb+_+traveldisplay}]
+Toggle travel display. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizdetect}]
+Search a room. Autocompletes. Wizard-mode only. Default key is '{\tt \^{}E}'.
+%.lp
+\item[\tb{\#wizgenesis}]
+Create a monster. Autocompletes. Wizard-mode only. Default key is '{\tt \^{}G}'.
+%.lp
+\item[\tb{\#wizidentify}]
+Identify all items in inventory. Autocompletes. Wizard-mode only.
+Default key is '{\tt \^{}I}'.
+%.lp
+\item[\tb{\#wizintrinsic}]
+Set intrinsic. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizlevelport}]
+Teleport to another level. Autocompletes. Wizard-mode only. Default key is '{\tt \^{}V}'.
+%.lp
+\item[\tb{\#wizmap}]
+Map the level. Autocompletes. Wizard-mode only. Default key is '{\tt \^{}F}'.
+%.lp
+\item[\tb{\#wizrumorcheck}]
+Verify rumor boundaries. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizsmell}]
+Smell monster. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizwhere}]
+Show locations of special levels. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#wizwish}]
+Wish for something. Autocompletes. Wizard-mode only. Default key is '{\tt \^{}W}'.
+%.lp
+\item[\tb{\#wmode}]
+Show wall modes. Autocompletes. Wizard-mode only.
+%.lp
+\item[\tb{\#zap}]
+Zap a wand. Default key is '{\tt z}'.
 %.lp
 \item[\tb{\#?}]
 Help menu:  get the list of available extended commands.
@@ -1146,9 +1526,9 @@ on the {\it Amiga\/}, set the {\it altmeta\/} option to get this behavior.
 On other systems, if typing `Alt' plus another key transmits a
 two character sequence consisting of an {\tt Escape}
 followed by the other key, you may set the {\it altmeta\/}
-option to have nethack combine them into meta\+key.
+option to have {\it NetHack\/} combine them into meta\+key.
 \blist{}
-%.lp 
+%.lp
 \item[\tb{M-?}]
 {\tt\#?} (not supported by all platforms)
 %.lp
@@ -1232,28 +1612,24 @@ option to have nethack combine them into meta\+key.
 \nd If the {\it number\verb+_+pad\/} option is on, some additional letter commands
 are available:
 \blist{}
-%.lp 
+%.lp
 \item[\tb{h}]
-Help menu:  display one of several help texts available, like ``{\tt ?}''.
+{\tt\#help}
 %.lp
 \item[\tb{j}]
-Jump to another location.  Same as ``{\tt \#jump}'' or ``{\tt M-j}''.
+{\tt\#jump}
 %.lp
 \item[\tb{k}]
-Kick something (usually a door).  Same as `{\tt \^{}D}'.
+{\tt\#kick}
 %.lp
 \item[\tb{l}]
-Loot a box or bag on the floor beneath you, or the saddle 
-from a steed standing next to you.  Same as ``{\tt \#loot}'' or ``{\tt M-l}''.
+{\tt\#loot}
 %.lp
 \item[\tb{N}]
-Name an object or type of object.  Same as ``{\tt \#name}'' or ``{\tt M-n}''.
-Name a monster, an individual object, or a type of object.  Same
-as ``{\tt \#name}'' (or ``{\tt M-n}'') which is the same as the `{\tt C}'
-command.
+{\tt\#name}
 %.lp
 \item[\tb{u}]
-Untrap a trap, door, or chest.  Same as ``{\tt \#untrap}'' or ``{\tt M-u}''.
+{\tt\#untrap}
 \elist
 
 %.hn 1
@@ -1262,7 +1638,7 @@ Untrap a trap, door, or chest.  Same as ``{\tt \#untrap}'' or ``{\tt M-u}''.
 %.pg
 Rooms and corridors in the dungeon are either lit or dark.
 Any lit areas within your line of sight will be displayed;
-dark areas are only displayed if they are within one space of you. 
+dark areas are only displayed if they are within one space of you.
 Walls and corridors remain on the map as you explore them.
 
 %.pg
@@ -1316,7 +1692,8 @@ complete all of the levels according to the traditional rules of
 Sokoban.  Some allowances are permitted in case the player gets stuck;
 however, they will lower your luck.
 
-\subsection*{Stairs (`{\tt <}', `{\tt >}')}
+%.hn 2
+\subsection*{Stairs and ladders (`{\tt <}', `{\tt >}')}
 
 %.pg
 In general, each level in the dungeon will have a staircase going up
@@ -1340,7 +1717,7 @@ some ``special'' levels, or loaded from the remains of an earlier game
 for a ``bones'' level as briefly described below).  Monsters are only
 active on the current level; those on other levels are essentially
 placed into stasis.
- 
+
 %.pg
 Ordinarily when you climb a set of stairs, you will arrive on the
 corresponding staircase at your destination.  However, pets (see below)
@@ -1348,8 +1725,6 @@ and some other monsters will follow along if they're close enough when
 you travel up or down stairs, and occasionally one of these creatures
 will displace you during the climb.  When that occurs, the pet or other
 monster will arrive on the staircase and you will end up nearby.
-
-\subsection*{Ladders (`{\tt <}', `{\tt >}')}
 
 %.pg
 Ladders serve the same purpose as staircases, and the two types of
@@ -1434,8 +1809,8 @@ very well).
 %.pg
 The commands `{\tt /}' and `{\tt ;}' may be used to obtain information
 about those
-monsters who are displayed on the screen.  The command ``{\tt \#name}'', or
-its synonym `{\tt C}', allows you
+monsters who are displayed on the screen.  The command ``{\tt \#name}''
+(by default bound to `{\tt C}'), allows you
 to assign a name to a monster, which may be useful to help distinguish
 one from another when multiple monsters are present.  Assigning a name
 which is just a space will remove any prior name.
@@ -1457,7 +1832,7 @@ Remember:  discretion is the better part of valor.
 
 %.pg
 In most circumstances, if you attempt to attack a peaceful monster by
-moving into its location, you'll be asked to confirm your intent.  By 
+moving into its location, you'll be asked to confirm your intent.  By
 default an answer of `{\tt y}' acknowledges that intent,
 which can be error prone if you're using `{\tt y}' to move.  You can set the
 {\it paranoid\verb+_+confirmation\/}
@@ -1509,14 +1884,24 @@ have the right equipment and skill.  Convincing a wild beast to let
 you saddle it up is difficult to say the least.  Many a dungeoneer
 has had to resort to magic and wizardry in order to forge the alliance.
 Once you do have the beast under your control however, you can
-easily climb in and out of the saddle with the `{\tt \#ride}' command.  Lead
+easily climb in and out of the saddle with the ``{\tt \#ride}'' command.  Lead
 the beast around the dungeon when riding, in the same manner as
 you would move yourself.  It is the beast that you will see displayed
 on the map.
 
 %.pg
-Riding skill is managed by the `{\tt \#enhance}' command.  See the section
+Riding skill is managed by the ``{\tt \#enhance}'' command.  See the section
 on Weapon proficiency for more information about that.
+
+%.pg
+Use the `{\tt a}' (apply) command and pick a saddle in your inventory to
+attempt to put that saddle on an adjacent creature.  If successful,
+it will be transferred to that creature's inventory.
+
+%.pg
+Use the ``{\tt \#loot}'' command while adjacent to a saddled creature to
+try to remove the saddle from that creature.  If successful, it will
+be transferred to your inventory.
 
 %.hn 2
 \subsection*{Bones levels}
@@ -1530,12 +1915,32 @@ however, they are likely to be cursed.  Beware of whatever killed the
 former player; it is probably still lurking around, gloating over its
 last victory.
 
+%.hn 2
+\subsection*{Persistence of Monsters}
+
+%.pg
+Monsters (a generic reference which also includes humans and pets) are only
+shown while they can be seen or otherwise sensed.
+Moving to a location where you can't see or sense a monster any more
+will result in it disappearing from your map, similarly if it is the
+one who moved rather than you.
+
+%.pg
+However, if you encounter a monster which you can't see or sense--
+perhaps it is invisible and has just tapped you on the noggin--
+a special ``remembered, unseen monster'' marker will be displayed at
+the location where you think it is.
+That will persist until you have
+proven that there is no monster there, even if the unseen monster
+moves to another location or you move to a spot where the marker's
+location ordinarily wouldn't be seen any more.
+
 %.hn 1
 \section{Objects}
 
 %.pg
 When you find something in the dungeon, it is common to want to pick
-it up.  In {\it NetHack}, this is accomplished automatically by walking over
+it up.  In {\it NetHack\/}, this is accomplished automatically by walking over
 the object (unless you turn off the {\it autopickup\/}
 option (see below), or move with the `{\tt m}' prefix (see above)), or
 manually by using the `{\tt ,}' command.
@@ -1547,14 +1952,15 @@ to your pack and tell you what you just picked up.
 As you add items to your inventory, you also add the weight of that object
 to your load.  The amount that you can carry depends on your strength and
 your constitution.  The
-stronger you are, the less the additional load will affect you.  There comes
+stronger and sturdier
+you are, the less the additional load will affect you.  There comes
 a point, though, when the weight of all of that stuff you are carrying around
 with you through the dungeon will encumber you.  Your reactions
 will get slower and you'll burn calories faster, requiring food more frequently
 to cope with it.  Eventually, you'll be so overloaded that you'll either have
 to discard some of what you're carrying or collapse under its weight.
 %.pg
-NetHack will tell you how badly you have loaded yourself.  The symbols
+{\it NetHack\/} will tell you how badly you have loaded yourself.  The symbols
 `Burdened', `Stressed', `Strained', `Overtaxed' and `Overloaded' are
 displayed on the bottom line display to indicate your condition.
 
@@ -1576,7 +1982,7 @@ When you use one of these objects, if its effect is obvious, {\it NetHack\/}
 will remember what it is for you.  If its effect isn't extremely
 obvious, you will be asked what you want to call this type of object
 so you will recognize it later.  You can also use the ``{\tt \#name}''
-command, or its synonym `{\tt C}', for the same purpose at any time, to name
+command, for the same purpose at any time, to name
 all objects of a particular type or just an individual object.
 When you use ``{\tt \#name}'' on an object which has already been named,
 specifying a space as the value will remove the prior name instead
@@ -1793,7 +2199,7 @@ To wield two weapons, you need to use the ``{\tt \#twoweapon}'' command.
 But first you need to have a weapon in each hand.
 (Note that your two weapons are not fully equal; the one in the
 hand you normally wield with is considered primary and the other
-one is considered secondary.  The most noticeable difference is   
+one is considered secondary.  The most noticeable difference is
 after you stop--or before you begin, for that matter--wielding
 two weapons at once.  The primary is your wielded weapon and the
 secondary is just an item in your inventory that's been designated
@@ -1845,10 +2251,10 @@ crystal plate mail     & 3 &                   & bronze plate mail     & 4\\
 splint mail            & 4 &                   & banded mail           & 4\\
 dwarvish mithril-coat  & 4 &                   & elven mithril-coat    & 5\\
 chain mail             & 5 &                   & orcish chain mail     & 6\\
-scale mail             & 6 &                   & studded leather armor & 7\\
-ring mail              & 7 &                   & orcish ring mail      & 8\\
-leather armor          & 8 &                   & leather jacket        & 9\\
-no armor               & 10
+scale mail             & 6 &                   & dragon scales         & 7\\
+studded leather armor  & 7 &                   & ring mail             & 7\\
+orcish ring mail       & 8 &                   & leather armor         & 8\\
+leather jacket         & 9 &                   & no armor              & 10\\
 \end{tabular}
 \end{center}
 
@@ -1963,11 +2369,13 @@ The command to drink a potion is `{\tt q}' (quaff).
 \subsection*{Wands (`{\tt /}')}
 
 %.pg
-Magic wands usually have multiple magical charges.  Some wands are
-directional---you must give a direction in which to zap them.  You can also
+Wands usually have multiple magical charges.
+Some types of wands require a direction in which to zap them.
+You can also
 zap them at yourself (just give a `{\tt .}' or `{\tt s}' for the direction).
-Be warned, however, for this is often unwise.  Other wands are
-nondirectional---they don't require a direction.  The number of charges in a
+Be warned, however, for this is often unwise.
+Other types of wands
+don't require a direction.  The number of charges in a
 wand is random and decreases by one whenever you use it.
 
 %.pg
@@ -2035,17 +2443,19 @@ energy and the time required in casting.
 %.pg
 Casting a spell calls forth magical energies and focuses them with
 your naked mind.  Some of the magical energy released comes from within
-you, and casting several spells in a row may tire you.
+you.
+Casting temporarily drains your magical power, which will slowly be
+recovered, and causes you to need additional food.
 Casting of spells also requires practice.  With practice, your
 skill in each category of spell casting will improve.  Over time, however,
 your memory of each spell will dim, and you will need to relearn it.
 
 %.pg
-Some spells are
-directional---you must give a direction in which to cast them.  You can also
-cast them at yourself (just give a `{\tt .}' or `{\tt s}' for the direction).
-Be warned, however, for this is often unwise.  Other spells are
-nondirectional---they don't require a direction.
+Some spells require a direction in which to cast them, similar to wands.
+To cast one at yourself, just give a `{\tt .}' or `{\tt s}' for the direction.
+A few spells require you to pick a target location rather than just specify
+a particular direction.
+Other spells don't require any direction or target.
 
 %.pg
 Just as weapons are divided into groups in which a character can become
@@ -2141,6 +2551,11 @@ heavy.  It is rumored that some statues are not what they seem.
 Very large humanoids (giants and their ilk) have been known to use boulders
 as weapons.
 
+%.pg
+For some configurations of the program, statues are no longer shown
+as `{\tt `}'
+but by the letter representing the monster they depict instead.
+
 %.hn 2
 \subsection*{Gold (`{\tt \$}')}
 
@@ -2149,6 +2564,32 @@ Gold adds to your score, and you can buy things in shops with it.
 There are a number
 of monsters in the dungeon that may be influenced by the amount of gold
 you are carrying (shopkeepers aside).
+
+%.hn 2
+\subsection*{Persistence of Objects}
+
+%.pg
+Normally, if you have seen an object at a particular map location and
+move to another location which can't directly see that object any
+more, if will continue to be displayed on your map.
+That remains the case even if it is not actually there any more--
+perhaps a monster has picked it up or it has rotted away--
+until you can see or feel that location again.
+One notable exception is that if the object gets covered by the
+``remembered, unseen monster'' marker and that marker is later removed
+after you've verified that no monster is there, you will forget that
+there was any object there regardless of whether the unseen monster
+actually took the object.
+If the object is still there, then once you see or feel that location
+again you will re-discover the object and resume remembering it.
+
+%.pg
+The situation is the same for a pile of objects, except that only the
+top item of the pile is displayed.
+The
+{\it hilite\verb+_+pile\/}
+option can be enabled in order to show an item differently when is
+the top one of a pile.
 
 %.hn 1
 \section{Conduct}
@@ -2285,11 +2726,199 @@ behaves.
 %.pg
 Options may be set in a number of ways.  Within the game, the `{\tt O}'
 command allows you to view all options and change most of them.
-You can also set options automatically by placing them in the
-``NETHACKOPTIONS'' environment variable or in a configuration file.
+You can also set options automatically by placing them in a configuration
+file, or in the ``NETHACKOPTIONS'' environment variable.
 Some versions of {\it NetHack\/} also have front-end programs that allow
-you to set options before starting the game or a global configuration 
+you to set options before starting the game or a global configuration
 for system administrators.
+
+%.hn 2
+\subsection*{Using a configuration file}
+
+%.pg
+The default name of the configuration file varies on different
+operating systems. On DOS and Windows, it is \mbox{``defaults.nh''}
+in the same folder as \mbox{{\it nethack.exe\/}} or \mbox{{\it nethackW.exe\/}}. 
+On Unix, Linux and Mac OS X it is \mbox{``.nethackrc''} in the user's home 
+directory. The file may not exist, but it is a normal ASCII text file and
+can be created with any text editor.
+
+%.pg
+Any line in the configuration file starting with `{\tt \#}' is treated as a comment.
+Empty lines are ignored.
+
+%.pg
+Any line beginning with `{\tt [}' and ending in `{\tt ]}' is considered a section
+marker. The text between the square brackets is the section name.
+Lines after a section marker belong to that section, and are
+ignored unless a CHOOSE -statement was used to select that section.
+Section names are case insensitive.
+
+%.pg
+You can use different configuration statements in the file, some
+of which can be used multiple times. In general, the statements are
+written in capital letters, followed by an equals sign, followed by
+settings particular to that statement. Here is a list of allowed statements:
+
+%.lp
+\blist{}
+\item[\bb{OPTIONS}]
+There are two types of options, boolean and compound options.
+Boolean options toggle a setting on or off, while compound options
+take more diverse values.
+Prefix a boolean option with `no' or `!' to turn it off.
+For compound options, the option name and value are separated by a colon.
+Some options are persistent, and apply only to new games.
+You can specify multiple OPTIONS statements, and multiple options
+in a single OPTIONS statement.
+
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+    OPTIONS=dogname:Fido
+    OPTIONS=!legacy,autopickup,pickup_types:$"=/!?+
+\end{verbatim}
+%.ed
+
+%.lp
+\item[\bb{HACKDIR}]
+Default location of files {\it NetHack\/} needs. On Windows HACKDIR
+defaults to the location of the {\it NetHack.exe\/} or {\it NetHackw.exe\/} file
+so setting HACKDIR to override that is not usually necessary or recommended.
+%.lp
+\item[\bb{LEVELDIR}]
+The location that in-progress level files are stored. Defaults to HACKDIR,
+must be writeable.
+%.lp
+\item[\bb{SAVEDIR}]
+The location where saved games are kept. Defaults to HACKDIR, must be
+writeable.
+%.lp
+\item[\bb{BONESDIR}]
+The location that bones files are kept. Defaults to HACKDIR, must be
+writeable.
+%.lp
+\item[\bb{LOCKDIR}]
+The location that file synchronization locks are stored. Defaults to
+HACKDIR, must be writeable.
+%.lp
+\item[\bb{TROUBLEDIR}]
+The location that a record of game aborts and self-diagnosed game problems
+is kept. Defaults to HACKDIR, must be writeable.
+%.lp
+\item[\bb{AUTOCOMPLETE}]
+Enable or disable an extended command autocompletion.
+Autocompletion has no effect for the X11 windowport.
+You can specify multiple autocompletions. To enable
+autocompletion, list the extended command. Prefix the
+command with ``{{\tt !}}'' to disable the autocompletion
+for that command.
+
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+    AUTOCOMPLETE=zap,!annotate
+\end{verbatim}
+%.ed
+
+%.lp
+\item[\bb{AUTOPICKUP\_EXCEPTION}]
+Set exceptions to the {{\it pickup\_types\/}}
+option. See the ``Configuring Autopickup Exceptions'' section.
+%.lp
+\item[\bb{BINDINGS}]
+Change the key bindings of some special keys, menu accelerators, or
+extended commands. You can specify multiple bindings. Format is key
+followed by the command, separated by a colon.
+See the ``Changing Key Bindings`` section for more information.
+
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+   BIND=^X:getpos.autodescribe
+\end{verbatim}
+%.ed
+
+%.lp
+\item[\bb{CHOOSE}]
+Chooses at random one of the comma-separated parameters as an active
+section name. Lines in other sections are ignored.
+
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+   OPTIONS=color
+   CHOOSE=char A,char B
+   [char A]
+   OPTIONS=role:arc,race:dwa,align:law,gender:fem
+   [char B]
+   OPTIONS=role:wiz,race:elf,align:cha,gender:mal
+\end{verbatim}
+%.ed
+
+%.lp
+\item[\bb{MSGTYPE}]
+Change the way messages are shown in the top status line.
+See the ``Configuring Message Types`` section.
+%.lp
+\item[\bb{MENUCOLOR}]
+Highlight menu lines with different colors.
+See the ``Configuring Menu Colors`` section.
+%.lp
+\item[\bb{SYMBOLS}]
+Override one or more symbols in the symbols files.
+See the ``Modifying {\it NetHack\/} Symbols'' section.
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+    SYMBOLS=S_boulder:0
+\end{verbatim}
+%.ed
+
+%.lp
+\item[\bb{WIZKIT}]
+Wizard-mode extra items, in a text file containing item names,
+one per line, up to a maximum of 128 lines. Each line is processed
+by the function that handles wishing.
+%.pg
+Example:
+%.sd
+\begin{verbatim}
+    WIZKIT=~/wizkit.txt
+\end{verbatim}
+%.ed
+%.lp
+\item[\bb{SOUNDDIR}]
+Define the directory that contains the sound files.
+See the ``Configuring User Sounds'' section.
+%.lp
+\item[\bb{SOUND}]
+Define a sound mapping. See the ``Configuring User Sounds'' section.
+\elist
+
+%.pg
+Here is a short example of config file contents:
+%.sd
+\begin{verbatim}
+    # Set your character's role, race, gender, and alignment.
+    OPTIONS=role:Valkyrie, race:Human, gender:female, align:lawful
+
+    # Turn on autopickup, and set automatically picked up object types
+    OPTIONS=autopickup,pickup_types:$"=/!?+
+    # Show colored text if possible
+    OPTIONS=color
+    # Show lit corridors differently
+    OPTIONS=lit_corridor
+
+    # No startup splash screen. Windows GUI only.
+    OPTIONS=!splash_screen
+\end{verbatim}
+%.ed
 
 %.hn 2
 \subsection*{Using the NETHACKOPTIONS environment variable}
@@ -2325,29 +2954,9 @@ and the {\it fruit\/} is set to ``papaya'', you would enter the command
 
 \nd in {\it sh\/} or {\it ksh}.
 
-%.hn 2
-\subsection*{Using a configuration file}
-
 %.pg
-Any line in the configuration file starting with `{\tt \#}' is treated as a comment.
-Any line in the configuration file starting with ``{\tt OPTIONS=}'' may be
-filled out with options in the same syntax as in NETHACKOPTIONS.
-Any line starting with ``{\tt SYMBOLS=}''
-is taken as defining the corresponding {\it symbol}
-in a different syntax, a sequence of decimal numbers giving 
-the character position in the current font to be used in displaying 
-each entry. Such a sequence can be continued to multiple lines by putting a
-`{\tt \verb+\+}' at the end of each line to be continued.
-
-%.pg
-Any line starting with ``{\tt AUTOPICKUP\verb+_+EXCEPTION=}'' 
-is taken as defining an exception to the ``{\tt pickup\verb+_+types}'' option.
-There is a section of this Guidebook that discusses that.
-
-%.pg
-The default name of the configuration file varies on different
-operating systems, but NETHACKOPTIONS can also be set to
-the full name of a file you want to use (possibly preceded by an `{\tt @}').
+NETHACKOPTIONS can also be set to the full name of a configuration file you
+want to use (possibly preceded by an `{\tt @}').
 
 %.hn 2
 \subsection*{Customization options}
@@ -2373,9 +2982,15 @@ Persistent.
 Your starting alignment ({\tt align:lawful}, {\tt align:neutral},
 or {\tt align:chaotic}).  You may specify just the first letter.
 The default is to randomly pick an appropriate alignment.
-If you prefix `{\tt !}' or ``{\tt no}'' to the value, you can 
+If you prefix the value with `{\tt !}' or ``{\tt no}'', you will
 exclude that alignment from being picked randomly.
 Cannot be set with the `{\tt O}' command.  Persistent.
+%.lp
+\item[\ib{autodescribe}]
+Automatically describe the terrain under cursor when asked to get a location
+on the map.  The
+{\it whatis\verb+_+coord\/}
+option controls whether the description includes map coordinates.
 %.lp
 \item[\ib{autodig}]
 Automatically dig if you are wielding a digging tool and moving into a place
@@ -2407,7 +3022,8 @@ Start the character permanently blind.  Persistent. (default false)
 Allow saving and loading bones files.  Persistent.  (default true)
 %.lp
 \item[\ib{boulder}]
-Set the character used to display boulders (default is rock class symbol).
+Set the character used to display boulders (default is the ``large rock''
+class symbol, `{\tt `}').
 %.lp
 \item[\ib{catname}]
 Name your starting cat (ex.\ ``{\tt catname:Morris}'').
@@ -2415,9 +3031,7 @@ Cannot be set with the `{\tt O}' command.
 %.lp character
 \item[\ib{character}]
 Pick your type of character (ex.\ ``{\tt character:Monk}'');
-synonym for ``{\it role\/}''.  See ``{\it name\/}'' for an alternate method
-of specifying your role.  Normally only the first letter of
-the value is examined; the string ``{\tt random}'' is an exception.
+synonym for ``{\it role\/}''.  See {\it role\/} for more details.
 %.lp
 \item[\ib{checkpoint}]
 Save game state after each level change, for possible recovery after
@@ -2426,7 +3040,9 @@ program crash (default on).  Persistent.
 \item[\ib{checkspace}]
 Check free disk space before writing files to disk (default on).
 You may have to turn this off if you have more than 2 GB free space
-on the partition used for your save and level files.
+on the partition used for your save and level files
+(because too much space might overflow the calculation and end up
+looking like insufficient space).
 Only applies when MFLOPPY was defined during compilation.
 %.lp
 \item[\ib{clicklook}]
@@ -2434,7 +3050,7 @@ Allows looking at things on the screen by navigating the mouse
 over them and clicking the right mouse button (default off).
 %.lp
 \item[\ib{cmdassist}]
-Have the game provide some additional command assistance for new 
+Have the game provide some additional command assistance for new
 players if it detects some anticipated mistakes (default on).
 %.lp
 \item[\ib{confirm}]
@@ -2475,6 +3091,22 @@ lets you refine how it behaves.  Here are the valid prefixes:
 %.ei
 %.ed
 
+The listing of vanquished monsters can be sorted,
+so there are two additional choices for `{\tt v}':
+%.sd
+%.si
+{\tt ?} --- prompt you and default to ask on the prompt;\\
+{\tt\#} --- disclose it without prompting, ask for sort order.
+%.ei
+%.ed
+
+Asking refers to picking one of the orderings from a menu.
+The `{\tt +}' disclose without prompting choice,
+or being prompted and answering `{\tt y}' rather than `{\tt a}',
+will default to showing monsters in the traditional order,
+from high level to low level.
+.lp ""
+
 %.lp ""
 (ex.\ ``{\tt disclose:yi na +v -g o}'')
 The example sets
@@ -2487,7 +3119,7 @@ The example sets
 
 %.lp ""
 Note that the vanquished monsters list includes all monsters killed by
-traps and each other as well as by you. 
+traps and each other as well as by you.
 And the dungeon overview shows all levels you had visited but does not
 reveal things about them that you hadn't discovered.
 %.lp
@@ -2498,7 +3130,7 @@ Cannot be set with the `{\tt O}' command.
 \item[\ib{extmenu}]
 Changes the extended commands interface to pop-up a menu of available commands.
 It is keystroke compatible with the traditional interface except that it does
-not require that you hit Enter.  It is implemented only by the tty port 
+not require that you hit Enter.  It is implemented only by the tty port
 (default off), when the game has been compiled to support tty graphics.
 %.lp
 \item[\ib{female}]
@@ -2510,22 +3142,33 @@ An object's inventory letter sticks to it when it's dropped (default on).
 If this is off, dropping an object shifts all the remaining inventory letters.
 Persistent.
 %.lp
+\item[\ib{force\_invmenu}]
+Commands asking for an inventory item show a menu instead of
+a text query with possible menu letters. Default is off.
+%.lp
 \item[\ib{fruit}]
 Name a fruit after something you enjoy eating (ex.\ ``{\tt fruit:mango}'')
 (default ``{\tt slime mold}''). Basically a nostalgic whimsy that
 {\it NetHack\/} uses from time to time.  You should set this to something you
 find more appetizing than slime mold.  Apples, oranges, pears, bananas, and
-melons already exist in {\it NetHack}, so don't use those.
-%.Ip
+melons already exist in {\it NetHack\/}, so don't use those.
+%.lp
 \item[\ib{gender}]
 Your starting gender ({\tt gender:male} or {\tt gender:female}).
 You may specify just the first letter.  Although you can
 still denote your gender using the ``{\tt male}'' and ``{\tt female}''
 options, the ``{\tt gender}'' option will take precedence.
 The default is to randomly pick an appropriate gender.
-If you prefix `{\tt !}' or ``{\tt no}'' to the value, you can 
-exclude that gender from being picked randomly. 
+If you prefix the value with `{\tt !}' or ``{\tt no}'', you will
+exclude that gender from being picked randomly.
 Cannot be set with the `{\tt O}' command.  Persistent.
+%.lp
+\item[\ib{goldX}]
+When filtering objects based on bless/curse state (BUCX), whether to
+treat gold pieces as {\tt X} (unknown bless/curse state, when `on')
+or {\tt U} (known to be uncursed, when `off', the default).
+Gold is never blessed or cursed, but it is not described as ``uncursed''
+even when the {\it implicit\verb+_+uncursed\/} option is `off'.
 %.lp
 \item[\ib{help}]
 If more information is available for an object looked at
@@ -2533,6 +3176,11 @@ with the `{\tt /}' command, ask if you want to see it (default on).
 Turning help off makes just looking at things faster, since you aren't
 interrupted with the ``{\tt More info?}'' prompt, but it also means that you
 might miss some interesting and/or important information.  Persistent.
+%.lp
+\item[\ib{herecmd\verb+_+menu}]
+When using a windowport that supports mouse and clicking on yourself or
+next to you, show a menu of possible actions for the location.
+Same as herecmdmenu and therecmdmenu commands.
 %.lp
 \item[\ib{hilite\verb+_+pet}]
 Visually distinguish pets from similar animals (default off).
@@ -2550,6 +3198,10 @@ on the top of the pile.
 \item[\ib{horsename}]
 Name your starting horse (ex.\ ``{\tt horsename:Trigger}'').
 Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{hitpointbar}]
+Show a hit point bar graph behind your name and title.
+Only available for TTY and Windows GUI, and only when statushilites is on.
 %.lp
 \item[\ib{ignintr}]
 Ignore interrupt signals, including breaks (default off).  Persistent.
@@ -2638,6 +3290,10 @@ Default `\verb+>+'.
 \item[\ib{menu\verb+_+objsyms}]
 Show object symbols in menu headings in menus where
 the object symbols act as menu accelerators (default off).
+\item[\ib{menu\verb+_+overlay}]
+Do not clear the screen before drawing menus, and align
+menus to the right edge of the screen. Only for the tty port.
+(default on)
 \item[\ib{menu\verb+_+previous\verb+_+page}]
 Menu character accelerator to goto the previous menu page.
 Implemented by the Amiga, Gem and tty ports.
@@ -2674,7 +3330,7 @@ Allows you to change the way recalled messages are displayed.
 
 For backward compatibility, no value needs to be specified (which
 defaults to {\it full\/}), or it can be negated (which defaults
-to {\it single\/}). 
+to {\it single\/}).
 %.lp
 \item[\ib{name}]
 Set your character's name (defaults to your user name).  You can also
@@ -2721,7 +3377,7 @@ is the same as specifying {\tt 0}.
 (Settings {\tt 2} and {\tt 4} are for compatibility with MSDOS or old PC Hack;
 in addition to the different behavior for `{\tt 5}', `{\tt Alt-5}' acts as `{\tt G}'
 and `{\tt Alt-0}' acts as `{\tt I}'.
-Setting {\tt -1} is to accommodate some German keyboards which have the
+Setting {\tt -1} is to accommodate some QWERTZ keyboards which have the
 location of the `{\tt y}' and `{\tt z}' keys swapped.)
 When moving by numbers, to enter a count prefix for those commands
 which accept one (such as ``{\tt 12s}'' to search twelve times), precede it
@@ -2739,7 +3395,7 @@ prompting is desired.  The default is ``{\it paranoid\verb+_+confirmation:pray}'
 %.sd
 %.si
 \newlength{\pcwidth}
-\settowidth{\pcwidth}{\tt Confirm}
+\settowidth{\pcwidth}{\tt Were-change}
 \addtolength{\pcwidth}{\labelsep}
 \blist{\leftmargin \pcwidth \topsep 1mm \itemsep 0mm}
 \item[{\tt Confirm}]
@@ -2758,14 +3414,21 @@ bones data when dying in debug mode
 \item[{\tt attack~}]
 require ``{\tt yes}'' rather than `{\tt y}' to confirm attacking
 a peaceful monster;
+\item[{\tt wand-break}]
+require ``{\tt yes}'' rather than `{\tt y}' to confirm breaking
+a wand;
+\item[{\tt Were-change}]
+require ``{\tt yes}'' rather than `{\tt y}' to confirm changing form
+due to lycanthropy
+when hero has polymorph control;
 \item[{\tt pray~~~}]
 require `{\tt y}' to confirm an attempt to pray rather
 than immediately praying; on by default;
-\item[{\tt wand}]
-require ``{\tt yes}'' rather than `{\tt y}' to confirm breaking
-a wand;
-\item[{\tt Remove~}] require selection from inventory for `{\tt R}' and `{\tt T}'
+\item[{\tt Remove~}] require selection from inventory for `{\tt R}'
+and `{\tt T}'
 commands even when wearing just one applicable item.
+\item[{\tt all~~~~}]
+turn on all of the above.
 \elist
 %.ei
 %.ed
@@ -2798,12 +3461,14 @@ or overLoaded), you will be asked if you want to continue.
 %.lp
 \item[\ib{pickup\verb+_+thrown}]
 If this option is on and ``{\it autopickup\/}'' is also on, try to pick up
-things that you threw, even if they aren't in ``{\it pickup\verb+_+types\/}'' or
+things that you threw, even if they aren't in
+``{\it pickup\verb+_+types\/}'' or
 match an autopickup exception.  Default is on.  Persistent.
 %.lp
 \item[\ib{pickup\verb+_+types}]
-Specify the object types to be picked up when ``{\it autopickup\/}'' 
-is on.  Default is all types.  You can use ``{\it autopickup\verb+_+exception\/}''
+Specify the object types to be picked up when ``{\it autopickup\/}''
+is on.  Default is all types.  You can use
+``{\it autopickup\verb+_+exception\/}''
 configuration file lines to further refine ``{\it autopickup\/}'' behavior.
 Persistent.
 %.lp
@@ -2833,12 +3498,12 @@ become wielded.  Persistent.
 %.Ip
 \item[\ib{race}]
 Selects your race (for example, ``{\tt race:human}'').  Default is random.
-If you prefix `{\tt !}' or ``{\tt no}'' to the value, you can 
-exclude that race from being picked randomly. 
+If you prefix the value with `{\tt !}' or ``{\tt no}'', you will
+exclude that race from being picked randomly.
 Cannot be set with the `{\tt O}' command.  Persistent.
 %.lp
 \item[\ib{rest\verb+_+on\verb+_+space}]
-Make the space bar a synonym for the `{\tt .}' (rest) command (default off).
+Make the space bar a synonym for the `{\tt .}' (\#wait) command (default off).
 Persistent.
 %.lp
 \item[\ib{role}]
@@ -2846,9 +3511,10 @@ Pick your type of character (ex.\ ``{\tt role:Samurai}'');
 synonym for ``{\it character\/}''.  See ``{\it name\/}'' for an alternate method
 of specifying your role.  Normally only the first letter of the
 value is examined; `r' is an exception with ``{\tt Rogue}'', {\tt Ranger}'',
-and ``{\tt random}'' values. If you prefix `{\tt !}' or ``{\tt no}'' to the 
-value, you can exclude that role from being picked randomly.
-Persistent.
+and ``{\tt random}'' values.
+If you prefix the value with `{\tt !}' or ``{\tt no}'', you will
+exclude that role from being picked randomly.
+Cannot be set with the `{\tt O}' command.  Persistent.
 %.lp
 \item[\ib{roguesymset}]
 This option may be used to select one of the named symbol sets found within
@@ -2877,7 +3543,7 @@ The possible values are:
 %.ed
 
 This option only affects the game's screen display, not the actual
-results of moving.  The default is {\it run\/}; versions prior to 3.4.1 
+results of moving.  The default is {\it run\/}; versions prior to 3.4.1
 used {\it teleport\/} only.  Whether or not the effect is noticeable will
 depend upon the window port used or on the type of terminal.  Persistent.
 %.lp
@@ -2933,17 +3599,22 @@ attack to which it is resistant (default on).  Persistent.
 Boldface monsters and ``{\tt --More--}'' (default off).  Persistent.
 %.lp
 \item[\ib{statushilites}]
-Enable coloring of status fields (default off).
+Controls how many turns status hilite behaviors highlight
+the field. If negated or set to zero, disables status hiliting.
 See ``{\it Configuring Status Hilites\/}'' for further information.
 %.lp
+\item[\ib{status\verb+_+updates}]
+Allow updates to the status lines at the bottom of the screen (default true).
+%.lp
 \item[\ib{suppress\verb+_+alert}]
-This option may be set to a NetHack version level to suppress
-alert notification messages about feature changes for that 
+This option may be set to a {\it NetHack\/} version level to suppress
+alert notification messages about feature changes for that
 and prior versions (ex.\ ``{\tt suppress\verb+_+alert:3.3.1}'')
 %.lp
 \item[\ib{symset}]
 This option may be used to select one of the named symbol sets found within
 {\tt symbols} to alter the symbols displayed on the screen.
+Use ``{\tt symset:default}'' to explicitly select the default symbols.
 %.lp
 \item[\ib{time}]
 Show the elapsed game time in turns on bottom line (default off).  Persistent.
@@ -2959,9 +3630,9 @@ program.)  Persistent.
 Draw a tombstone graphic upon your death (default on).  Persistent.
 %.lp
 \item[\ib{toptenwin}]
-Put the ending display in a NetHack window instead of on stdout (default off).
+Put the ending display in a {\it NetHack\/} window instead of on stdout (default off).
 Setting this option makes the score list visible when a windowing version
-of NetHack is started without a parent window, but it no longer leaves
+of {\it NetHack\/} is started without a parent window, but it no longer leaves
 the score list around after game end on a terminal or emulating window.
 %.lp
 \item[\ib{travel}]
@@ -2972,14 +3643,73 @@ mouse clicks on the map window.  Persistent.
 \item[\ib{verbose}]
 Provide more commentary during the game (default on).  Persistent.
 %.lp
+\item[\ib{whatis\verb+_+coord}]
+When using the `{\tt /}' or `{\tt ;}' commands to look around on the map with
+``{\tt autodescribe}''
+on, display coordinates after the description.
+Also works in other situations where you are asked to pick a location.
+
+%.lp ""
+The possible settings are:
+
+%.sd
+%.si
+{\tt c} --- \verb#compass ('east' or '3s' or '2n,4w')#;\\
+{\tt f} --- \verb#full compass ('east' or '3south' or '2north,4west')#;\\
+{\tt m} --- \verb#map <x,y> (map column x=0 is not used)#;\\
+{\tt s} --- \verb#screen [row,column] (row is offset to match tty usage)#;\\
+{\tt n} --- \verb#none (no coordinates shown) [default]#.
+%.ei
+%.ed
+
+%.lp ""
+The
+{\it whatis\verb+_+coord\/}
+option is also used with
+the `{\tt /m}', `{\tt /M}', `{\tt /o}', and `{\tt /O}' sub-commands
+of `{\tt /}',
+where the `{\it none\/}' setting is overridden with `{\it map}'.
+%.lp
+\item[\ib{whatis\verb+_+filter}]
+When getting a location on the map, and using the keys to cycle through
+next and previous targets, allows filtering the possible targets.
+(default none)
+%.lp ""
+The possible settings are:
+
+%.sd
+%.si
+{\tt n} --- \verb#no filtering#;\\
+{\tt v} --- \verb#in view only#;\\
+{\tt a} --- \verb#in same area (room, corridor, etc)#.
+%.ei
+%.ed
+%.lp ""
+The area-filter tries to be slightly predictive - if you're standing on a doorway,
+it will consider the area on the side of the door you were last moving towards.
+%.lp ""
+Filtering can also be changed when getting a location with the ``getpos.filter''
+key.
+%.lp
+\item[\ib{whatis\verb+_+menu}]
+When getting a location on the map, and using a key to cycle through
+next and previous targets, use a menu instead to pick a target.
+(default off)
+%.lp
+\item[\ib{whatis\verb+_+moveskip}]
+When getting a location on the map, and using shifted movement keys or
+meta-digit keys to fast-move, instead of moving 8 units at a time,
+move by skipping the same glyphs.
+(default off)
+%.lp
 \item[\ib{windowtype}]
 Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
 (default depends on version).
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{zerocomp}]
-When writing out a save file, perform zero-comp compression of the 
-contents. Not all ports support zero-comp compression. It has no effect 
+When writing out a save file, perform zero-comp compression of the
+contents. Not all ports support zero-comp compression. It has no effect
 on reading an existing save file.
 \elist
 
@@ -2992,10 +3722,10 @@ used to customize and change the characteristics of the
 windowtype that you have chosen.
 Character strings that are too long may be truncated.
 Not all window ports will adjust for all settings listed
-here.  You can safely add any of these options to your 
-config file, and if the window port is capable of adjusting 
+here.  You can safely add any of these options to your
+config file, and if the window port is capable of adjusting
 to suit your preferences, it will attempt to do so. If it
-can't it will silently ignore it.  You can find out if an 
+can't it will silently ignore it.  You can find out if an
 option is supported by the window port that you are currently
 using by checking to see if it shows up in the Options list.
 Some options are dynamic and can be specified during the game
@@ -3010,91 +3740,94 @@ with the `{\tt O}' command.
  Where to align or place the status window (top, bottom, left, or right).
 %.lp
 \item[\ib{ascii\verb+_+map}]
-NetHack should display an ascii map if it can.
+If {\it NetHack\/} can, it should display an ascii map.
 %.lp
 \item[\ib{color}]
-NetHack should display color if it can for different monsters, 
-objects, and dungeon features
+If {\it NetHack\/} can, it should display color for different monsters,
+objects, and dungeon features.
+
 %.lp
 \item[\ib{eight\verb+_+bit\verb+_+tty}]
-Pass eight-bit character values (for example, specified with the {\it
-traps \/} option) straight through to your terminal (default off).
+Pass eight-bit character values (for example, specified with the
+{\it traps \/} option) straight through to your terminal (default off).
 %.lp
 \item[\ib{font\verb+_+map}]
-NetHack should use a font by the chosen name for the map window.
+If {\it NetHack\/} can, it should use a font by the chosen name for the
+map window.
 %.lp
 \item[\ib{font\verb+_+menu}]
-NetHack should use a font by the chosen name for menu windows.
+If {\it NetHack\/} can, it should use a font by the chosen name for menu
+windows.
 %.lp
 \item[\ib{font\verb+_+message}]
-NetHack should use a font by the chosen name for the message window.
+If {\it NetHack\/} can, it should use a font by the chosen name for the message window.
 %.lp
 \item[\ib{font\verb+_+status}]
-NetHack should use a font by the chosen name for the status window.
+If {\it NetHack\/} can, it should use a font by the chosen name for the status window.
 %.lp
 \item[\ib{font\verb+_+text}]
-NetHack should use a font by the chosen name for text windows.
+If {\it NetHack\/} can, it should use a font by the chosen name for text windows.
 %.lp
 \item[\ib{font\verb+_+size\verb+_+map}]
-NetHack should use this size font for the map window.
+If {\it NetHack\/} can, it should use this size font for the map window.
 %.lp
 \item[\ib{font\verb+_+size\verb+_+menu}]
-NetHack should use this size font for menu windows.
+If {\it NetHack\/} can, it  should use this size font for menu windows.
 %.lp
 \item[\ib{font\verb+_+size\verb+_+message}]
-NetHack should use this size font for the message window.
+If {\it NetHack\/} can, it should use this size font for the message window.
 %.lp
 \item[\ib{font\verb+_+size\verb+_+status}]
-NetHack should use this size font for the status window.
+If {\it NetHack\/} can, it should use this size font for the status window.
 %.lp
 \item[\ib{font\verb+_+size\verb+_+text}]
-NetHack should use this size font for text windows.
+If {\it NetHack\/} can, it should use this size font for text windows.
 %.lp
 \item[\ib{fullscreen}]
-NetHack should try and display on the entire screen rather than in a window.
+If {\it NetHack\/} can, it should try and display on the entire screen rather than in a window.
 %.lp
 \item[\ib{large\verb+_+font}]
-NetHack should use a large font.
+If {\it NetHack\/} can, it should use a large font.
 %.lp
 \item[\ib{map\verb+_+mode}]
-NetHack should display the map in the manner specified.
+If {\it NetHack\/} can, it should display the map in the manner specified.
 %.lp
 \item[\ib{mouse\verb+_+support}]
 Allow use of the mouse for input and travel.
 %.lp
 \item[\ib{player\verb+_+selection}]
-NetHack should pop up dialog boxes or use prompts for character selection.
+If {\it NetHack\/} can, it should pop up dialog boxes or use prompts for character selection.
 %.lp
 \item[\ib{popup\verb+_+dialog}]
-NetHack should pop up dialog boxes for input.
+If {\it NetHack\/} can, it should pop up dialog boxes for input.
 %.lp
 \item[\ib{preload\verb+_+tiles}]
-NetHack should preload tiles into memory.
+If {\it NetHack\/} can, it should preload tiles into memory.
 For example, in the protected mode MSDOS version, control whether tiles
 get pre-loaded into RAM at the start of the game.  Doing so
 enhances performance of the tile graphics, but uses more memory. (default on).
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{scroll\verb+_+amount}]
-NetHack should scroll the display by this number of cells
+If {\it NetHack\/} can, it should scroll the display by this number of cells
 when the hero reaches the scroll\verb+_+margin.
 %.lp
 \item[\ib{scroll\verb+_+margin}]
-NetHack should scroll the display when the hero or cursor
+If {\it NetHack\/} can, it should scroll the display when the hero or cursor
 is this number of cells away from the edge of the window.
 %.lp
 \item[\ib{selectsaved}]
-NetHack should display a menu of existing saved games for the player to
+If {\it NetHack\/} can, it should display a menu of existing saved games for the player to
 choose from at game startup, if it can. Not all ports support this option.
 %.lp
 \item[\ib{softkeyboard}]
-Display an onscreen keyboard.  Handhelds are most likely to support this option.
+If {\it NetHack\/} can, it should display an onscreen keyboard.  Handhelds are most likely to support this option.
 %.lp
 \item[\ib{splash\verb+_+screen}]
-NetHack should display an opening splash screen when it starts up (default yes).
+If {\it NetHack\/} can, it should display an opening splash screen when it starts up (default yes).
 %.lp
 \item[\ib{tiled\verb+_+map}]
-NetHack should display a tiled map if it can.
+If {\it NetHack\/} can, it should display a tiled map if it can.
 %.lp
 \item[\ib{tile\verb+_+file}]
 Specify the name of an alternative tile file to override the default.
@@ -3109,25 +3842,26 @@ Specify the preferred width of each tile in a tile capable port
 Use bold black instead of blue for black glyphs (TTY only).
 %.lp
 \item[\ib{use\verb+_+inverse}]
-NetHack should display inverse when the game specifies it.
+If {\it NetHack\/} can, it should display inverse when the game specifies it.
 %.lp
 \item[\ib{vary\verb+_+msgcount}]
-NetHack should display this number of messages at a time in the message window.
+If {\it NetHack\/} can, it should display this number of messages at a time
+in the message window.
 %.lp
 \item[\ib{windowcolors}]
-NetHack should display windows with the specified foreground/background 
-colors if it can.
+If {\it NetHack\/} can, it should display windows with the specified
+foreground/background colors if it can.
 %.lp
 \item[\ib{wraptext}]
-NetHack port should wrap long lines of text if they don't fit in 
-the visible area of the window.
+If {\it NetHack\/} can, it should wrap long lines of text if they don't fit
+in the visible area of the window.
 \elist
 
 %.hn 2
 \subsection*{Platform-specific Customization options}
 
 %.pg
-Here are explanations of options that are used by specific platforms 
+Here are explanations of options that are used by specific platforms
 or ports to customize and change the port behavior.
 
 \blist{}
@@ -3144,7 +3878,7 @@ functions as a meta-shift for that key (default on).
 %.lp
 \item[\ib{altmeta}]
 On other (non-Amiga) systems where this option is available, it can be
-set to tell nethack to convert a two character sequence beginning with
+set to tell {\it NetHack\/} to convert a two character sequence beginning with
 ESC into a meta-shifted version of the second character (default off).
 
 %.lp ""
@@ -3152,7 +3886,7 @@ This conversion is only done for commands, not for other input prompts.
 Note that typing one or more digits as a count prefix prior to a
 command---preceded by {\tt n} if the {\it number\verb+_+pad\/}
 option is set---is also subject to this conversion, so attempting to
-abort the count by typing ESC will leave nethack waiting for another
+abort the count by typing ESC will leave {\it NetHack\/} waiting for another
 character to complete the two character sequence.  Type a second ESC to
 finish cancelling such a count.  At other prompts a single ESC suffices.
 %.lp
@@ -3160,20 +3894,20 @@ finish cancelling such a count.  At other prompts a single ESC suffices.
 Use BIOS calls to update the screen display quickly and to read the keyboard
 (allowing the use of arrow keys to move) on machines with an IBM PC
 compatible BIOS ROM (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
-%.lp 
+%.lp
 \item[\ib{flush}]
 (default off, {\it Amiga NetHack \/} only).
-%.lp 
+%.lp
 \item[\ib{Macgraphics}]
 (default on, {\it Mac NetHack \/} only).
-%.lp 
+%.lp
 \item[\ib{page\verb+_+wait}]
 (default off, {\it Mac NetHack \/} only).
 %.lp
 \item[\ib{rawio}]
 Force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `{\tt \^{}P}' as a printer toggle
-without it) (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).  
+without it) (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
 Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `{\tt O}' command.
 %.lp
@@ -3184,17 +3918,18 @@ Cannot be set with the `{\tt O}' command.
 \item[\ib{subkeyvalue}]
 ({\it Win32 tty NetHack \/} only).
 May be used to alter the value of keystrokes that the operating system
-returns to NetHack to help compensate for international keyboard issues.
+returns to {\it NetHack\/} to help compensate for international keyboard
+issues.
 OPTIONS=subkeyvalue:171/92
-will return 92 to NetHack, if 171 was originally going to be returned.
+will return 92 to {\it NetHack\/}, if 171 was originally going to be returned.
 You can use multiple subkeyvalue statements in the config file if needed.
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{video}]
 Set the video mode used ({\it PC\/ NetHack\/} only).
-Values are {\it autodetect\/}, {\it default\/}, or {\it vga\/}. 
-Setting {\it vga\/} (or {\it autodetect\/} with vga hardware present) will cause
-the game to display tiles. 
+Values are {\it autodetect\/}, {\it default\/}, or {\it vga\/}.
+Setting {\it vga\/} (or {\it autodetect\/} with vga hardware present) will
+cause the game to display tiles.
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{videocolors}]
@@ -3220,10 +3955,11 @@ Cannot be set with the `{\tt O}' command.
 
 %.pg
 Regular expressions are normally POSIX extended regular expressions. It is
-possible to compile NetHack without regular expression support on a platform where
+possible to compile {\it NetHack\/} without regular expression support on a platform where
 there is no regular expression library. While this is not true of any modern
-platform, if your NetHack was built this way, patterns are instead glob
-patterns.
+platform, if your {\it NetHack\/} was built this way, patterns are instead glob
+patterns. This applies to Autopickup exceptions, Message types, Menu colors,
+and User sounds.
 
 %.hn 2
 \subsection*{Configuring Autopickup Exceptions}
@@ -3245,7 +3981,7 @@ The {\it autopickup\verb+_+exception\/} option should be followed by a regular
 expression to be used as a pattern to match against the singular form of the
 description of an object at your location.
 
-In addition, some characters are treated specially if they occur as the first 
+In addition, some characters are treated specially if they occur as the first
 character in the pattern, specifically:
 
 %.sd
@@ -3278,6 +4014,169 @@ The last example results in the exclusion of items known to be cursed from
 autopickup.
 
 %.lp
+
+%.hn 2
+\subsection*{Changing Key Bindings}
+
+%.pg
+It is possible to change the default key bindings of some special commands,
+menu accelerator keys, and extended commands, by using BIND stanzas in the
+configuration file. Format is key, followed by the command to bind to, separated
+by a colon. The key can be a single character (``{\tt x}''),
+a control key (``{\tt \^{}X}'', ``{\tt C-x}''), a meta key (``{\tt M-x}''),
+or a three-digit decimal ASCII code.
+
+%.pg
+For example:
+
+\begin{verbatim}
+    BIND=^X:getpos.autodescribe
+    BIND={:menu_first_page
+    BIND=v:loot
+\end{verbatim}
+
+\blist{}
+%.lp "Extended command keys"
+\item[\tb{Extended command keys}]
+You can bind multiple keys to the same extended command. Unbind a key by
+using ``{\tt nothing}'' as the extended command to bind to. You can also bind
+the ``{\tt <esc>}'', ``{\tt <enter>}'', and ``{\tt <space>}'' keys.
+
+%.lp "Menu accelerator keys"
+\item[\tb{Menu accelerator keys}]
+The menu control or accelerator keys can also be rebound via OPTIONS-lines
+in the config file. You cannot bind object symbols into menu accelerators.
+
+%.lp "Special command keys"
+\item[\tb{Special command keys}]
+Below are the special commands you can rebind. Some of them can be bound to
+same keys with no problems, others are in the same "context", and if bound
+to same keys, only one of those commands will be available. Special command
+can only be bound to a single key.
+
+%.pg
+\blist{}
+%.lp
+\item{\bb{count}}
+Prefix key to start a count, to repeat a command this many times. With {\it number\verb+_+pad\/} only. Default is ``{\tt n}''.
+%.lp
+\item{\bb{doinv}}
+Show inventory. With {\it number\verb+_+pad\/} only. Default is ``{\tt 0}''.
+%.lp
+\item{\bb{fight}}
+Prefix key to force fight a direction. Default is ``{\tt F}''.
+%.lp
+\item{\bb{fight.numpad}}
+Prefix key to force fight a direction. With {\it number\verb+_+pad\/} only. Default is ``{\tt -}''.
+%.lp
+\item{\bb{getdir.help}}
+When asked for a direction, the key to show the help. Default is ``{\tt ?}''.
+%.lp
+\item{\bb{getdir.self}}
+When asked for a direction, the key to target yourself. Default is ``{\tt .}''.
+%.lp
+\item{\bb{getdir.self2}}
+When asked for a direction, the key to target yourself. Default is ``{\tt s}''.
+%.lp
+\item{\bb{getpos.autodescribe}}
+When asked for a location, the key to toggle {\it autodescribe\/}. Default is ``{\tt \#}''.
+%.lp
+\item{\bb{getpos.all.next}}
+When asked for a location, the key to go to next closest interesting thing. Default is ``{\tt a}''.
+%.lp
+\item{\bb{getpos.all.prev}}
+When asked for a location, the key to go to previous closest interesting thing. Default is ``{\tt A}''.
+%.lp
+\item{\bb{getpos.door.next}}
+When asked for a location, the key to go to next closest door or doorway. Default is ``{\tt d}''.
+%.lp
+\item{\bb{getpos.door.prev}}
+When asked for a location, the key to go to previous closest door or doorway. Default is ``{\tt D}''.
+%.lp
+\item{\bb{getpos.help}}
+When asked for a location, the key to show help. Default is ``{\tt ?}''.
+%.lp
+\item{\bb{getpos.mon.next}}
+When asked for a location, the key to go to next closest monster. Default is ``{\tt m}''.
+%.lp
+\item{\bb{getpos.mon.prev}}
+When asked for a location, the key to go to previous closest monster. Default is ``{\tt M}''.
+%.lp
+\item{\bb{getpos.obj.next}}
+When asked for a location, the key to go to next closest object. Default is ``{\tt o}''.
+%.lp
+\item{\bb{getpos.obj.prev}}
+When asked for a location, the key to go to previous closest object. Default is ``{\tt O}''.
+%.lp
+\item{\bb{getpos.menu}}
+When asked for a location, and using one of the next or previous keys to cycle through targets, toggle showing a menu instead. Default is '{\tt !}'.
+%.lp
+\item{\bb{getpos.moveskip}}
+When asked for a location, and using the shifted movement keys or meta-digit keys to fast-move around, move by skipping the same glyphs instead of by 8 units. Default is ``{\tt *}''.
+%.lp
+\item{\bb{getpos.filter}}
+When asked for a location, change the filtering mode when using one of the next or previous keys to cycle through targets. Toggles between no filtering, in view only, and in the same area only. Default is '{\tt "}'.
+%.lp
+\item{\bb{getpos.pick}}
+When asked for a location, the key to choose the location, and possibly ask for more info. Default is ``{\tt .}''.
+%.lp
+\item{\bb{getpos.pick.once}}
+When asked for a location, the key to choose the location, and skip asking for more info. Default is ``{\tt ,}''.
+%.lp
+\item{\bb{getpos.pick.quick}}
+When asked for a location, the key to choose the location, skip asking for more info, and exit the location asking loop. Default is ``{\tt ;}''.
+%.lp
+\item{\bb{getpos.pick.verbose}}
+When asked for a location, the key to choose the location, and show more info without asking. Default is ``{\tt :}''.
+%.lp
+\item{\bb{getpos.self}}
+When asked for a location, the key to go to your location. Default is ``{\tt @}''.
+%.lp
+\item{\bb{getpos.unexplored.next}}
+When asked for a location, the key to go to next closest unexplored location. Default is ``{\tt x}''.
+%.lp
+\item{\bb{getpos.unexplored.prev}}
+When asked for a location, the key to go to previous closest unexplored location. Default is ``{\tt X}''.
+%.lp
+\item{\bb{getpos.valid}}
+When asked for a location, the key to go to show valid target locations. Default is ``{\tt \$}''.
+%.lp
+\item{\bb{getpos.valid.next}}
+When asked for a location, the key to go to next closest valid location. Default is ``{\tt z}''.
+%.lp
+\item{\bb{getpos.valid.prev}}
+When asked for a location, the key to go to previous closest valid location. Default is ``{\tt Z}''.
+%.lp
+\item{\bb{nopickup}}
+Prefix key to move without picking up items. Default is ``{\tt m}''.
+%.lp
+\item{\bb{redraw}}
+Key to redraw the screen. Default is ``{\tt \^{}R}''.
+%.lp
+\item{\bb{redraw.numpad}}
+Key to redraw the screen. With {\it number\verb+_+pad\/} only. Default is ``{\tt \^{}L}''.
+%.lp
+\item{\bb{repeat}}
+Key to repeat previous command. Default is ``{\tt \^{}A}''.
+%.lp
+\item{\bb{reqmenu}}
+Prefix key to request menu from some commands. Default is ``{\tt m}''.
+%.lp
+\item{\bb{run}}
+Prefix key to run towards a direction. Default is ``{\tt G}''.
+%.lp
+\item{\bb{run.nopickup}}
+Prefix key to run towards a direction without picking up items on the way. Default is ``{\tt M}''.
+%.lp
+\item{\bb{run.numpad}}
+Prefix key to run towards a direction. With {\it number\verb+_+pad\/} only. Default is ``{\tt 5}''.
+%.lp
+\item{\bb{rush}}
+Prefix key to rush towards a direction. Default is ``{\tt g}''.
+\elist
+\elist
+
+
 %.hn 2
 \subsection*{Configuring Message Types}
 
@@ -3310,7 +4209,7 @@ the pattern to match. The pattern should be a regular expression.
 \elist
 
 %.lp ""
-Here's an example of message types using NetHack's internal
+Here's an example of message types using {\it NetHack's\/} internal
 pattern matching facility:
 
 \begin{verbatim}
@@ -3374,7 +4273,7 @@ Note that the platform used may interpret the attributes any way it
 wants.
 
 %.lp ""
-Here's an example of menu colors using NetHack's internal
+Here's an example of menu colors using {\it NetHack's\/} internal
 pattern matching facility:
 
 \begin{verbatim}
@@ -3403,7 +4302,7 @@ displayed with the ``uncursed'' description.
 \subsection*{Configuring User Sounds}
 
 %.pg
-Some platforms allow you to define sound files to be played when a message 
+Some platforms allow you to define sound files to be played when a message
 that matches a user-defined pattern is delivered to the message window.
 At this time the Qt port and the win32tty and win32gui ports support the
 use of user sounds.
@@ -3439,21 +4338,26 @@ The pattern should be a regular expression.
 \subsection*{Configuring Status Hilites}
 
 %.pg
-Your copy of NetHack may have been compiled with support for {\it Status Hilites}.
-If so, you can customize your game display by setting thresholds to 
+Your copy of {\it NetHack\/} may have been compiled with support for {\it Status Hilites}.
+If so, you can customize your game display by setting thresholds to
 change the color or appearance of fields in the status display.
-
+%.pg
+The format for defining status colors is:
+\begin{verbatim}
+    OPTION=hilite_status: field-name/behavior/color&attributes
+\end{verbatim}
+%.pg
 For example, the following line in your config file will cause
 the hitpoints field to display in the color red if your hitpoints
 drop to or below a threshold of 30%:
 \begin{verbatim}
-    OPTION=hilite_status: hitpoints/30%/red/normal
+    OPTION=hilite_status: hitpoints/<30%/red/normal
 \end{verbatim}
 %.pg
 For another example, the following line in your config file will cause
 wisdom to be displayed red if it drops and green if it rises.
 \begin{verbatim}
-    OPTION=hilite_status: wisdom/updown/red/green
+    OPTION=hilite_status: wisdom/down/red/up/green
 \end{verbatim}
 You can adjust the display of the following status fields:
 %.sd
@@ -3472,6 +4376,56 @@ experience & condition\\
 \end{tabular}
 \end{center}
 %.ed
+%.lp ""
+The pseudo-field `characteristics' can be used to set all six
+of Str, Dex, Con, Int, Wis, and Cha at once.  `HD' is `hit dice',
+an approximation of experience level displayed when polymorphed.
+`experience', `time', and `score' are conditionally displayed
+depending upon your other option settings.
+
+%.lp ""
+Instead of a behavior, `condition' takes the following condition flags:
+{\it stone}, {\it slime}, {\it strngl}, {\it foodpois}, {\it termill},
+{\it blind}, {\it deaf}, {\it stun}, {\it conf}, {\it hallu},
+{\it lev}, {\it fly}, and {\it ride}.  You can use `major\_troubles' as an alias
+for stone through termill, `minor\_troubles' for blind through hallu,
+`movement' for lev, fly, and ride, and `all' for every condition.
+
+%.lp ""
+Allowed behaviors are "always", "up", "down", "changed", a
+percentage or absolute number threshold, or a text to match against.
+
+\blist{}
+%.lp "*"
+\item{\bb{}}
+"always" will set the default attributes for that field.
+%.lp "*"
+\item{\bb{}}
+"up" and "down" set the field attributes for when the field
+value changes upwards or downwards. This attribute times out after
+statushilites turns.
+%.lp "*"
+\item{\bb{}}
+"changed" sets the field attribute for when the field value
+changes. This attribute times out after statushilites turns.
+%.lp "*"
+\item{\bb{}}
+percentage sets the field attribute when the field value
+matches the percentage. If the percentage is prefixed with `{\tt <}'
+or `{\tt >}', it also matches when value is below or above the percentage.
+Only valid for `power' and `hitpoints' fields.
+%.lp "*"
+\item{\bb{}}
+absolute value sets the attribute when the field value
+matches that number. If the number is prefixed with `{\tt <}'
+or `{\tt >}', it also matches when value is below or above.
+%.lp "*"
+\item{\bb{}}
+text match sets the attribute when the field value
+matches the text. Text matches can only be used for `alignment',
+`carrying-capacity', and `dungeon-level'.
+%.ei
+\elist
 
 %.lp ""
 Allowed colors are {\it black}, {\it red}, {\it green}, {\it brown},
@@ -3480,22 +4434,42 @@ Allowed colors are {\it black}, {\it red}, {\it green}, {\it brown},
 {\it lightcyan}, and {\it white}.
 
 %.lp ""
-Behaviours can occur based on percentage thresholds, updown, or absolute values.
-The in-game options menu can help you determine the correct syntax for a 
+Allowed attributes are {\it bold}, {\it inverse}, {\it underline},
+{\it blink}, {\it dim}, and {\it normal}.
+Note that the platform used may interpret the attributes any way it
+wants.
+
+%.lp ""
+The in-game options menu can help you determine the correct syntax for a
 config file.
 
 %.lp ""
-The whole feature can be disable by setting option {\it statushilites} off.
+The whole feature can be disable by setting option {\it statushilites} to 0.
+
+%.lp ""
+Example hilites:
+\begin{verbatim}
+    OPTION=hilite_status: gold/up/yellow/down/brown
+    OPTION=hilite_status: characteristics/up/green/down/red
+    OPTION=hilite_status: hitpoints/100%/gray&normal
+    OPTION=hilite_status: hitpoints/<100%/green&normal
+    OPTION=hilite_status: hitpoints/<66%/yellow&normal
+    OPTION=hilite_status: hitpoints/<50%/orange&normal
+    OPTION=hilite_status: hitpoints/<33%/red&bold
+    OPTION=hilite_status: hitpoints/<15%/red&inverse
+    OPTION=hilite_status: condition/major/orange&inverse
+    OPTION=hilite_status: condition/lev+fly/red&inverse
+\end{verbatim}
 
 %.lp
 %.hn 2
-\subsection*{Modifying NetHack Symbols}
+\subsection*{Modifying {\it NetHack\/} Symbols}
 
 %.pg
-NetHack can load entire symbol sets from the symbol file.
+{\it NetHack\/} can load entire symbol sets from the symbol file.
 
 %.pg
-The options that are used to select a particular symbol set from the 
+The options that are used to select a particular symbol set from the
 symbol file are:
 
 \blist{}
@@ -3506,16 +4480,16 @@ Set the name of the symbol set that you want to load.
 
 %.lp
 \item[\ib{roguesymset}]
-Set the name of the symbol set that you want to load for display 
+Set the name of the symbol set that you want to load for display
 on the rogue level.
 \elist
 
-You can also override one or more symbols using the {\it SYMBOLS\/} config 
-file option. Symbols are specified as {\it name:value\/} pairs. Note that 
+You can also override one or more symbols using the {\it SYMBOLS\/} config
+file option. Symbols are specified as {\it name:value\/} pairs. Note that
 {\it NetHack\/} escape-processes the {\it value\/} string in conventional C
 fashion.  This means that `\verb+\+' is a prefix to take the following
 character literally.  Thus `\verb+\+' needs to be represented as `\verb+\\+'.
-The special escape form
+The special prefix
 `\verb+\m+' switches on the meta bit in the symbol value, and the
 `{\tt \^{}}' prefix causes the following character to be treated as a control
 character.
@@ -3524,11 +4498,11 @@ character.
 \small
 \begin{longtable}{lll}
 \caption[]{NetHack Symbols}\\
-Default  & Symbol Name                & Description\\
+Default                      & Symbol Name                & Description\\
 \hline \hline
 \endhead
 \verb@ @ & S\verb+_+air                     &	(air)\\
-\verb@_@ & S\verb+_+altar                   &	(altar)\\
+\_ & S\verb+_+altar                   &	(altar)\\
 \verb@"@ & S\verb+_+amulet                  &	(amulet)\\
 \verb@A@ & S\verb+_+angel                   &	(angelic being)\\
 \verb@a@ & S\verb+_+ant                     &	(ant or other insect)\\
@@ -3537,7 +4511,7 @@ Default  & Symbol Name                & Description\\
 \verb@[@ & S\verb+_+armour                  &	(suit or piece of armor)\\
 \verb@^@ & S\verb+_+arrow\verb+_+trap             &	(arrow trap)\\
 \verb@0@ & S\verb+_+ball                    &	(iron ball)\\
-\verb@#@ & S\verb+_+bars                    &	(iron bars)\\
+\# & S\verb+_+bars                    &	(iron bars)\\
 \verb@B@ & S\verb+_+bat                     &	(bat or bird)\\
 \verb@^@ & S\verb+_+bear\verb+_+trap              &	(bear trap)\\
 \verb@-@ & S\verb+_+blcorn                  &	(bottom left corner)\\
@@ -3549,11 +4523,12 @@ Default  & Symbol Name                & Description\\
 \verb@-@ & S\verb+_+brcorn                  &	(bottom right corner)\\
 \verb@C@ & S\verb+_+centaur                 &	(centaur)\\
 \verb@_@ & S\verb+_+chain                   &	(iron chain)\\
-\verb@#@ & S\verb+_+cloud                   &	(cloud)\\
+\# & S\verb+_+cloud                   &	(cloud)\\
 \verb@c@ & S\verb+_+cockatrice              &	(cockatrice)\\
-\verb@$@ & S\verb+_+coin                    &	(pile of coins)\\
-\verb@#@ & S\verb+_+corr                    &	(corridor)\\
+\$ & S\verb+_+coin                    &	(pile of coins)\\
+\# & S\verb+_+corr                    &	(corridor)\\
 \verb@-@ & S\verb+_+crwall                  &	(wall)\\
+\verb@-@ & S\verb+_+darkroom                &	(dark room)\\
 \verb@^@ & S\verb+_+dart\verb+_+trap              &	(dart trap)\\
 \verb@&@ & S\verb+_+demon                   &	(major demon)\\
 \verb@*@ & S\verb+_+digbeam                 &	(dig beam)\\
@@ -3577,8 +4552,8 @@ Default  & Symbol Name                & Description\\
 \verb@f@ & S\verb+_+feline                  &	(cat or other feline)\\
 \verb@^@ & S\verb+_+fire\verb+_+trap              &	(fire trap)\\
 \verb@!@ & S\verb+_+flashbeam               &	(flash beam)\\
-\verb@%@ & S\verb+_+food                    &	(piece of food)\\
-\verb@{@ & S\verb+_+fountain                &	(fountain)\\
+\% & S\verb+_+food                    &	(piece of food)\\
+\{ & S\verb+_+fountain                &	(fountain)\\
 \verb@F@ & S\verb+_+fungus                  &	(fungus or mold)\\
 \verb@*@ & S\verb+_+gem                     &	(gem or rock)\\
 \verb@ @ & S\verb+_+ghost                   &	(ghost)\\
@@ -3588,16 +4563,17 @@ Default  & Symbol Name                & Description\\
 \verb@|@ & S\verb+_+grave                   &	(grave)\\
 \verb@g@ & S\verb+_+gremlin                 &	(gremlin)\\
 \verb@-@ & S\verb+_+hbeam                   &	(wall)\\
-\verb@#@ & S\verb+_+hcdbridge               &	(horizontal raised drawbridge)\\
+\# & S\verb+_+hcdbridge               &	(horizontal raised drawbridge)\\
 \verb@+@ & S\verb+_+hcdoor                  &	(closed door)\\
 \verb@.@ & S\verb+_+hodbridge               &	(horizontal lowered drawbridge)\\
 \verb@|@ & S\verb+_+hodoor                  &	(open door)\\
-\verb@^@ & S\verb+_+hole                    &	(hole)\\
+\verb\^\ & S\verb+_+hole                    &	(hole)\\
 \verb~@~ & S\verb+_+human                   &	(human or elf)\\
 \verb@h@ & S\verb+_+humanoid                &	(humanoid)\\
 \verb@-@ & S\verb+_+hwall                   &	(horizontal wall)\\
 \verb@.@ & S\verb+_+ice                     &	(ice)\\
 \verb@i@ & S\verb+_+imp                     &	(imp or minor demon)\\
+\verb@I@ & S\verb+_+invisible               &	(invisible monster)\\
 \verb@J@ & S\verb+_+jabberwock              &	(jabberwock)\\
 \verb@j@ & S\verb+_+jelly                   &	(jelly)\\
 \verb@k@ & S\verb+_+kobold                  &	(kobold)\\
@@ -3608,7 +4584,7 @@ Default  & Symbol Name                & Description\\
 \verb@^@ & S\verb+_+level\verb+_+teleporter       &	(level teleporter)\\
 \verb@L@ & S\verb+_+lich                    &	(lich)\\
 \verb@y@ & S\verb+_+light                   &	(light)\\
-\verb@#@ & S\verb+_+litcorr                 &	(lit corridor)\\
+\# & S\verb+_+litcorr                 &	(lit corridor)\\
 \verb@:@ & S\verb+_+lizard                  &	(lizard)\\
 \verb@\@ & S\verb+_+lslant                  &	(wall)\\
 \verb@^@ & S\verb+_+magic\verb+_+portal           &	(magic portal)\\
@@ -3623,7 +4599,7 @@ Default  & Symbol Name                & Description\\
 \verb@o@ & S\verb+_+orc                     &	(orc)\\
 \verb@p@ & S\verb+_+piercer                 &	(piercer)\\
 \verb@^@ & S\verb+_+pit                     &	(pit)\\
-\verb@#@ & S\verb+_+poisoncloud             &	(poison cloud)\\
+\# & S\verb+_+poisoncloud             &	(poison cloud)\\
 \verb@^@ & S\verb+_+polymorph\verb+_+trap         &	(polymorph trap)\\
 \verb@}@ & S\verb+_+pool                    &	(water)\\
 \verb@!@ & S\verb+_+potion                  &	(potion)\\
@@ -3639,18 +4615,19 @@ Default  & Symbol Name                & Description\\
 \verb@^@ & S\verb+_+rust\verb+_+trap              &	(rust trap)\\
 \verb@R@ & S\verb+_+rustmonst               &	(rust monster or disenchanter)\\
 \verb@?@ & S\verb+_+scroll                  &	(scroll)\\
-\verb@#@ & S\verb+_+sink                    &	(sink)\\
+\# & S\verb+_+sink                    &	(sink)\\
 \verb@^@ & S\verb+_+sleeping\verb+_+gas\verb+_+trap     &	(sleeping gas trap)\\
 \verb@S@ & S\verb+_+snake                   &	(snake)\\
 \verb@s@ & S\verb+_+spider                  &	(arachnid or centipede)\\
 \verb@^@ & S\verb+_+spiked\verb+_+pit             &	(spiked pit)\\
 \verb@^@ & S\verb+_+squeaky\verb+_+board          &	(squeaky board)\\
 \verb@0@ & S\verb+_+ss1                     &	(magic shield 1 of 4)\\
-\verb@#@ & S\verb+_+ss2                     &	(magic shield 2 of 4)\\
+\# & S\verb+_+ss2                     &	(magic shield 2 of 4)\\
 \verb+@+ & S\verb+_+ss3                     &	(magic shield 3 of 4)\\
 \verb@*@ & S\verb+_+ss4                     &	(magic shield 4 of 4)\\
 \verb@^@ & S\verb+_+statue\verb+_+trap            &	(statue trap)\\
 \verb@ @ & S\verb+_+stone                   &	(dark part of a room)\\
+\verb@]@ & S\verb+_+strange\verb+_+obj      &	(strange object)\\
 \verb@-@ & S\verb+_+sw\verb+_+bc                  &	(swallow bottom center)\\
 \verb@\@ & S\verb+_+sw\verb+_+bl                  &	(swallow bottom left)\\
 \verb@/@ & S\verb+_+sw\verb+_+br                  &	(swallow bottom right	)\\
@@ -3668,7 +4645,7 @@ Default  & Symbol Name                & Description\\
 \verb@^@ & S\verb+_+trap\verb+_+door              &	(trap door)\\
 \verb@t@ & S\verb+_+trapper                 &	(trapper or lurker above)\\
 \verb@-@ & S\verb+_+trcorn                  &	(top right corner)\\
-\verb@#@ & S\verb+_+tree                    &	(tree)\\
+\# & S\verb+_+tree                    &	(tree)\\
 \verb@T@ & S\verb+_+troll                   &	(troll)\\
 \verb@|@ & S\verb+_+trwall                  &	(wall)\\
 \verb@-@ & S\verb+_+tuwall                  &	(wall)\\
@@ -3678,7 +4655,7 @@ Default  & Symbol Name                & Description\\
 \verb@<@ & S\verb+_+upstair                 &	(staircase up)\\
 \verb@V@ & S\verb+_+vampire                 &	(vampire)\\
 \verb@|@ & S\verb+_+vbeam                   &	(wall)\\
-\verb@#@ & S\verb+_+vcdbridge               &	(vertical raised drawbridge)\\
+\# & S\verb+_+vcdbridge               &	(vertical raised drawbridge)\\
 \verb@+@ & S\verb+_+vcdoor                  &	(closed door)\\
 \verb@.@ & S\verb+_+venom                   &	(splash of venom)\\
 \verb@^@ & S\verb+_+vibrating\verb+_+square       &	(vibrating square)\\
@@ -3701,13 +4678,25 @@ Default  & Symbol Name                & Description\\
 \end{longtable}%
 }
 
-%.lp
-%.hn 2
-\subsection*{Configuring NetHack for Play by the Blind}
+%.pg
+There is one additional class of object, described as ``strange object'',
+which will occasionally be the shape taken on by mimics and shown as
+`{\tt \verb+]+}'
+for maps displayed as text characters.
+Although the displayed character is the same as the default value for
+`S\verb+_+mimic\verb+_+def', it is a different symbol and there is no
+corresponding
+`S\verb+_+strange\verb+_+object' symbol nor any way to assign an
+alternate value for it.
 
 %.pg
-NetHack can be set up to use only standard ASCII characters for making
-maps of the dungeons. This makes the MS-DOS versions of NetHack completely
+%.hn 2
+\subsection*{Configuring {\it NetHack\/} for Play by the Blind}
+
+%.pg
+{\it NetHack\/} can be set up to use only standard ASCII characters for making
+maps of the dungeons. This makes the MS-DOS versions of {\it NetHack\/}
+completely
 accessible to the blind who use speech and/or Braille access technologies.
 Players will require a good working knowledge of their screen-reader's
 review features, and will have to know how to navigate horizontally and
@@ -3722,14 +4711,23 @@ gives you the row and column of your review cursor and the PC cursor.
 These co-ordinates are often useful in giving players a better sense of the
 overall location of items on the screen.
 %.pg
+{\it NetHack\/} can also be compiled with support for sending the game messages
+to an external program, such as a text-to-speech synthesizer. If the \#version
+extended command shows "external program as a message handler", your {\it NetHack\/}
+has been compiled with the capability. When compiling {\it NetHack\/} from source
+on Linux and other POSIX systems, define {\it MSGHANDLER\/} to enable it. To use
+the capability, set the environment variable {\it NETHACK\_MSGHANDLER\/} to an
+executable, which will be executed with the game message as the program's
+only parameter.
+%.pg
 While it is not difficult for experienced users to edit the {\it defaults.nh\/}
 file to accomplish this, novices may find this task somewhat daunting.
-Included within the symbol file of all official distributions of NetHack 
+Included within the symbol file of all official distributions of {\it NetHack\/}
 is a symset called {\it NHAccess\/}.  Selecting that symset in your
-configuration file will cause the game to run in a manner accessible 
-to the blind. After you have gained some experience with the game 
-and with editing files, you may want to alter settings via {\it SYMBOLS=\/} 
-in your configuration file to better suit your preferences. 
+configuration file will cause the game to run in a manner accessible
+to the blind. After you have gained some experience with the game
+and with editing files, you may want to alter settings via {\it SYMBOLS=\/}
+in your configuration file to better suit your preferences.
 The most crucial settings to make the game accessible are:
 %.pg
 \blist{}
@@ -3738,28 +4736,55 @@ The most crucial settings to make the game accessible are:
 Load a symbol set appropriate for use by blind players.
 %.lp
 \item[\ib{roguesymset:NHAccess}]
-Load a symbol set for the rogue level that is appropriate for 
+Load a symbol set for the rogue level that is appropriate for
 use by blind players.
 %.lp
 \item[\ib{menustyle:traditional}]
 This will assist in the interface to speech synthesizers.
 %.lp
+\item[\ib{nomenu\verb+_+overlay}]
+Show menus on a cleared screen and aligned to the left edge.
+%.lp
 \item[\ib{number\verb+_+pad}]
 A lot of speech access programs use the number-pad to review the screen.
-If this is the case, disable the number\verb+_+pad option and use the traditional
-Rogue-like commands.
+If this is the case, disable the number\verb+_+pad option and use the
+traditional Rogue-like commands.
+%.lp
+\item[\ib{autodescribe}]
+Automatically describe the terrain under the cursor when targeting.
+%.lp
+\item[\ib{mention\verb+_+walls}]
+Give feedback messages when walking towards a wall or when travel command
+was interrupted.
+%.lp
+\item[\ib{whatis\verb+_+coord:compass}]
+When targeting with cursor, describe the cursor position with coordinates
+relative to your character.
+%.lp
+\item[\ib{whatis\verb+_+filter:area}]
+When targeting with cursor, filter possible locations so only those in
+the same area (eg. same room, or same corridor) are considered.
+%.lp
+\item[\ib{whatis\verb+_+moveskip}]
+When targeting with cursor and using fast-move, skip the same glyphs instead
+of moving 8 units at a time.
+%.lp
+\item[\ib{nostatus\verb+_+updates}]
+Prevent updates to the status lines at the bottom of the screen, if
+your screen-reader reads those lines. The same information can be
+seen via the {\tt \#attributes} command.
 \elist
 
 %.hn2
 \subsection*{Global Configuration for System Administrators}
 
 %.pg
-If NetHack is compiled with the SYSCF option, a system administrator
-should set up a global configuration; this is a file in the 
+If {\it NetHack\/} is compiled with the SYSCF option, a system administrator
+should set up a global configuration; this is a file in the
 same format as the traditional per-user configuration file (see above).
 
 This file should be named sysconf and placed in the same directory as
-the other NetHack support files.
+the other {\it NetHack\/} support files.
 The options recognized in this file are listed below. Any option not
 set uses a compiled-in default (which may not be appropriate for your
 system).
@@ -3773,7 +4798,7 @@ mode (the debugging mode, not the magic-useing role). A value of a single
 asterisk (*) allows anyone to start a game in wizard mode.
 %.lp
 \item[\ib{SHELLERS}]
-A list of users who are allowed to use the shell escape command (!).
+A list of users who are allowed to use the shell escape command (`{\tt !}').
 The syntax is the same as WIZARDS.
 %.lp
 \item[\ib{EXPLORERS}]
@@ -3781,7 +4806,7 @@ A list of users who are allowed to use the explore mode.
 The syntax is the same as WIZARDS.
 %.lp
 \item[\ib{MAXPLAYERS}]
-Limit the maximum number of games taht can be running at the same time.
+Limit the maximum number of games that can be running at the same time.
 %.lp
 \item[\ib{SUPPORT}]
 A string explainign how to get local support (no default value).
@@ -3792,6 +4817,10 @@ A string explaining how to recover a game on this system (no default value).
 \item[\ib{SEDUCE}]
 0 or 1 to disable or enable, respectively, the SEDUCE option (see the source)
 for details on this function.
+%.lp
+\item[\ib{CHECK\verb+_+PLNAME}]
+Setting this to 1 will make the EXPLORERS, WIZARDS, and SHELLERS check
+for the player name instead of the user's login name.
 %.lp
 \item[\ib{CHECK\verb+_+SAVE\verb+_+UID}]
 0 or 1 to disable or enable, respectively, the UID checking for savefiles.
@@ -3814,6 +4843,24 @@ Minimum number of points to get an entry in the score file.
 \item[\ib{PERS\verb+_+IS\verb+_+UID}]
 0 or 1 to use user names or numeric userids, respectively, to identify
 unique people for the score file
+%.lp
+\item[\ib{DUMPLOGFILE}]
+A filename where the end-of-game dumplog is saved.
+Not defining this will prevent dumplog from being created. Only available
+if your game is compiled with DUMPLOG. Allows the following placeholders:
+%.sd
+%.si
+{\tt \%\%}  --- literal `{\tt \%}'\\
+{\tt \%v}  --- version (eg. "3.6.1-0")\\
+{\tt \%u}  --- game UID\\
+{\tt \%t}  --- game start time, UNIX timestamp format\\
+{\tt \%T}  --- current time, UNIX timestamp format\\
+{\tt \%d}  --- game start time, YYYYMMDDhhmmss format\\
+{\tt \%D}  --- current time, YYYYMMDDhhmmss format\\
+{\tt \%n}  --- player name\\
+{\tt \%N}  --- first character of player name
+%.ei
+%.ed
 \elist
 
 %.hn 1
@@ -4008,7 +5055,7 @@ was responsible for the VMS version of {\it NetHack\/} 3.1.
 \medskip
 \nd {\it Dean Luick}, with help from {\it David Cohrs}, developed {\it NetHack\/}
 3.1 for X11.
-{\it Warwick Allison} wrote a tiled version of NetHack for the Atari;
+{\it Warwick Allison} wrote a tiled version of {\it NetHack\/} for the Atari;
 he later contributed the tiles to the DevTeam and tile support was
 then added to other platforms.
 
@@ -4046,7 +5093,7 @@ Working independently, {\it Stephen White} wrote {\it NetHack Plus}.
 and his own {\it NetHack$--$} to produce {\it SLASH}.
 {\it Larry Stewart-Zerba} and {\it Warwick Allison} improved the spell
 casting system with the Wizard Patch.
-{\it Warwick Allison} also ported NetHack to use the Qt interface.
+{\it Warwick Allison} also ported {\it NetHack\/} to use the Qt interface.
 
 %.pg
 \medskip
@@ -4054,7 +5101,7 @@ casting system with the Wizard Patch.
 to produce {\it Slash'em\/}, and
 with the help of {\it Kevin Hugo}, added more features.
 Kevin later joined the
-DevTeam and incorporated the best of these ideas into NetHack 3.3.
+DevTeam and incorporated the best of these ideas into {\it NetHack\/} 3.3.
 
 %.pg
 \medskip
@@ -4063,34 +5110,34 @@ simultaneously with 3.3.0 in December 1999 just in time for the Year 2000.
 
 %.pg
 \medskip
-The 3.3 development team, consisting of {\it Michael Allison}, {\it Ken Arromdee}, 
-{\it David Cohrs}, {\it Jessie Collet}, {\it Steve Creps}, {\it Kevin Darcy}, 
-{\it Timo Hakulinen}, {\it Kevin Hugo}, {\it Steve Linhart}, {\it Ken Lorber}, 
-{\it Dean Luick}, {\it Pat Rankin}, {\it Eric Smith}, {\it Mike Stephenson}, 
-{\it Janet Walz}, and {\it Paul Winner}, released 3.3.0 in 
+The 3.3 development team, consisting of {\it Michael Allison}, {\it Ken Arromdee},
+{\it David Cohrs}, {\it Jessie Collet}, {\it Steve Creps}, {\it Kevin Darcy},
+{\it Timo Hakulinen}, {\it Kevin Hugo}, {\it Steve Linhart}, {\it Ken Lorber},
+{\it Dean Luick}, {\it Pat Rankin}, {\it Eric Smith}, {\it Mike Stephenson},
+{\it Janet Walz}, and {\it Paul Winner}, released 3.3.0 in
 December 1999 and 3.3.1 in August of 2000.
 
 %.pg
 \medskip
-Version 3.3 offered many firsts. It was the first version to separate race 
-and profession. The Elf class was removed in preference to an elf race, 
-and the races of dwarves, gnomes, and orcs made their first appearance in 
-the game alongside the familiar human race.  Monk and Ranger roles joined 
-Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues, Samurai, 
+Version 3.3 offered many firsts. It was the first version to separate race
+and profession. The Elf class was removed in preference to an elf race,
+and the races of dwarves, gnomes, and orcs made their first appearance in
+the game alongside the familiar human race.  Monk and Ranger roles joined
+Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues, Samurai,
 Tourists, Valkyries and of course, Wizards.  It was also the first version
-to allow you to ride a steed, and was the first version to have a publicly 
-available web-site listing all the bugs that had been discovered.  Despite 
+to allow you to ride a steed, and was the first version to have a publicly
+available web-site listing all the bugs that had been discovered.  Despite
 that constantly growing bug list, 3.3 proved stable enough to last for
 more than a year and a half.
 
 %.pg
 \medskip
-The 3.4 development team initially consisted of 
+The 3.4 development team initially consisted of
 {\it Michael Allison}, {\it Ken Arromdee},
 {\it David Cohrs}, {\it Jessie Collet}, {\it Kevin Hugo}, {\it Ken Lorber},
-{\it Dean Luick}, {\it Pat Rankin}, {\it Mike Stephenson}, 
-{\it Janet Walz}, and {\it Paul Winner}, with {\it  Warwick Allison} joining 
-just before the release of NetHack 3.4.0 in March 2002.
+{\it Dean Luick}, {\it Pat Rankin}, {\it Mike Stephenson},
+{\it Janet Walz}, and {\it Paul Winner}, with {\it  Warwick Allison} joining
+just before the release of {\it NetHack\/} 3.4.0 in March 2002.
 
 %.pg
 \medskip
@@ -4104,7 +5151,8 @@ runs on:
 
 %.pg
 \medskip
-\nd {\it Michael Allison} maintained NetHack 3.4 for the MS-DOS platform.
+\nd {\it Michael Allison} maintained {\it NetHack\/} 3.4 for the MS-DOS
+platform.
 {\it Paul Winner} and {\it Yitzhak Sapir} provided encouragement.
 
 %.pg
@@ -4114,17 +5162,20 @@ enhanced the Macintosh port of 3.4.
 
 %.pg
 \medskip
-\nd {\it Michael Allison}, {\it David Cohrs}, {\it Alex Kompel}, {\it Dion Nicolaas}, and 
-{\it Yitzhak Sapir} maintained and enhanced 3.4 for the Microsoft Windows platform.
-{\it Alex Kompel} contributed a new graphical interface for the Windows port. 
+\nd {\it Michael Allison}, {\it David Cohrs}, {\it Alex Kompel},
+{\it Dion Nicolaas}, and
+{\it Yitzhak Sapir} maintained and enhanced 3.4 for the Microsoft Windows
+platform.
+{\it Alex Kompel} contributed a new graphical interface for the Windows port.
 {\it Alex Kompel} also contributed a Windows CE port for 3.4.1.
 
 %.pg
 \medskip
-\nd {\it Ron Van Iwaarden} was the sole maintainer of NetHack for OS/2 the past
+\nd {\it Ron Van Iwaarden} was the sole maintainer of {\it NetHack\/} for
+OS/2 the past
 several releases. Unfortunately Ron's last OS/2 machine stopped working in
-early 2006. A great many thanks to Ron for keeping NetHack alive on OS/2 
-all these years.
+early 2006. A great many thanks to Ron for keeping {\it NetHack\/} alive on
+OS/2 all these years.
 
 %.pg
 \medskip
@@ -4139,67 +5190,102 @@ resurrected it for 3.3.1.
 
 %.pg
 \medskip
-The release of NetHack 3.4.3 in December 2003 marked the beginning of a 
-long release hiatus. 3.4.3 proved to be a remarkably stable version that
-provided continued enjoyment by the community for more than a decade. The 
-devteam slowly and quietly continued to work on the game behind the scenes 
-during the tenure of 3.4.3. It was during that same period that several new 
-variants emerged within the NetHack community. Notably sporkhack by 
-Derek S. Ray, unnethack by Patric Mueller, nitrohack and its successors 
-originally by Daniel Thaler and then by Alex Smith, and 
-Dynahack by Tung Nguyen. Some of those variants continue to be developed, 
-maintained, and enjoyed by the community to this day.
+The release of {\it NetHack\/} 3.4.3 in December 2003 marked the beginning of
+a long release hiatus. 3.4.3 proved to be a remarkably stable version that
+provided continued enjoyment by the community for more than a decade. The
+devteam slowly and quietly continued to work on the game behind the scenes
+during the tenure of 3.4.3. It was during that same period that several new
+variants emerged within the {\it NetHack\/} community. Notably sporkhack by
+Derek S. Ray, {\it unnethack\/} by Patric Mueller, {\it nitrohack\/} and its
+successors originally by Daniel Thaler and then by Alex Smith, and
+{\it Dynahack\/} by Tung Nguyen. Some of those variants continue to be
+developed, maintained, and enjoyed by the community to this day.
+
+%.pg
+\medskip
+In September 2014, an interim snapshot of the code under development was
+released publicly by other parties. Since that code was a work-in-progress
+and had not gone through the process of debugging it as a suitable release,
+it was decided that the version numbers present on that code snapshot would
+be retired and never used in an official {\it NetHack\/} release. An
+announcement was posted on the devteam's official {\it nethack.org\/} website
+to that effect, stating that there would never be a 3.4.4, 3.5, or 3.5.0
+official release version.
+
+%.pg
+\medskip
+In January 2015, preparation began for the release of NetHack 3.6.
 
 %.pg
 \medskip
 At the beginning of development for what would eventually get released
-as 3.6.0, the development team consisted of {\it Warwick Allison}, 
+as 3.6.0, the development team consisted of {\it Warwick Allison},
 {\it Michael Allison}, {\it Ken Arromdee},
-{\it David Cohrs}, {\it Jessie Collet}, 
-{\it Ken Lorber}, {\it Dean Luick}, {\it Pat Rankin}, 
+{\it David Cohrs}, {\it Jessie Collet},
+{\it Ken Lorber}, {\it Dean Luick}, {\it Pat Rankin},
 {\it Mike Stephenson}, {\it Janet Walz}, and {\it Paul Winner}.
-Leading up to the release of 3.6.0 in early 2015, new members
+In early 2015, ahead of the release of 3.6.0, new members
 {\it Sean Hunt}, {\it Pasi Kallinen}, and {\it Derek S. Ray}
-joined the NetHack development team.
+joined the {\it NetHack\/} development team.
 
 %.pg
 \medskip
-In September 2014, an interim snapshot of the code under development was 
-released publicly by other parties. Since that code was a work-in-progress 
-and had not gone through the process of debugging it as a suitable release,
-it was decided that the version numbers present on that code snapshot would 
-be retired and never used in an official NetHack release. An announcement 
-was posted on the devteam's official nethack.org website to that effect, 
-stating that there would never be a 3.4.4, 3.5, or 3.5.0 official release 
-version.
+Near the end of the development of 3.6.0, one of the significant inspirations 
+for many of the humorous and fun features found in the game, 
+author Terry Pratchett, passed away. {\it NetHack\/} 3.6.0 introduced 
+a tribute to him.
 
 %.pg
 \medskip
-In November 2014, preparation began for the release of NetHack 3.6. The 3.6
-version merges work done by the development team since the previous release 
-with some of the beloved community patches. Many bugs were fixed and a 
-large amount of code was restructured.
-
+3.6.0 was released in December 2015, and merged work done by the development
+team since the release of 3.4.3 with some of the beloved community
+patches.  Many bugs were fixed and some code was restructured.
 
 %.pg
 \medskip
-The development team, as well as {\it Steve VanDevender} and 
-{\it Kevin Smolkowski} ensured that NetHack 3.6.0 continued to operate on 
-various Unix flavors and maintained the X11 interface. 
-
-%.pg
-{\it Ken Lorber}, {\it Haoyang Wang}, {\it Pat Rankin}, and {\it Dean Luick} 
-maintained the port of NetHack 3.6.0 for Mac.
-
-%.pg
-\medskip
-{\it Michael Allison}, {\it Derek S. Ray}, {\it Yitzhak Sapir}, 
-{\it Alex Kompel}, and {\it Dion Nicolaas} maintained the port of 
-NetHack 3.6.0 for Microsoft Windows.
+In late April 2018, several hundred bug fixes for 3.6.0 and some new features
+were assembled and released as NetHack 3.6.1. The development team at the 
+time of release of 3.6.1 consisted of 
+{\it Warwick Allison}, {\it Michael Allison}, {\it Ken Arromdee}, 
+{\it David Cohrs}, {\it Jessie Collet},
+{\it Pasi Kallinen}, {\it Ken Lorber}, {\it Dean Luick},
+{\it Patric Mueller}, {\it Pat Rankin}, {\it Derek S. Ray},
+{\it Alex Smith}, {\it Mike Stephenson}, {\it Janet Walz}, and
+{\it Paul Winner}.
 
 %.pg
 \medskip
-\nd The official NetHack web site is maintained by {\it Ken Lorber} at 
+The development team, as well as {\it Steve VanDevender} and
+{\it Kevin Smolkowski}, ensured that {\it NetHack\/} 3.6 continued to
+operate on various Unix flavors and maintained the X11 interface.
+
+%.pg
+\medskip
+{\it Ken Lorber}, {\it Haoyang Wang}, {\it Pat Rankin}, and {\it Dean Luick}
+maintained the port of {\it NetHack\/} 3.6 for Mac OSX.
+
+%.pg
+\medskip
+{\it Michael Allison}, {\it David Cohrs}, {\it Barton House},
+{\it Pasi Kallinen}, {\it Alex Kompel}, {\it Dion Nicolaas},
+{\it Derek S. Ray} and  {\it Yitzhak Sapir}
+maintained the port of  {\it NetHack\/} 3.6 for Microsoft Windows.
+
+%.pg
+\medskip
+{\it Pat Rankin} attempted to keep the VMS port running for NetHack 3.6.1,
+hindered by limited access.  {it Kevin Smolkowski} has updated and tested it
+for the most recent version of OpenVMS (V8.4 as of this writing) on Alpha
+and Integrity (aka Itanium aka IA64) but not VAX.
+
+%.pg
+\medskip
+{\it Ray Chason}  resurrected the msdos port for 3.6.1 and contributed the
+necessary updates to the community at large.
+
+%.pg
+\medskip
+\nd The official {\it NetHack\/} web site is maintained by {\it Ken Lorber} at
 {\catcode`\#=11
 \special{html:<a href="http://www.nethack.org/">}}
 http:{\tt /}{\tt /}www.nethack.org{\tt /}.
@@ -4209,16 +5295,13 @@ http:{\tt /}{\tt /}www.nethack.org{\tt /}.
 %.pg
 %.hn 2
 
-\subsection*{Shout Outs}
-\nd The devteam would like to give a special "shout-out" to thank the generous 
-people primarily responsible for the public NetHack servers available for 
-playing the game at nethack.alt.org and devnull.net. In addition to providing 
-a way for the public to play a game of NetHack from almost anywhere, they 
-have hosted annual NetHack tournaments for many, many years. 
-%.pg 
-\nd On behalf of the NetHack community, thank you very much to 
-{\it M. Drew Streib}, {\it Pasi Kallinen} and {\it Robin Bandy}.
+\subsection*{Special Thanks}
+\nd On behalf of the {\it NetHack\/} community, thank you very much once
+again to {\it M. Drew Streib}, {\it Pasi Kallinen} and {\it Robin Bandy} for
+providing public {\it NetHack\/} servers at  {\it nethack.alt.org\/} and
+{\it devnull.net\/} and/or for hosting annual {\it NetHack\/} tournaments.
 \clearpage
+
 %.hn
 \section*{Dungeoneers}
 %.pg
@@ -4230,36 +5313,46 @@ in this, the list of Dungeoneers:
 \begin{center}
 \begin{tabular}{llll}
 %TABLE_START
-Adam Aronow & Frederick Roeber & Kevin Smolkowski & Richard Beigel\\
-Alex Kompel & Gil Neiger & Kevin Sweet & Richard P. Hughey\\
-Andreas Dorn & Greg Laskin & Lars Huttar & Rob Menke\\
-Andy Church & Greg Olson & Leon Arnott & Robin Bandy\\
-Andy Swanson & Gregg Wonderly & M. Drew Streib & Robin Johnson\\
-Ari Huttunen & Hao-yang Wang & Malcolm Ryan & Roderick Schertler\\
-Barton House & Helge Hafting & Mark Gooderum & Roland McGrath\\
-Benson I. Margulies & Irina Rempt-Drijfhout & Mark Modrall & Ron Van Iwaarden\\
-Bill Dyer & Izchak Miller & Marvin Bressler & Ronnen Miller\\
-Boudewijn Waijers & J. Ali Harlow & Matthew Day & Ross Brown\\
-Bruce Cox & Janet Walz & Merlyn LeRoy & Sascha Wostmann\\
-Bruce Holloway & Janne Salmij\"{a}rvi & Michael Allison & Scott Bigham\\
-Bruce Mewborne & Jean-Christophe Collet & Michael Feir & Scott R. Turner\\
-Carl Schelin & Jeff Bailey & Michael Hamel & Sean Hunt\\
-Chris Russo & Jochen Erwied & Michael Sokolov & Stephen Spackman\\
-David Cohrs & John Kallen & Mike Engber & Stefan Thielscher\\
-David Damerell & John Rupley & Mike Gallop & Stephen White\\
-David Gentzel & John S. Bien & Mike Passaretti & Steve Creps\\
-David Hairston & Johnny Lee & Mike Stephenson & Steve Linhart\\
-Dean Luick & Jon W\{tte & Mikko Juola & Steve VanDevender\\
-Del Lamb & Jonathan Handler & Nathan Eady & Teemu Suikki\\
-Derek S. Ray & Joshua Delahunty & Norm Meluch & Tim Lennan\\
-Deron Meranda & Keizo Yamamoto & Olaf Seibert & Timo Hakulinen\\
-Dion Nicolaas & Ken Arnold & Pasi Kallinen & Tom Almy\\
-Dylan O'Donnell & Ken Arromdee & Pat Rankin & Tom West\\
-Eric Backus & Ken Lorber & Paul Winner & Warren Cheung\\
-Eric Hendrickson & Ken Washikita & Pierre Martineau & Warwick Allison\\
-Eric R. Smith & Kevin Darcy & Ralf Brown & Yitzhak Sapir\\
-Eric S. Raymond & Kevin Hugo & Ray Chason\\
-Erik Andersen & Kevin Sitze & Richard Addison
+Adam Aronow & J. Ali Harlow & Mikko Juola\\
+Alex Kompel & Janet Walz & Nathan Eady\\
+Alex Smith & Janne Salmij\"{a}rvi & Norm Meluch\\
+Andreas Dorn & Jean-Christophe Collet & Olaf Seibert\\
+Andy Church & Jeff Bailey & Pasi Kallinen\\
+Andy Swanson & Jochen Erwied & Pat Rankin\\
+Ari Huttunen & John Kallen & Patric Mueller\\
+Barton House & John Rupley & Paul Winner\\
+Benson I. Margulies & John S. Bien & Pierre Martineau\\
+Bill Dyer & Johnny Lee & Ralf Brown\\
+Boudewijn Waijers & Jon W\{tte & Ray Chason\\
+Bruce Cox & Jonathan Handler & Richard Addison\\
+Bruce Holloway & Joshua Delahunty & Richard Beigel\\
+Bruce Mewborne & Keizo Yamamoto & Richard P. Hughey\\
+Carl Schelin & Ken Arnold & Rob Menke\\
+Chris Russo & Ken Arromdee & Robin Bandy\\
+David Cohrs & Ken Lorber & Robin Johnson\\
+David Damerell & Ken Washikita & Roderick Schertler\\
+David Gentzel & Kevin Darcy & Roland McGrath\\
+David Hairston & Kevin Hugo & Ron Van Iwaarden\\
+Dean Luick & Kevin Sitze & Ronnen Miller\\
+Del Lamb & Kevin Smolkowski & Ross Brown\\
+Derek S. Ray & Kevin Sweet & Sascha Wostmann\\
+Deron Meranda & Lars Huttar & Scott Bigham\\
+Dion Nicolaas & Leon Arnott & Scott R. Turner\\
+Dylan O'Donnell & M. Drew Streib & Sean Hunt\\
+Eric Backus & Malcolm Ryan & Stephen Spackman\\
+Eric Hendrickson & Mark Gooderum & Stefan Thielscher\\
+Eric R. Smith & Mark Modrall & Stephen White\\
+Eric S. Raymond & Marvin Bressler & Steve Creps\\
+Erik Andersen & Matthew Day & Steve Linhart\\
+Frederick Roeber & Merlyn LeRoy & Steve VanDevender\\
+Gil Neiger & Michael Allison & Teemu Suikki\\
+Greg Laskin & Michael Feir & Tim Lennan\\
+Greg Olson & Michael Hamel & Timo Hakulinen\\
+Gregg Wonderly & Michael Sokolov & Tom Almy\\
+Hao-yang Wang & Mike Engber & Tom West\\
+Helge Hafting & Mike Gallop & Warren Cheung\\
+Irina Rempt-Drijfhout & Mike Passaretti & Warwick Allison\\
+Izchak Miller & Mike Stephenson & Yitzhak Sapir
 %TABLE_END  Do not delete this line.
 \end{tabular}
 \end{center}

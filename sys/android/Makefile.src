@@ -343,18 +343,18 @@ HACK_H	= ../src/hack.h-t
 HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   botl.c cmd.c dbridge.c decl.c detect.c dig.c display.c dlb.c do.c \
 	   do_name.c do_wear.c dog.c dogmove.c dokick.c dothrow.c drawing.c \
-	   dump.c dungeon.c eat.c end.c engrave.c exper.c explode.c extralev.c \
+	   dungeon.c eat.c end.c engrave.c exper.c explode.c extralev.c \
 	   files.c fountain.c hack.c hacklib.c invent.c light.c lock.c \
 	   mail.c makemon.c mapglyph.c mcastu.c mhitm.c mhitu.c minion.c \
 	   mklev.c mkmap.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
-	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c rip.c \
-	   rnd.c role.c rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c \
-	   spell.c steal.c steed.c sys.c teleport.c timeout.c topten.c track.c \
-	   trap.c \
-	   u_init.c uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
+	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c \
+	   rip.c rnd.c role.c rumors.c save.c shk.c shknam.c sit.c sounds.c \
+	   sp_lev.c spell.c steal.c steed.c sys.c teleport.c timeout.c \
+	   topten.c track.c trap.c u_init.c \
+	   uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
 	   windows.c wizard.c worm.c worn.c write.c zap.c
 
 # all operating-system-dependent .c (for dependencies and such)
@@ -365,6 +365,7 @@ SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 	../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
 	../sys/unix/unixunix.c ../sys/unix/unixres.c ../sys/be/bemain.c \
 	../sys/android/androidmain.c ../sys/android/androidunix.c
+SYSCXXSRC = ../sys/share/cppregex.cpp
 
 # generated source files (tile.c is handled separately via WINxxxSRC)
 GENCSRC = monstr.c vis_tab.c	#tile.c
@@ -386,7 +387,7 @@ CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) $(GENCSRC)
 # and dgn_comp.h, dgn_file.h, lev_comp.h, special level & dungeon files.
 #
 HACKINCL = align.h amiconf.h androidconf.h artifact.h artilist.h attrib.h beconf.h \
-	color.h config.h config1.h context.h coord.h decl.h def_os2.h \
+	botl.h color.h config.h config1.h context.h coord.h decl.h def_os2.h \
 	display.h dlb.h dungeon.h engrave.h extern.h flag.h func_tab.h \
 	global.h hack.h lev.h lint.h macconf.h mextra.h mfndpos.h micro.h \
 	mkroom.h \
@@ -405,7 +406,7 @@ FIRSTOBJ = monst.o objects.o
 HOBJ = $(FIRSTOBJ) allmain.o alloc.o apply.o artifact.o attrib.o ball.o \
 	bones.o botl.o cmd.o dbridge.o decl.o detect.o dig.o display.o dlb.o \
 	do.o do_name.o do_wear.o dog.o dogmove.o dokick.o dothrow.o \
-	drawing.o dump.o dungeon.o eat.o end.o engrave.o exper.o explode.o \
+	drawing.o dungeon.o eat.o end.o engrave.o exper.o explode.o \
 	extralev.o files.o fountain.o hack.o hacklib.o invent.o light.o \
 	lock.o mail.o makemon.o mapglyph.o mcastu.o mhitm.o mhitu.o \
 	minion.o mklev.o mkmap.o \
@@ -736,6 +737,8 @@ load_img.o: ../win/gem/load_img.c ../include/load_img.h
 gr_rect.o: ../win/gem/gr_rect.c ../include/gr_rect.h
 	$(CC) $(CFLAGS) -c ../win/gem/gr_rect.c
 tile.o: tile.c $(HACK_H)
+cppregex.o: ../sys/share/cppregex.cpp
+	$(CXX) $(CXXFLAGS) -c ../sys/share/cppregex.cpp
 qt_win.o: ../win/Qt/qt_win.cpp $(HACK_H) ../include/func_tab.h \
 		../include/dlb.h ../include/patchlevel.h ../include/tile2x11.h \
 		../include/qt_win.h ../include/qt_clust.h ../include/qt_kde0.h \
@@ -776,7 +779,6 @@ dogmove.o: dogmove.c $(HACK_H) ../include/mfndpos.h
 dokick.o: dokick.c $(HACK_H)
 dothrow.o: dothrow.c $(HACK_H)
 drawing.o: drawing.c $(HACK_H) ../include/tcap.h
-dump.o: dump.c $(HACK_H) ../include/date.h
 dungeon.o: dungeon.c $(HACK_H) ../include/dgn_file.h ../include/dlb.h \
 		../include/lev.h
 eat.o: eat.c $(HACK_H)

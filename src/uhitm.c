@@ -1,19 +1,21 @@
-/* NetHack 3.6	uhitm.c	$NHDT-Date: 1446887537 2015/11/07 09:12:17 $  $NHDT-Branch: master $:$NHDT-Revision: 1.151 $ */
+/* NetHack 3.6	uhitm.c	$NHDT-Date: 1521684760 2018/03/22 02:12:40 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.176 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 STATIC_DCL boolean FDECL(known_hitum, (struct monst *, struct obj *, int *,
-                                       int, int, struct attack *));
+                                       int, int, struct attack *, int));
 STATIC_DCL boolean FDECL(theft_petrifies, (struct obj *));
 STATIC_DCL void FDECL(steal_it, (struct monst *, struct attack *));
+STATIC_DCL boolean FDECL(hitum_cleave, (struct monst *, struct attack *));
 STATIC_DCL boolean FDECL(hitum, (struct monst *, struct attack *));
-STATIC_DCL boolean FDECL(hmon_hitmon, (struct monst *, struct obj *, int));
+STATIC_DCL boolean FDECL(hmon_hitmon, (struct monst *, struct obj *, int,
+                                       int));
 STATIC_DCL int FDECL(joust, (struct monst *, struct obj *));
 STATIC_DCL void NDECL(demonpet);
-STATIC_DCL boolean FDECL(m_slips_free, (struct monst * mtmp,
-                                        struct attack *mattk));
+STATIC_DCL boolean FDECL(m_slips_free, (struct monst *, struct attack *));
 STATIC_DCL int FDECL(explum, (struct monst *, struct attack *));
 STATIC_DCL void FDECL(start_engulf, (struct monst *));
 STATIC_DCL void NDECL(end_engulf);
@@ -23,8 +25,7 @@ STATIC_DCL void FDECL(nohandglow, (struct monst *));
 STATIC_DCL boolean FDECL(shade_aware, (struct obj *));
 
 extern boolean notonhead; /* for long worms */
-/* The below might become a parameter instead if we use it a lot */
-static int dieroll;
+
 /* Used to flag attacks caused by Stormbringer's maliciousness. */
 static boolean override_confirmation = FALSE;
 
@@ -145,7 +146,7 @@ struct obj *wep; /* uwep for attack(), null for kick_monster() */
             if (!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data, AD_STCK))
                 u.ustuck = mtmp;
         }
-        wakeup(mtmp); /* always necessary; also un-mimics mimics */
+        wakeup(mtmp, TRUE); /* always necessary; also un-mimics mimics */
         return TRUE;
     }
 
@@ -190,7 +191,7 @@ struct obj *wep; /* uwep for attack(), null for kick_monster() */
      */
     if ((mtmp->mundetected || mtmp->m_ap_type) && sensemon(mtmp)) {
         mtmp->mundetected = 0;
-        wakeup(mtmp);
+        wakeup(mtmp, TRUE);
     }
 
     if (flags.confirm && mtmp->mpeaceful && !Confusion && !Hallucination
@@ -350,10 +351,12 @@ register struct monst *mtmp;
                 Strcpy(buf, y_monnam(mtmp));
                 buf[0] = highc(buf[0]);
                 You("stop.  %s is in the way!", buf);
+                context.travel = context.travel1 = context.mv = context.run = 0;
                 return TRUE;
             } else if ((mtmp->mfrozen || (!mtmp->mcanmove)
                         || (mtmp->data->mmove == 0)) && rn2(6)) {
                 pline("%s doesn't seem to move!", Monnam(mtmp));
+                context.travel = context.travel1 = context.mv = context.run = 0;
                 return TRUE;
             } else
                 return FALSE;
@@ -389,11 +392,10 @@ register struct monst *mtmp;
         unweapon = FALSE;
         if (flags.verbose) {
             if (uwep)
-                You("begin bashing monsters with %s.",
-                    yobjnam(uwep, (char *) 0));
+                You("begin bashing monsters with %s.", yname(uwep));
             else if (!cantwield(youmonst.data))
-                You("begin %sing monsters with your %s %s.",
-                    Role_if(PM_MONK) ? "strik" : "bash",
+                You("begin %s monsters with your %s %s.",
+                    ing_suffix(Role_if(PM_MONK) ? "strike" : "bash"),
                     uarmg ? "gloved" : "bare", /* Del Lamb */
                     makeplural(body_part(HAND)));
         }
@@ -432,12 +434,13 @@ atk_done:
 
 /* really hit target monster; returns TRUE if it still lives */
 STATIC_OVL boolean
-known_hitum(mon, weapon, mhit, rollneeded, armorpenalty, uattk)
+known_hitum(mon, weapon, mhit, rollneeded, armorpenalty, uattk, dieroll)
 register struct monst *mon;
 struct obj *weapon;
 int *mhit;
 int rollneeded, armorpenalty; /* for monks */
 struct attack *uattk;
+int dieroll;
 {
     register boolean malive = TRUE;
 
@@ -461,7 +464,7 @@ struct attack *uattk;
         /* we hit the monster; be careful: it might die or
            be knocked into a different location */
         notonhead = (mon->mx != x || mon->my != y);
-        malive = hmon(mon, weapon, HMON_MELEE);
+        malive = hmon(mon, weapon, HMON_MELEE, dieroll);
         if (malive) {
             /* monster still alive */
             if (!rn2(25) && mon->mhp < mon->mhpmax / 2
@@ -486,6 +489,83 @@ struct attack *uattk;
     return malive;
 }
 
+/* hit the monster next to you and the monsters to the left and right of it;
+   return False if the primary target is killed, True otherwise */
+STATIC_OVL boolean
+hitum_cleave(target, uattk)
+struct monst *target; /* non-Null; forcefight at nothing doesn't cleave... */
+struct attack *uattk; /* ... but we don't enforce that here; Null works ok */
+{
+    /* swings will be delivered in alternate directions; with consecutive
+       attacks it will simulate normal swing and backswing; when swings
+       are non-consecutive, hero will sometimes start a series of attacks
+       with a backswing--that doesn't impact actual play, just spoils the
+       simulation attempt a bit */
+    static boolean clockwise = FALSE;
+    unsigned i;
+    int count, umort, x = u.ux, y = u.uy;
+
+    /* find the direction toward primary target */
+    for (i = 0; i < 8; ++i)
+        if (xdir[i] == u.dx && ydir[i] == u.dy)
+            break;
+    if (i == 8) {
+        impossible("hitum_cleave: unknown target direction [%d,%d,%d]?",
+                   u.dx, u.dy, u.dz);
+        return TRUE; /* target hasn't been killed */
+    }
+    /* adjust direction by two so that loop's increment (for clockwise)
+       or decrement (for counter-clockwise) will point at the spot next
+       to primary target */
+    i = (i + (clockwise ? 6 : 2)) % 8;
+    umort = u.umortality; /* used to detect life-saving */
+
+    /*
+     * Three attacks:  adjacent to primary, primary, adjacent on other
+     * side.  Primary target must be present or we wouldn't have gotten
+     * here (forcefight at thin air won't 'cleave').  However, the
+     * first attack might kill it (gas spore explosion, weak long worm
+     * occupying both spots) so we don't assume that it's still present
+     * on the second attack.
+     */
+    for (count = 3; count > 0; --count) {
+        struct monst *mtmp;
+        int tx, ty, tmp, dieroll, mhit, attknum, armorpenalty;
+
+        /* ++i, wrap 8 to i=0 /or/ --i, wrap -1 to i=7 */
+        i = (i + (clockwise ? 1 : 7)) % 8;
+
+        tx = x + xdir[i], ty = y + ydir[i]; /* current target location */
+        if (!isok(tx, ty))
+            continue;
+        mtmp = m_at(tx, ty);
+        if (!mtmp) {
+            if (glyph_is_invisible(levl[tx][ty].glyph))
+                (void) unmap_invisible(tx, ty);
+            continue;
+        }
+
+        tmp = find_roll_to_hit(mtmp, uattk->aatyp, uwep,
+                               &attknum, &armorpenalty);
+        dieroll = rnd(20);
+        mhit = (tmp > dieroll);
+        (void) known_hitum(mtmp, uwep, &mhit, tmp, armorpenalty,
+                           uattk, dieroll);
+        (void) passive(mtmp, uwep, mhit, !DEADMONSTER(mtmp), AT_WEAP, !uwep);
+
+        /* stop attacking if weapon is gone or hero got killed and
+           life-saved after passive counter-attack */
+        if (!uwep || u.umortality > umort)
+            break;
+    }
+    /* set up for next time */
+    clockwise = !clockwise; /* alternate */
+
+    /* return False if primary target died, True otherwise; note: if 'target'
+       was nonNull upon entry then it's still nonNull even if *target died */
+    return (target && DEADMONSTER(target)) ? FALSE : TRUE;
+}
+
 /* hit target monster; returns TRUE if it still lives */
 STATIC_OVL boolean
 hitum(mon, uattk)
@@ -497,38 +577,53 @@ struct attack *uattk;
     int armorpenalty, attknum = 0, x = u.ux + u.dx, y = u.uy + u.dy,
                       tmp = find_roll_to_hit(mon, uattk->aatyp, uwep,
                                              &attknum, &armorpenalty);
-    int mhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
+    int dieroll = rnd(20);
+    int mhit = (tmp > dieroll || u.uswallow);
+
+    /* Cleaver attacks three spots, 'mon' and one on either side of 'mon';
+       it can't be part of dual-wielding but we guard against that anyway;
+       cleave return value reflects status of primary target ('mon') */
+    if (uwep && uwep->oartifact == ART_CLEAVER && !u.twoweap
+        && !u.uswallow && !u.ustuck && !NODIAG(u.umonnum))
+        return hitum_cleave(mon, uattk);
 
     if (tmp > dieroll)
         exercise(A_DEX, TRUE);
-    malive = known_hitum(mon, uwep, &mhit, tmp, armorpenalty, uattk);
+    malive = known_hitum(mon, uwep, &mhit, tmp, armorpenalty, uattk, dieroll);
+    if (wepbefore && !uwep)
+        wep_was_destroyed = TRUE;
+    (void) passive(mon, uwep, mhit, malive, AT_WEAP, wep_was_destroyed);
+
     /* second attack for two-weapon combat; won't occur if Stormbringer
        overrode confirmation (assumes Stormbringer is primary weapon)
        or if the monster was killed or knocked to different location */
     if (u.twoweap && !override_confirmation && malive && m_at(x, y) == mon) {
         tmp = find_roll_to_hit(mon, uattk->aatyp, uswapwep, &attknum,
                                &armorpenalty);
-        mhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
-        malive = known_hitum(mon, uswapwep, &mhit, tmp, armorpenalty, uattk);
+        dieroll = rnd(20);
+        mhit = (tmp > dieroll || u.uswallow);
+        malive = known_hitum(mon, uswapwep, &mhit, tmp, armorpenalty, uattk,
+                             dieroll);
+        /* second passive counter-attack only occurs if second attack hits */
+        if (mhit)
+            (void) passive(mon, uswapwep, mhit, malive, AT_WEAP, !uswapwep);
     }
-    if (wepbefore && !uwep)
-        wep_was_destroyed = TRUE;
-    (void) passive(mon, mhit, malive, AT_WEAP, wep_was_destroyed);
     return malive;
 }
 
 /* general "damage monster" routine; return True if mon still alive */
 boolean
-hmon(mon, obj, thrown)
+hmon(mon, obj, thrown, dieroll)
 struct monst *mon;
 struct obj *obj;
 int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
+int dieroll;
 {
     boolean result, anger_guards;
 
     anger_guards = (mon->mpeaceful
                     && (mon->ispriest || mon->isshk || is_watch(mon->data)));
-    result = hmon_hitmon(mon, obj, thrown);
+    result = hmon_hitmon(mon, obj, thrown, dieroll);
     if (mon->ispriest && !rn2(2))
         ghod_hitsu(mon);
     if (anger_guards)
@@ -538,10 +633,11 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
 
 /* guts of hmon() */
 STATIC_OVL boolean
-hmon_hitmon(mon, obj, thrown)
+hmon_hitmon(mon, obj, thrown, dieroll)
 struct monst *mon;
 struct obj *obj;
 int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
+int dieroll;
 {
     int tmp;
     struct permonst *mdat = mon->data;
@@ -571,7 +667,7 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
     unconventional[0] = '\0';
     saved_oname[0] = '\0';
 
-    wakeup(mon);
+    wakeup(mon, TRUE);
     if (!obj) { /* attack with bare hands */
         if (mdat == &mons[PM_SHADE])
             tmp = 0;
@@ -643,7 +739,10 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
                 tmp = dmgval(obj, mon);
                 /* a minimal hit doesn't exercise proficiency */
                 valid_weapon_attack = (tmp > 1);
-                if (!valid_weapon_attack || mon == u.ustuck || u.twoweap) {
+                if (!valid_weapon_attack || mon == u.ustuck || u.twoweap
+                    /* Cleaver can hit up to three targets at once so don't
+                       let it also hit from behind or shatter foes' weapons */
+                    || (hand_to_hand && obj->oartifact == ART_CLEAVER)) {
                     ; /* no special bonuses */
                 } else if (mon->mflee && Role_if(PM_ROGUE) && !Upolyd
                            /* multi-shot throwing is too powerful here */
@@ -660,15 +759,19 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
                                && P_SKILL(wtype) >= P_SKILLED)
                            && ((monwep = MON_WEP(mon)) != 0
                                && !is_flimsy(monwep)
-                               && !obj_resists(
-                                      monwep, 50 + 15 * greatest_erosion(obj),
-                                      100))) {
+                               && !obj_resists(monwep,
+                                       50 + 15 * (greatest_erosion(obj)
+                                                  - greatest_erosion(monwep)),
+                                               100))) {
                     /*
                      * 2.5% chance of shattering defender's weapon when
                      * using a two-handed weapon; less if uwep is rusted.
                      * [dieroll == 2 is most successful non-beheading or
                      * -bisecting hit, in case of special artifact damage;
                      * the percentage chance is (1/20)*(50/100).]
+                     * If attacker's weapon is rustier than defender's,
+                     * the obj_resists chance is increased so the shatter
+                     * chance is decreased; if less rusty, then vice versa.
                      */
                     setmnotwielded(mon, monwep);
                     mon->weapon_check = NEED_WEAPON;
@@ -725,7 +828,8 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
             else
                 setuwep((struct obj *) 0);
             freeinv(obj);
-            potionhit(mon, obj, TRUE);
+            potionhit(mon, obj,
+                      hand_to_hand ? POTHIT_HERO_BASH : POTHIT_HERO_THROW);
             if (mon->mhp <= 0)
                 return FALSE; /* killed */
             hittxt = TRUE;
@@ -888,7 +992,7 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
                             pline("%s %s over %s!", what,
                                   vtense(what, "splash"), whom);
                         }
-                        setmangry(mon);
+                        setmangry(mon, TRUE);
                         mon->mcansee = 0;
                         tmp = rn1(25, 21);
                         if (((int) mon->mblinded + tmp) > 127)
@@ -897,7 +1001,7 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
                             mon->mblinded += tmp;
                     } else {
                         pline(obj->otyp == CREAM_PIE ? "Splat!" : "Splash!");
-                        setmangry(mon);
+                        setmangry(mon, TRUE);
                     }
                     if (thrown)
                         obfree(obj, (struct obj *) 0);
@@ -1080,11 +1184,22 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
     if ((mdat == &mons[PM_BLACK_PUDDING] || mdat == &mons[PM_BROWN_PUDDING])
         /* pudding is alive and healthy enough to split */
         && mon->mhp > 1 && !mon->mcan
-        /* iron weapon using melee or polearm hit */
-        && obj && obj == uwep && objects[obj->otyp].oc_material == IRON
+        /* iron weapon using melee or polearm hit [3.6.1: metal weapon too;
+           also allow either or both weapons to cause split when twoweap] */
+        && obj && (obj == uwep || (u.twoweap && obj == uswapwep))
+        && ((objects[obj->otyp].oc_material == IRON
+             /* allow scalpel and tsurugi to split puddings */
+             || objects[obj->otyp].oc_material == METAL)
+            /* but not bashing with darts, arrows or ya */
+            && !(is_ammo(obj) || is_missile(obj)))
         && hand_to_hand) {
         if (clone_mon(mon, 0, 0)) {
-            pline("%s divides as you hit it!", Monnam(mon));
+            char withwhat[BUFSZ];
+
+            withwhat[0] = '\0';
+            if (u.twoweap && flags.verbose)
+                Sprintf(withwhat, " with %s", yname(obj));
+            pline("%s divides as you hit it%s!", Monnam(mon), withwhat);
             hittxt = TRUE;
         }
     }
@@ -1112,9 +1227,13 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
             else if (barehand_silver_rings == 2)
                 fmt = "Your silver rings sear %s!";
             else if (silverobj && saved_oname[0]) {
-                Sprintf(silverobjbuf, "Your %s%s %s %%s!",
+                /* guard constructed format string against '%' in
+                   saved_oname[] from xname(via cxname()) */
+                Sprintf(silverobjbuf, "Your %s%s %s",
                         strstri(saved_oname, "silver") ? "" : "silver ",
                         saved_oname, vtense(saved_oname, "sear"));
+                (void) strNsubst(silverobjbuf, "%", "%%", 0);
+                Strcat(silverobjbuf, " %s!");
                 fmt = silverobjbuf;
             } else
                 fmt = "The silver sears %s!";
@@ -1141,7 +1260,7 @@ int thrown; /* HMON_xxx (0 => hand-to-hand, other => ranged) */
     if (poiskilled) {
         pline_The("poison was deadly...");
         if (!already_killed)
-            xkilled(mon, 0);
+            xkilled(mon, XKILL_NOMSG);
         destroyed = TRUE; /* return FALSE; */
     } else if (destroyed) {
         if (!already_killed)
@@ -1457,10 +1576,14 @@ register struct attack *mattk;
         }
         if (!Blind)
             pline("%s is %s!", Monnam(mdef), on_fire(pd, mattk));
-        if (pd == &mons[PM_STRAW_GOLEM] || pd == &mons[PM_PAPER_GOLEM]) {
+        if (completelyburns(pd)) { /* paper golem or straw golem */
             if (!Blind)
                 pline("%s burns completely!", Monnam(mdef));
-            xkilled(mdef, 2);
+            else
+                You("smell burning%s.",
+                    (pd == &mons[PM_PAPER_GOLEM]) ? " paper"
+                      : (pd == &mons[PM_STRAW_GOLEM]) ? " straw" : "");
+            xkilled(mdef, XKILL_NOMSG | XKILL_NOCORPSE);
             tmp = 0;
             break;
             /* Don't return yet; keep hp<1 and tmp=0 for pet msg */
@@ -1578,7 +1701,7 @@ register struct attack *mattk;
                 if (!Blind)
                     pline("Some writing vanishes from %s head!",
                           s_suffix(mon_nam(mdef)));
-                xkilled(mdef, 0);
+                xkilled(mdef, XKILL_NOMSG);
                 /* Don't return yet; keep hp<1 and tmp=0 for pet msg */
             } else {
                 mdef->mcan = 1;
@@ -1590,11 +1713,15 @@ register struct attack *mattk;
     case AD_DRLI:
         if (!negated && !rn2(3) && !resists_drli(mdef)) {
             int xtmp = d(2, 6);
+
             pline("%s suddenly seems weaker!", Monnam(mdef));
             mdef->mhpmax -= xtmp;
-            if ((mdef->mhp -= xtmp) <= 0 || !mdef->m_lev) {
+            mdef->mhp -= xtmp;
+            /* !m_lev: level 0 monster is killed regardless of hit points
+               rather than drop to level -1 */
+            if (mdef->mhp <= 0 || !mdef->m_lev) {
                 pline("%s dies!", Monnam(mdef));
-                xkilled(mdef, 0);
+                xkilled(mdef, XKILL_NOMSG);
             } else
                 mdef->m_lev--;
             tmp = 0;
@@ -1603,7 +1730,7 @@ register struct attack *mattk;
     case AD_RUST:
         if (pd == &mons[PM_IRON_GOLEM]) {
             pline("%s falls to pieces!", Monnam(mdef));
-            xkilled(mdef, 0);
+            xkilled(mdef, XKILL_NOMSG);
         }
         erode_armor(mdef, ERODE_RUST);
         tmp = 0;
@@ -1615,7 +1742,7 @@ register struct attack *mattk;
     case AD_DCAY:
         if (pd == &mons[PM_WOOD_GOLEM] || pd == &mons[PM_LEATHER_GOLEM]) {
             pline("%s falls to pieces!", Monnam(mdef));
-            xkilled(mdef, 0);
+            xkilled(mdef, XKILL_NOMSG);
         }
         erode_armor(mdef, ERODE_ROT);
         tmp = 0;
@@ -1755,15 +1882,16 @@ register struct attack *mattk;
     }
 
     mdef->mstrategy &= ~STRAT_WAITFORU; /* in case player is very fast */
-    if ((mdef->mhp -= tmp) < 1) {
+    mdef->mhp -= tmp;
+    if (mdef->mhp < 1) {
         if (mdef->mtame && !cansee(mdef->mx, mdef->my)) {
             You_feel("embarrassed for a moment.");
             if (tmp)
-                xkilled(mdef, 0); /* !tmp but hp<1: already killed */
+                xkilled(mdef, XKILL_NOMSG); /* !tmp but hp<1: already killed */
         } else if (!flags.verbose) {
             You("destroy it!");
             if (tmp)
-                xkilled(mdef, 0);
+                xkilled(mdef, XKILL_NOMSG);
         } else if (tmp)
             killed(mdef);
         return 2;
@@ -1879,6 +2007,18 @@ register struct attack *mattk;
         for (otmp = mdef->minvent; otmp; otmp = otmp->nobj)
             (void) snuff_lit(otmp);
 
+        /* force vampire in bat, cloud, or wolf form to revert back to
+           vampire form now instead of dealing with that when it dies */
+        if (is_vampshifter(mdef)
+            && newcham(mdef, &mons[mdef->cham], FALSE, FALSE)) {
+            You("engulf it, then expel it.");
+            if (canspotmon(mdef))
+                pline("It turns into %s.", a_monnam(mdef));
+            else
+                map_invisible(mdef->mx, mdef->my);
+            return 1;
+        }
+
         /* engulfing a cockatrice or digesting a Rider or Medusa */
         fatal_gulp = (touch_petrifies(pd) && !Stone_resistance)
                      || (mattk->adtyp == AD_DGST
@@ -1922,7 +2062,13 @@ register struct attack *mattk;
                     m_useup(mdef, otmp);
 
                 newuhs(FALSE);
-                xkilled(mdef, 2);
+                /* start_engulf() issues "you engulf <mdef>" above; this
+                   used to specify XKILL_NOMSG but we need "you kill <mdef>"
+                   in case we're also going to get "welcome to level N+1";
+                   "you totally digest <mdef>" will be coming soon (after
+                   several turns) but the level-gain message seems out of
+                   order if the kill message is left implicit */
+                xkilled(mdef, XKILL_GIVEMSG | XKILL_NOCORPSE);
                 if (mdef->mhp > 0) { /* monster lifesaved */
                     You("hurriedly regurgitate the sizzling in your %s.",
                         body_part(STOMACH));
@@ -2031,7 +2177,8 @@ register struct attack *mattk;
                 break;
             }
             end_engulf();
-            if ((mdef->mhp -= dam) <= 0) {
+            mdef->mhp -= dam;
+            if (mdef->mhp <= 0) {
                 killed(mdef);
                 if (mdef->mhp <= 0) /* not lifesaved */
                     return 2;
@@ -2063,7 +2210,7 @@ boolean wouldhavehit;
     else
         You("miss it.");
     if (!mdef->msleeping && mdef->mcanmove)
-        wakeup(mdef);
+        wakeup(mdef, TRUE);
 }
 
 /* attack monster as a monster. */
@@ -2072,13 +2219,15 @@ hmonas(mon)
 register struct monst *mon;
 {
     struct attack *mattk, alt_attk;
-    struct obj *weapon;
+    struct obj *weapon, **originalweapon;
     boolean altwep = FALSE, weapon_used = FALSE;
     int i, tmp, armorpenalty, sum[NATTK], nsum = 0, dhit = 0, attknum = 0;
+    int dieroll;
 
     for (i = 0; i < NATTK; i++) {
         sum[i] = 0;
-        mattk = getmattk(youmonst.data, i, sum, &alt_attk);
+        mattk = getmattk(&youmonst, mon, i, sum, &alt_attk);
+        weapon = 0;
         switch (mattk->aatyp) {
         case AT_WEAP:
         use_weapon:
@@ -2093,18 +2242,36 @@ register struct monst *mon;
              * we currently allow the player to get each of these as a weapon
              * attack.  Is this really desirable?
              */
-            /* approximate two-weapon mode */
-            weapon = (altwep && uswapwep) ? uswapwep : uwep;
-            altwep = !altwep; /* toggle for next attack */
+            /* approximate two-weapon mode; known_hitum() -> hmon() -> &c
+               might destroy the weapon argument, but it might also already
+               be Null, and we want to track that for passive() */
+            originalweapon = (altwep && uswapwep) ? &uswapwep : &uwep;
+            if (uswapwep /* set up 'altwep' flag for next iteration */
+                /* only switch to uswapwep if it's a weapon */
+                && (uswapwep->oclass == WEAPON_CLASS || is_weptool(uswapwep))
+                /* only switch if uswapwep is not bow, arrows, or darts */
+                && !(is_launcher(uswapwep) || is_ammo(uswapwep)
+                     || is_missile(uswapwep))) /* dart, shuriken, boomerang */
+                altwep = !altwep; /* toggle for next attack */
+            weapon = *originalweapon;
+            if (!weapon) /* no need to go beyond no-gloves to rings; not ...*/
+                originalweapon = &uarmg; /*... subject to erosion damage */
+
             tmp = find_roll_to_hit(mon, AT_WEAP, weapon, &attknum,
                                    &armorpenalty);
-            dhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
+            dieroll = rnd(20);
+            dhit = (tmp > dieroll || u.uswallow);
             /* Enemy dead, before any special abilities used */
-            if (!known_hitum(mon, weapon, &dhit, tmp, armorpenalty, mattk)) {
+            if (!known_hitum(mon, weapon, &dhit, tmp,
+                             armorpenalty, mattk, dieroll)) {
                 sum[i] = 2;
                 break;
             } else
                 sum[i] = dhit;
+            /* originalweapon points to an equipment slot which might
+               now be empty if the weapon was destroyed during the hit;
+               passive(,weapon,...) won't call passive_obj() in that case */
+            weapon = *originalweapon; /* might receive passive erosion */
             /* might be a worm that gets cut in half */
             if (m_at(u.ux + u.dx, u.uy + u.dy) != mon)
                 return (boolean) (nsum != 0);
@@ -2129,7 +2296,8 @@ register struct monst *mon;
         case AT_TENT:
             tmp = find_roll_to_hit(mon, mattk->aatyp, (struct obj *) 0,
                                    &attknum, &armorpenalty);
-            dhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
+            dieroll = rnd(20);
+            dhit = (tmp > dieroll || u.uswallow);
             if (dhit) {
                 int compat;
 
@@ -2144,7 +2312,7 @@ register struct monst *mon;
                     sum[i] = damageum(mon, mattk);
                     break;
                 }
-                wakeup(mon);
+                wakeup(mon, TRUE);
                 /* maybe this check should be in damageum()? */
                 if (mon->data == &mons[PM_SHADE]
                     && !(mattk->aatyp == AT_KICK && uarmf
@@ -2178,7 +2346,7 @@ register struct monst *mon;
              * already grabbed in a previous attack
              */
             dhit = 1;
-            wakeup(mon);
+            wakeup(mon, TRUE);
             if (mon->data == &mons[PM_SHADE])
                 Your("hug passes harmlessly through %s.", mon_nam(mon));
             else if (!sticks(mon->data) && !u.uswallow) {
@@ -2196,7 +2364,7 @@ register struct monst *mon;
 
         case AT_EXPL: /* automatic hit if next to */
             dhit = -1;
-            wakeup(mon);
+            wakeup(mon, TRUE);
             sum[i] = explum(mon, mattk);
             break;
 
@@ -2204,7 +2372,7 @@ register struct monst *mon;
             tmp = find_roll_to_hit(mon, mattk->aatyp, (struct obj *) 0,
                                    &attknum, &armorpenalty);
             if ((dhit = (tmp > rnd(20 + i)))) {
-                wakeup(mon);
+                wakeup(mon, TRUE);
                 if (mon->data == &mons[PM_SHADE])
                     Your("attempt to surround %s is harmless.", mon_nam(mon));
                 else {
@@ -2229,6 +2397,7 @@ register struct monst *mon;
                  || youmonst.data->mlet == S_ORC
                  || youmonst.data->mlet == S_GNOME) && !weapon_used)
                 goto use_weapon;
+            /*FALLTHRU*/
 
         case AT_NONE:
         case AT_BOOM:
@@ -2248,11 +2417,11 @@ register struct monst *mon;
             u.mh = -1; /* dead in the current form */
             rehumanize();
         }
-        if (sum[i] == 2)
-            return (boolean) passive(mon, 1, 0, mattk->aatyp, FALSE);
-        /* defender dead */
-        else {
-            (void) passive(mon, sum[i], 1, mattk->aatyp, FALSE);
+        if (sum[i] == 2) {
+            /* defender dead */
+            return (boolean) passive(mon, weapon, 1, 0, mattk->aatyp, FALSE);
+        } else {
+            (void) passive(mon, weapon, sum[i], 1, mattk->aatyp, FALSE);
             nsum |= sum[i];
         }
         if (!Upolyd)
@@ -2266,10 +2435,11 @@ register struct monst *mon;
 /*      Special (passive) attacks on you by monsters done here.
  */
 int
-passive(mon, mhit, malive, aatyp, wep_was_destroyed)
-register struct monst *mon;
-register boolean mhit;
-register int malive;
+passive(mon, weapon, mhit, malive, aatyp, wep_was_destroyed)
+struct monst *mon;
+struct obj *weapon; /* uwep or uswapwep or uarmg or uarmf or Null */
+boolean mhit;
+int malive;
 uchar aatyp;
 boolean wep_was_destroyed;
 {
@@ -2294,14 +2464,14 @@ boolean wep_was_destroyed;
      */
     switch (ptr->mattk[i].adtyp) {
     case AD_FIRE:
-        if (mhit && !mon->mcan) {
+        if (mhit && !mon->mcan && weapon) {
             if (aatyp == AT_KICK) {
                 if (uarmf && !rn2(6))
                     (void) erode_obj(uarmf, xname(uarmf), ERODE_BURN,
                                      EF_GREASE | EF_VERBOSE);
             } else if (aatyp == AT_WEAP || aatyp == AT_CLAW
                        || aatyp == AT_MAGC || aatyp == AT_TUCH)
-                passive_obj(mon, (struct obj *) 0, &(ptr->mattk[i]));
+                passive_obj(mon, weapon, &(ptr->mattk[i]));
         }
         break;
     case AD_ACID:
@@ -2309,21 +2479,22 @@ boolean wep_was_destroyed;
             if (Blind || !flags.verbose)
                 You("are splashed!");
             else
-                You("are splashed by %s acid!", s_suffix(mon_nam(mon)));
+                You("are splashed by %s %s!", s_suffix(mon_nam(mon)),
+                    hliquid("acid"));
 
             if (!Acid_resistance)
                 mdamageu(mon, tmp);
             if (!rn2(30))
                 erode_armor(&youmonst, ERODE_CORRODE);
         }
-        if (mhit) {
+        if (mhit && weapon) {
             if (aatyp == AT_KICK) {
                 if (uarmf && !rn2(6))
                     (void) erode_obj(uarmf, xname(uarmf), ERODE_CORRODE,
                                      EF_GREASE | EF_VERBOSE);
             } else if (aatyp == AT_WEAP || aatyp == AT_CLAW
                        || aatyp == AT_MAGC || aatyp == AT_TUCH)
-                passive_obj(mon, (struct obj *) 0, &(ptr->mattk[i]));
+                passive_obj(mon, weapon, &(ptr->mattk[i]));
         }
         exercise(A_STR, FALSE);
         break;
@@ -2352,25 +2523,25 @@ boolean wep_was_destroyed;
         }
         break;
     case AD_RUST:
-        if (mhit && !mon->mcan) {
+        if (mhit && !mon->mcan && weapon) {
             if (aatyp == AT_KICK) {
                 if (uarmf)
                     (void) erode_obj(uarmf, xname(uarmf), ERODE_RUST,
                                      EF_GREASE | EF_VERBOSE);
             } else if (aatyp == AT_WEAP || aatyp == AT_CLAW
                        || aatyp == AT_MAGC || aatyp == AT_TUCH)
-                passive_obj(mon, (struct obj *) 0, &(ptr->mattk[i]));
+                passive_obj(mon, weapon, &(ptr->mattk[i]));
         }
         break;
     case AD_CORR:
-        if (mhit && !mon->mcan) {
+        if (mhit && !mon->mcan && weapon) {
             if (aatyp == AT_KICK) {
                 if (uarmf)
                     (void) erode_obj(uarmf, xname(uarmf), ERODE_CORRODE,
                                      EF_GREASE | EF_VERBOSE);
             } else if (aatyp == AT_WEAP || aatyp == AT_CLAW
                        || aatyp == AT_MAGC || aatyp == AT_TUCH)
-                passive_obj(mon, (struct obj *) 0, &(ptr->mattk[i]));
+                passive_obj(mon, weapon, &(ptr->mattk[i]));
         }
         break;
     case AD_MAGM:
@@ -2385,17 +2556,14 @@ boolean wep_was_destroyed;
         break;
     case AD_ENCH: /* KMH -- remove enchantment (disenchanter) */
         if (mhit) {
-            struct obj *obj = (struct obj *) 0;
-
             if (aatyp == AT_KICK) {
-                obj = uarmf;
-                if (!obj)
+                if (!weapon)
                     break;
             } else if (aatyp == AT_BITE || aatyp == AT_BUTT
                        || (aatyp >= AT_STNG && aatyp < AT_WEAP)) {
                 break; /* no object involved */
             }
-            passive_obj(mon, obj, &(ptr->mattk[i]));
+            passive_obj(mon, weapon, &(ptr->mattk[i]));
         }
         break;
     default:
@@ -2502,13 +2670,14 @@ boolean wep_was_destroyed;
  */
 void
 passive_obj(mon, obj, mattk)
-register struct monst *mon;
-register struct obj *obj; /* null means pick uwep, uswapwep or uarmg */
+struct monst *mon;
+struct obj *obj;          /* null means pick uwep, uswapwep or uarmg */
 struct attack *mattk;     /* null means we find one internally */
 {
     struct permonst *ptr = mon->data;
-    register int i;
+    int i;
 
+    /* [this first bit is obsolete; we're not called with Null anymore] */
     /* if caller hasn't specified an object, use uwep, uswapwep or uarmg */
     if (!obj) {
         obj = (u.twoweap && uswapwep && !rn2(2)) ? uswapwep : uwep;
@@ -2531,28 +2700,30 @@ struct attack *mattk;     /* null means we find one internally */
 
     switch (mattk->adtyp) {
     case AD_FIRE:
-        if (!rn2(6) && !mon->mcan) {
+        if (!rn2(6) && !mon->mcan
+            /* steam vortex: fire resist applies, fire damage doesn't */
+            && mon->data != &mons[PM_STEAM_VORTEX]) {
             (void) erode_obj(obj, NULL, ERODE_BURN, EF_NONE);
         }
         break;
     case AD_ACID:
         if (!rn2(6)) {
-            (void) erode_obj(obj, NULL, ERODE_CORRODE, EF_NONE);
+            (void) erode_obj(obj, NULL, ERODE_CORRODE, EF_GREASE);
         }
         break;
     case AD_RUST:
         if (!mon->mcan) {
-            (void) erode_obj(obj, NULL, ERODE_RUST, EF_NONE);
+            (void) erode_obj(obj, (char *) 0, ERODE_RUST, EF_GREASE);
         }
         break;
     case AD_CORR:
         if (!mon->mcan) {
-            (void) erode_obj(obj, NULL, ERODE_CORRODE, EF_NONE);
+            (void) erode_obj(obj, (char *) 0, ERODE_CORRODE, EF_GREASE);
         }
         break;
     case AD_ENCH:
         if (!mon->mcan) {
-            if (drain_item(obj) && carried(obj)
+            if (drain_item(obj, TRUE) && carried(obj)
                 && (obj->known || obj->oclass == ARMOR_CLASS)) {
                 pline("%s less effective.", Yobjnam2(obj, "seem"));
             }
@@ -2600,7 +2771,7 @@ struct monst *mtmp;
     if (what)
         pline(fmt, what);
 
-    wakeup(mtmp); /* clears mimicking */
+    wakeup(mtmp, FALSE); /* clears mimicking */
     /* if hero is blind, wakeup() won't display the monster even though
        it's no longer concealed */
     if (!canspotmon(mtmp)
@@ -2658,7 +2829,7 @@ struct obj *otmp; /* source of flash */
             }
             if (mtmp->mhp > 0) {
                 if (!context.mon_moving)
-                    setmangry(mtmp);
+                    setmangry(mtmp, TRUE);
                 if (tmp < 9 && !mtmp->isshk && rn2(4))
                     monflee(mtmp, rn2(4) ? rnd(100) : 0, FALSE, TRUE);
                 mtmp->mcansee = 0;
@@ -2676,7 +2847,9 @@ int dmg;
 {
     pline("%s %s!", Monnam(mon),
           (dmg > mon->mhp / 2) ? "wails in agony" : "cries out in pain");
-    if ((mon->mhp -= dmg) <= 0) {
+    mon->mhp -= dmg;
+    wake_nearto(mon->mx, mon->my, 30);
+    if (mon->mhp <= 0) {
         if (context.mon_moving)
             monkilled(mon, (char *) 0, AD_BLND);
         else

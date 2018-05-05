@@ -1,5 +1,6 @@
-/* NetHack 3.6	obj.h	$NHDT-Date: 1445126423 2015/10/18 00:00:23 $  $NHDT-Branch: master $:$NHDT-Revision: 1.50 $ */
+/* NetHack 3.6	obj.h	$NHDT-Date: 1508827590 2017/10/24 06:46:30 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.60 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef OBJ_H
@@ -40,12 +41,14 @@ struct obj {
     unsigned owt;
     long quan; /* number of items */
 
-    schar spe; /* quality of weapon, armor or ring (+ or -)
-                  number of charges for wand ( >= -1 )
-                  marks your eggs, tin variety and spinach tins
-                  royal coffers for a court ( == 2)
-                  tells which fruit a fruit is
-                  special for uball and amulet
+    schar spe; /* quality of weapon, weptool, armor or ring (+ or -);
+                  number of charges for wand or charged tool ( >= -1 );
+                  number of candles attached to candelabrum;
+                  marks your eggs, tin variety and spinach tins;
+                  Schroedinger's Box (1) or royal coffers for a court (2);
+                  tells which fruit a fruit is;
+                  special for uball and amulet;
+                  scroll of mail (normal==0, bones or wishing==1, written==2);
                   historic and gender for statues */
 #define STATUE_HISTORIC 0x01
 #define STATUE_MALE 0x02
@@ -95,9 +98,7 @@ struct obj {
     Bitfield(recharged, 3); /* number of times it's been recharged */
 #define on_ice recharged    /* corpse on ice */
     Bitfield(lamplit, 1);   /* a light-source -- can be lit */
-    Bitfield(
-        globby,
-        1); /* globby; will combine with like types on adjacent squares */
+    Bitfield(globby, 1);    /* combines with like types on adjacent squares */
     Bitfield(greased, 1);    /* covered with grease */
     Bitfield(nomerge, 1);    /* set temporarily to prevent merging */
     Bitfield(was_thrown, 1); /* thrown by hero since last picked up */
@@ -111,7 +112,7 @@ struct obj {
     int corpsenm;         /* type of corpse is mons[corpsenm] */
 #define leashmon corpsenm /* gets m_id of attached pet */
 #define fromsink corpsenm /* a potion from a sink */
-#define novelidx corpsenm /* 3.6.0 tribute - the index of the novel title */
+#define novelidx corpsenm /* 3.6 tribute - the index of the novel title */
 #define record_achieve_special corpsenm
     int usecount;           /* overloaded for various things that tally */
 #define spestudied usecount /* # of times a spellbook has been studied */
@@ -202,6 +203,8 @@ struct obj {
      && objects[otmp->otyp].oc_skill >= -P_SHURIKEN \
      && objects[otmp->otyp].oc_skill <= -P_BOW)
 #define uslinging() (uwep && objects[uwep->otyp].oc_skill == P_SLING)
+/* 'is_quest_artifact()' only applies to the current role's artifact */
+#define any_quest_artifact(o) ((o)->oartifact >= ART_ORB_OF_DETECTION)
 
 /* Armor */
 #define is_shield(otmp)          \
@@ -329,14 +332,31 @@ struct obj {
     ((obj)->otyp == LUCKSTONE || (obj)->otyp == LOADSTONE \
      || (obj)->otyp == FLINT || (obj)->otyp == TOUCHSTONE)
 
-/* misc */
+/* misc helpers, simple enough to be macros */
 #define is_flimsy(otmp)                           \
     (objects[(otmp)->otyp].oc_material <= LEATHER \
      || (otmp)->otyp == RUBBER_HOSE)
-
-/* helpers, simple enough to be macros */
 #define is_plural(o) \
-    ((o)->quan > 1 || (o)->oartifact == ART_EYES_OF_THE_OVERWORLD)
+    ((o)->quan != 1L                                                    \
+     /* "the Eyes of the Overworld" are plural, but                     \
+        "a pair of lenses named the Eyes of the Overworld" is not */    \
+     || ((o)->oartifact == ART_EYES_OF_THE_OVERWORLD                    \
+         && !undiscovered_artifact(ART_EYES_OF_THE_OVERWORLD)))
+#define pair_of(o) ((o)->otyp == LENSES || is_gloves(o) || is_boots(o))
+
+/* 'PRIZE' values override obj->corpsenm so prizes mustn't be object types
+   which use that field for monster type (or other overloaded purpose) */
+#define MINES_PRIZE 1
+#define SOKO_PRIZE1 2
+#define SOKO_PRIZE2 3
+#define is_mines_prize(o) \
+    ((o)->otyp == iflags.mines_prize_type                \
+     && (o)->record_achieve_special == MINES_PRIZE)
+#define is_soko_prize(o) \
+    (((o)->otyp == iflags.soko_prize_type1               \
+      && (o)->record_achieve_special == SOKO_PRIZE1)     \
+     || ((o)->otyp == iflags.soko_prize_type2            \
+         && (o)->record_achieve_special == SOKO_PRIZE2))
 
 /* Flags for get_obj_location(). */
 #define CONTAINED_TOO 0x1
@@ -361,21 +381,24 @@ struct obj {
 #define ER_DAMAGED 2   /* object was damaged in some way */
 #define ER_DESTROYED 3 /* object was destroyed */
 
+/* propeller method for potionhit() */
+#define POTHIT_HERO_BASH   0 /* wielded by hero */
+#define POTHIT_HERO_THROW  1 /* thrown by hero */
+#define POTHIT_MONST_THROW 2 /* thrown by a monster */
+#define POTHIT_OTHER_THROW 3 /* propelled by some other means [scatter()] */
+
 /*
  *  Notes for adding new oextra structures:
  *
  *	 1. Add the structure definition and any required macros in an
- *appropriate
- *	    header file that precedes this one.
- *	 2. Add a pointer to your new struct to the oextra struct in this
- *file.
+ *          appropriate header file that precedes this one.
+ *	 2. Add a pointer to your new struct to oextra struct in this file.
  *	 3. Add a referencing macro to this file after the newobj macro above
  *	    (see ONAME, OMONST, OMIN, OLONG, or OMAILCMD for examples).
  *	 4. Add a testing macro after the set of referencing macros
  *	    (see has_oname(), has_omonst(), has_omin(), has_olong(),
  *	    has_omailcmd() for examples).
- *	 5. Create a newXX(otmp) function and possibly a free_XX(otmp)
- *function
+ *	 5. Create newXX(otmp) function and possibly free_XX(otmp) function
  *	    in an appropriate new or existing source file and add a prototype
  *	    for it to include/extern.h.  The majority of these are currently
  *	    located in mkobj.c for convenience.

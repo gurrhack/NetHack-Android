@@ -1,5 +1,17 @@
-.TH NETHACK 6 "6 March 2004"
-.\" NetHack 3.6  nethack.6	$NHDT-Date: 1432512786 2015/05/25 00:13:06 $  $NHDT-Branch: master $:$NHDT-Revision: 1.10 $
+.TH NETHACK 6 "2 February 2018" NETHACK
+.de ND
+.ds Nd \\$3
+..
+.de NB
+.ds Nb \\$2
+..
+.de NR
+.ds Nr \\$2
+..
+.ND $NHDT-Date: 1524689549 2018/04/25 20:52:29 $
+.NB $NHDT-Branch: NetHack-3.6.0 $
+.NR $NHDT-Revision: 1.14 $
+.ds Na Robert Patrick Rankin
 .SH NAME
 nethack \- Exploring The Mazes of Menace
 .SH SYNOPSIS
@@ -33,6 +45,9 @@ nethack \- Exploring The Mazes of Menace
 ]
 [
 .B \-ibm
+]
+[
+.BR \-\-version [ :paste ]
 ]
 .PP
 .B nethack
@@ -207,6 +222,17 @@ The playground must contain several auxiliary files such as help files,
 the list of top scorers, and a subdirectory
 .I save
 where games are saved.
+.PP
+.B \-\-version
+can be used to cause NetHack to show the version information it
+was compiled with, then exit. That will include the
+.I git
+commit hash if the information was available when the game was compiled.
+On some platforms, such as windows and macosx, a variation 
+.B \-\-version:paste
+can be used to cause NetHack to show the version information, then exit,
+while also leaving a copy of the version information in the paste buffer 
+or clipboard for potential insertion into things like bug reports.
 .SH AUTHORS
 .PP
 Jay Fenlason (+ Kenny Woodland, Mike Thome and Jon Payne) wrote the
@@ -226,10 +252,17 @@ development by the Usenet.  Andries Brouwer has made this request for the
 distinction, as he may eventually release a new version of his own.
 .SH FILES
 .PP
-All files are in the playground, normally /usr/games/lib/nethackdir.
+Run-time configuration options were discussed above and use a platform
+specific name for a file in a platform specific location.  For Unix, the
+name is '.nethackrc' in the user's home directory.
+
+.br
+All other files are in the playground directory,
+normally /usr/games/lib/nethackdir.
 If DLB was defined during the compile, the data files and special levels
 will be inside a larger file, normally nhdat, instead of being separate
 files.
+
 .br
 .DT
 .ta \w'cmdhelp, opthelp, wizhelp\ \ \ 'u
@@ -237,7 +270,18 @@ nethack		The program itself.
 .br
 data, oracles, rumors	Data files used by NetHack.
 .br
-options, quest.dat	More data files.
+quest.dat, bogusmon	More data files.
+.br
+engrave, epitaph, tribute	Still more data files.
+.br
+symbols	Data file holding sets of specifications
+.br
+	for how to display monsters, objects, and
+.br
+	map features.
+.br
+options	Data file containing a description of the
+	build-time option settings.
 .br
 help, hh	Help data files.
 .br
@@ -253,26 +297,63 @@ license	Rules governing redistribution.
 .br
 record	The list of top scorers.
 .br
-logfile	An extended list of games
+logfile	An extended list of games played
 .br
-	played.
+	(optional).
 .br
-xlock.nnn	Description of a dungeon level.
+xlogfile	A more detailed version of 'logfile'
 .br
-perm	Lock file for xlock.dd.
+	(also optional).
 .br
-bonesDD.nn	Descriptions of the ghost and
+paniclog	Record of exceptional conditions
 .br
-	belongings of a deceased
+	discovered during program execution.
 .br
-	adventurer.
+xlock.nn	Description of dungeon level 'nn' of
 .br
-save	A subdirectory containing the
+	active game 'x' if there's a limit on the
 .br
-	saved games.
+	number of simultaneously active games.
+.br
+UUcccccc.nn	Alternate form for dungeon level 'nn'
+.br
+	of active game by user 'UU' playing
+.br
+	character named 'cccccc' when there's no
+.br
+	limit on number of active games.
+.br
+perm	Lock file for xlock.0 or UUcccccc.0.
+.br
+bonesDD.nn	Descriptions of the ghost and belongings
+.br
+	of a deceased adventurer who met his
+.br
+	or her demise on level 'nn'.
+.br
+.\"following line should contain <space><tab>
+ 	
+.br
+save/	A subdirectory containing saved games.
+.br
+.\"following line should contain <space><tab>
+ 	
+.br
+sysconf	System-wide options.  Required if
+.br
+	program is built with 'SYSCF' option
+.br
+	enabled, ignored if not.
+.br
+
+The location of 'sysconf' is specified at build time and can't be changed
+except by updating source file "config.h" and rebuilding the program.
+.br
+
+In a perfect world, 'paniclog' would remain empty.
 .SH ENVIRONMENT
 .DT
-.ta \w'HACKPAGER or PAGER\ \ \ 'u
+.ta \w'NETHACKDIR or HACKDIR\ \ \ 'u
 USER or LOGNAME	Your login name.
 .br
 HOME		Your home directory.
@@ -289,21 +370,29 @@ MAILREADER	Replacement for default reader
 .br
 	(probably /bin/mail or /usr/ucb/mail).
 .br
-NETHACKDIR	Playground.
+NETHACKDIR or HACKDIR	Playground.
 .br
 NETHACKOPTIONS	String predefining several NetHack
 .br
 	options.
 .br
 
-In addition, SHOPTYPE is used in debugging (wizard) mode.
+If the same option is specified in both NETHACKOPTIONS and .nethackrc,
+the value assigned in NETHACKOPTIONS takes precedence.
+.br
+
+SHOPTYPE and SPLEVTYPE can be used in debugging (wizard) mode.
+.br
+DEBUGFILES can be used if the program was built with 'DEBUG' enabled.
 .SH "SEE ALSO"
 .PP
 dgn_comp(6), lev_comp(6), recover(6)
 .SH BUGS
 .PP
 Probably infinite.
-
-
+.SH COPYRIGHT
+This file is Copyright (C) \*(Na and was last modified \*(Nd (version
+\*(Nb:\*(Nr).
+NetHack may be freely redistributed.  See license for details.
 .PP
 Dungeons & Dragons is a Trademark of Wizards of the Coast, Inc.

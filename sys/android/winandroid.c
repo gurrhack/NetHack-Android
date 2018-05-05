@@ -3,16 +3,69 @@
 #include <jni.h>
 
 #include "hack.h"
-#include "winandroid.h"
 #include "func_tab.h"   /* for extended commands */
 #include "dlb.h"
+
+static void FDECL(and_init_nhwindows, (int *, char **));
+static void NDECL(and_player_selection);
+static void NDECL(and_askname);
+static void NDECL(and_get_nh_event) ;
+static void FDECL(and_exit_nhwindows, (const char *));
+static void FDECL(and_suspend_nhwindows, (const char *));
+static void NDECL(and_resume_nhwindows);
+static winid FDECL(and_create_nhwindow, (int));
+static void FDECL(and_clear_nhwindow, (winid));
+static void FDECL(and_display_nhwindow, (winid, BOOLEAN_P));
+static void FDECL(and_dismiss_nhwindow, (winid));
+static void FDECL(and_destroy_nhwindow, (winid));
+static void FDECL(and_curs, (winid,int,int));
+static void FDECL(and_putstr, (winid, int, const char *));
+static void FDECL(and_putmixed, (winid, int, const char *));
+static void FDECL(and_display_file, (const char *, BOOLEAN_P));
+static void FDECL(and_start_menu, (winid));
+static void FDECL(and_add_menu, (winid,int,const ANY_P *, CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
+static void FDECL(and_end_menu, (winid, const char *));
+static int FDECL(and_select_menu, (winid, int, MENU_ITEM_P **));
+static char FDECL(and_message_menu, (CHAR_P, int, const char *));
+static void NDECL(and_update_inventory);
+static void NDECL(and_mark_synch);
+static void NDECL(and_wait_synch);
+#ifdef CLIPPING
+static void FDECL(and_cliparound, (int, int));
+#endif
+#ifdef POSITIONBAR
+static void FDECL(and_update_positionbar, (char *));
+#endif
+static void FDECL(and_print_glyph, (winid,XCHAR_P,XCHAR_P,int,int));
+static void FDECL(and_raw_print, (const char *));
+static void FDECL(and_raw_print_bold, (const char *));
+static int NDECL(and_nhgetch);
+static int FDECL(and_nh_poskey, (int *, int *, int *));
+static void NDECL(and_nhbell);
+static int NDECL(and_doprev_message);
+static char FDECL(and_yn_function, (const char *, const char *, CHAR_P));
+static void FDECL(and_getlin, (const char *,char *));
+static int NDECL(and_get_ext_cmd);
+static void FDECL(and_number_pad, (int));
+static void NDECL(and_delay_output);
+#ifdef CHANGE_COLOR
+static void FDECL(and_change_color,(int color,long rgb,int reverse));
+static char * NDECL(and_get_color_string);
+#endif
+static void NDECL(and_start_screen);
+static void NDECL(and_end_screen);
+static char* FDECL(and_getmsghistory, (BOOLEAN_P));
+static void FDECL(and_putmsghistory, (const char *, BOOLEAN_P));
+static void save_msg(const char* msg);
+
+int NetHackMain(int argc, char** argv);
 
 extern short glyph2tile[];
 
 struct window_procs and_procs = {
 	"and",
-	WC_COLOR | WC_HILITE_PET, /* window port capability options supported */
-	0, /* additional window port capability options supported */
+	WC_COLOR | WC_HILITE_PET | WC_INVERSE, /* window port capability options supported */
+	WC2_HILITE_STATUS, /* additional window port capability options supported */
 	and_init_nhwindows,
 	and_player_selection,
 	and_askname,
@@ -61,18 +114,21 @@ struct window_procs and_procs = {
 	and_start_screen,
 	and_end_screen,
 	genl_outrip,
-	and_preference_update,
-	genl_getmsghistory,
-	genl_putmsghistory,
-#ifdef STATUS_VIA_WINDOWPORT
-    genl_status_init, genl_status_finish, genl_status_enablefield,
+	genl_preference_update,
+	and_getmsghistory,
+	and_putmsghistory,
+    genl_status_init,
+    genl_status_finish,
+    genl_status_enablefield,
     genl_status_update,
-#ifdef STATUS_HILITES
-    genl_status_threshold,
-#endif
-#endif
     genl_can_suspend_no,
 };
+
+/*    void NDECL((*win_status_init));
+    void NDECL((*win_status_finish));
+    void FDECL((*win_status_enablefield), (int, const char *, const char *, BOOLEAN_P));
+    void FDECL((*win_status_update), (int, genericptr_t, int, int, int, unsigned long *));
+    boolean NDECL((*win_can_suspend));*/
 
 static void and_n_getline(const char* question, char* buf, int nMax, int showLog);
 static void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int reentry);
@@ -112,6 +168,10 @@ static jmethodID jLoadSound;
 static jmethodID jPlaySound;
 
 static boolean quit_if_possible;
+static boolean restoring_msghistory;
+static char* msghistory[32];
+static int msghistory_idx;
+static int msghistory_idx0;
 
 //____________________________________________________________________________________
 //
@@ -213,7 +273,7 @@ boolean SaveAndExit()
 			/* make sure they see the Saving message */
 			display_nhwindow(WIN_MESSAGE, TRUE);
 			exit_nhwindows("Be seeing you...");
-			terminate(EXIT_SUCCESS);
+			nh_terminate(EXIT_SUCCESS);
 		}
 		return FALSE;
 	}
@@ -236,7 +296,7 @@ void quit_possible()
 		if(!SaveAndExit())
 		{
 			if(and_yn_function("Error saving game. Quit anyway?", ynchars, 'n') == 'y')
-				terminate(EXIT_SUCCESS);
+				nh_terminate(EXIT_SUCCESS);
 		}
 	}
 }
@@ -362,7 +422,7 @@ void and_player_selection()
 		{
 		    clearlocks();
 		    and_exit_nhwindows("bye");
-		    terminate(EXIT_SUCCESS);
+		    nh_terminate(EXIT_SUCCESS);
 		}
 
 		/* Select a race, if necessary */
@@ -672,10 +732,11 @@ void and_putstr_ex(winid wid, int attr, const char *str, int append)
 
 	if(wid == NHW_STATUS)
 	{
-		if(context.botlx)
+		debuglog("status: %s", str);
+/*		if(context.botlx)
 			append = 0;
 		else
-			append = 1;
+			append = 1;*/
 	}
 	if(attr)
 		attr = 1<<attr;
@@ -687,7 +748,11 @@ void and_putstr_ex(winid wid, int attr, const char *str, int append)
 
 #if defined(USER_SOUNDS)
 	if(wid == NHW_MESSAGE)
-		play_sound_for_message(str);
+	{
+		save_msg(str);
+		if(!restoring_msghistory)
+			play_sound_for_message(str);
+	}
 #endif
 }
 
@@ -696,11 +761,12 @@ void and_putstr(winid wid, int attr, const char *str)
 	and_putstr_ex(wid, attr, str, 0);
 }
 
-void and_set_health_color(struct color_option colop)
+/*void and_set_health_color(colop)
+struct color_option colop;
 {
 	JNICallV(jSetHealthColor, nhcolor_to_RGB(colop.color));
 }
-
+*/
 void and_bot_updated()
 {
 	JNICallV(jRedrawStatus);
@@ -1204,7 +1270,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	//else
 	//	debuglog("yn %s", question);
 
-	if(iflags.automenu && choices && nChoices <= 4 && esc < 0 && !allow_num)
+	if(1/*iflags.automenu*/ && choices && nChoices <= 4 && esc < 0 && !allow_num)
 	{
 		int i;
 		// pop up dialog
@@ -1246,7 +1312,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		// directional choice
 		and_clear_nhwindow(WIN_MESSAGE);
 		and_putstr(WIN_MESSAGE, ATR_BOLD, message);
-		if(iflags.automenu)
+		if(1/*iflags.automenu*/)
 		{
 			JNICallV(jShowDPad);
 			ch = and_nhgetch();
@@ -1527,7 +1593,7 @@ void and_askname()
 		{
 			clearlocks();
 			and_exit_nhwindows("bye");
-			terminate(EXIT_SUCCESS);
+			nh_terminate(EXIT_SUCCESS);
 		}
 
 		if( pChars[w] == '1' )
@@ -1690,7 +1756,7 @@ int do_ext_cmd_text()
 
 int and_get_ext_cmd()
 {
-	if(iflags.automenu)
+	if(1/*iflags.automenu*/)
 		return do_ext_cmd_menu();
 	return do_ext_cmd_text();
 }
@@ -1751,18 +1817,76 @@ void and_end_screen()
 }
 
 //____________________________________________________________________________________
-//preference_update(preference)
-//		-- The player has just changed one of the wincap preference
-//		   settings, and the NetHack core is notifying your window
-//		   port of that change.  If your window-port is capable of
-//		   dynamically adjusting to the change then it should do so.
-//		   Your window-port will only be notified of a particular
-//		   change if it indicated that it wants to be by setting the
-//		   corresponding bit in the wincap mask.
-void and_preference_update(const char *pref)
+// and_getmsghistory(init)
+// 		window ports can provide their own getmsghistory() routine to
+// 		preserve message history between games. The routine is called
+// 		repeatedly from the core save routine, and the window port is
+// 		expected to successively return each message that it wants
+// 		saved, starting with the oldest message first, finishing with
+// 		the most recent. Return null pointer when finished.
+int add_msghistory_idx(int idx)
 {
-//	debuglog("and_preference_update %s", pref);
-	//genl_preference_update(pref);
+	return (idx + 1) % (sizeof(msghistory)/sizeof(char*));
+}
+char* and_getmsghistory(BOOLEAN_P init)
+{
+	if(init)
+	{
+		msghistory_idx0 = msghistory_idx;
+		while(1)
+		{
+			if(msghistory[msghistory_idx0])
+				return msghistory[msghistory_idx0];
+			msghistory_idx0 = add_msghistory_idx(msghistory_idx0);
+			if(msghistory_idx0 == msghistory_idx)
+				return 0;
+		};
+	}
+	else
+	{
+		msghistory_idx0 = add_msghistory_idx(msghistory_idx0);
+		if(msghistory_idx0 == msghistory_idx)
+			return 0;
+		return msghistory[msghistory_idx0];
+	}
+}
+
+// and_putmsghistory(msg, restoring)
+//		window ports can provide their own putmsghistory() routine
+//		to load message history from a saved game. The routine is
+//		called repeatedly from the core restore routine, starting
+//		with the oldest saved message first, and finishing with
+//		the latest. The window port routine is expected to load
+//		the message recall buffers in such a way that the ordering
+//		is preserved. The window port routine should make no
+// 		assumptions about how many messages are forthcoming, nor
+//		should it assume that another message will follow this
+//		one, so it should keep all pointers/indexes intact at the
+//		end of each call.
+void and_putmsghistory(const char *msg, BOOLEAN_P restoring)
+{
+	if(!msg) return;
+	if(restoring)
+	{
+//		debuglog("restore msghistory: %s", msg);
+		restoring_msghistory = TRUE;
+		and_putstr_ex(WIN_MESSAGE, ATR_NONE, msg, 0);
+		restoring_msghistory = FALSE;
+	}
+	else
+	{
+//		debuglog("put msghistory: %s", msg);
+	}
+}
+
+void save_msg(const char* msg)
+{
+	if(!strcmp("Restoring save file...", msg))
+		return;
+	if(msghistory[msghistory_idx])
+		free(msghistory[msghistory_idx]);
+	msghistory[msghistory_idx] = strdup(msg);
+	msghistory_idx = add_msghistory_idx(msghistory_idx);
 }
 
 int doshowlog()

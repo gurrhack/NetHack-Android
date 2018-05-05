@@ -1,5 +1,6 @@
-/* NetHack 3.6	engrave.c	$NHDT-Date: 1445388915 2015/10/21 00:55:15 $  $NHDT-Branch: master $:$NHDT-Revision: 1.59 $ */
+/* NetHack 3.6	engrave.c	$NHDT-Date: 1456304550 2016/02/24 09:02:30 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.61 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -185,11 +186,12 @@ register int x, y;
     else if (IS_AIR(lev->typ) && Is_airlevel(&u.uz))
         return "air";
     else if (is_pool(x, y))
-        return (Underwater && !Is_waterlevel(&u.uz)) ? "bottom" : "water";
+        return (Underwater && !Is_waterlevel(&u.uz))
+            ? "bottom" : hliquid("water");
     else if (is_ice(x, y))
         return "ice";
     else if (is_lava(x, y))
-        return "lava";
+        return hliquid("lava");
     else if (lev->typ == DRAWBRIDGE_DOWN)
         return "bridge";
     else if (IS_ALTAR(levl[x][y].typ))
@@ -256,8 +258,7 @@ xchar x, y;
  * Ignore headstones, in case the player names herself "Elbereth".
  *
  * If strict checking is requested, the word is only considered to be
- * present if it is intact and is the first word in the engraving.
- * ("Elbereth burrito" matches; "o Elbereth" does not.)
+ * present if it is intact and is the entire content of the engraving.
  */
 int
 sengr_at(s, x, y, strict)
@@ -268,9 +269,10 @@ boolean strict;
     register struct engr *ep = engr_at(x, y);
 
     if (ep && ep->engr_type != HEADSTONE && ep->engr_time <= moves) {
-        return strict ? (strncmpi(ep->engr_txt, s, strlen(s)) == 0)
+        return strict ? (fuzzymatch(ep->engr_txt, s, "", TRUE))
                       : (strstri(ep->engr_txt, s) != 0);
     }
+
     return FALSE;
 }
 
@@ -384,10 +386,12 @@ long e_time;
 xchar e_type;
 {
     struct engr *ep;
+    unsigned smem = strlen(s) + 1;
 
     if ((ep = engr_at(x, y)) != 0)
         del_engr(ep);
-    ep = newengr(strlen(s) + 1);
+    ep = newengr(smem);
+    (void) memset((genericptr_t)ep, 0, smem + sizeof(struct engr));
     ep->nxt_engr = head_engr;
     head_engr = ep;
     ep->engr_x = x;
@@ -399,7 +403,7 @@ xchar e_type;
         exercise(A_WIS, TRUE);
     ep->engr_time = e_time;
     ep->engr_type = e_type > 0 ? e_type : rnd(N_ENGRAVE - 1);
-    ep->engr_lth = strlen(s) + 1;
+    ep->engr_lth = smem;
 }
 
 /* delete any engraving at location <x,y> */
@@ -414,7 +418,7 @@ int x, y;
 }
 
 /*
- *	freehand - returns true if player has a free hand
+ * freehand - returns true if player has a free hand
  */
 int
 freehand()
@@ -429,30 +433,30 @@ static NEARDATA const char styluses[] = { ALL_CLASSES, ALLOW_NONE,
                                           RING_CLASS,  0 };
 
 /* Mohs' Hardness Scale:
- *  1 - Talc		 6 - Orthoclase
- *  2 - Gypsum		 7 - Quartz
- *  3 - Calcite		 8 - Topaz
- *  4 - Fluorite	 9 - Corundum
- *  5 - Apatite		10 - Diamond
+ *  1 - Talc             6 - Orthoclase
+ *  2 - Gypsum           7 - Quartz
+ *  3 - Calcite          8 - Topaz
+ *  4 - Fluorite         9 - Corundum
+ *  5 - Apatite         10 - Diamond
  *
  * Since granite is an igneous rock hardness ~ 7, anything >= 8 should
  * probably be able to scratch the rock.
  * Devaluation of less hard gems is not easily possible because obj struct
  * does not contain individual oc_cost currently. 7/91
  *
- * steel     -	5-8.5	(usu. weapon)
- * diamond    - 10			* jade	     -	5-6	 (nephrite)
- * ruby       -  9	(corundum)	* turquoise  -	5-6
- * sapphire   -  9	(corundum)	* opal	     -	5-6
- * topaz      -  8			* glass      - ~5.5
- * emerald    -  7.5-8	(beryl)		* dilithium  -	4-5??
- * aquamarine -  7.5-8	(beryl)		* iron	     -	4-5
- * garnet     -  7.25	(var. 6.5-8)	* fluorite   -	4
- * agate      -  7	(quartz)	* brass      -	3-4
- * amethyst   -  7	(quartz)	* gold	     -	2.5-3
- * jasper     -  7	(quartz)	* silver     -	2.5-3
- * onyx       -  7	(quartz)	* copper     -	2.5-3
- * moonstone  -  6	(orthoclase)	* amber      -	2-2.5
+ * steel      - 5-8.5   (usu. weapon)
+ * diamond    - 10                      * jade       -  5-6      (nephrite)
+ * ruby       -  9      (corundum)      * turquoise  -  5-6
+ * sapphire   -  9      (corundum)      * opal       -  5-6
+ * topaz      -  8                      * glass      - ~5.5
+ * emerald    -  7.5-8  (beryl)         * dilithium  -  4-5??
+ * aquamarine -  7.5-8  (beryl)         * iron       -  4-5
+ * garnet     -  7.25   (var. 6.5-8)    * fluorite   -  4
+ * agate      -  7      (quartz)        * brass      -  3-4
+ * amethyst   -  7      (quartz)        * gold       -  2.5-3
+ * jasper     -  7      (quartz)        * silver     -  2.5-3
+ * onyx       -  7      (quartz)        * copper     -  2.5-3
+ * moonstone  -  6      (orthoclase)    * amber      -  2-2.5
  */
 
 /* return 1 if action took 1 (or more) moves, 0 if error or aborted */
@@ -535,7 +539,7 @@ doengrave()
         return 0;
 
     if (otmp == &zeroobj) {
-        Strcat(strcpy(fbuf, "your "), makeplural(body_part(FINGER)));
+        Strcat(strcpy(fbuf, "your "), body_part(FINGERTIP));
         writer = fbuf;
     } else
         writer = yname(otmp);
@@ -705,6 +709,7 @@ doengrave()
                            "A few ice cubes drop from the wand.");
                 if (!oep || (oep->engr_type != BURN))
                     break;
+                /*FALLTHRU*/
             case WAN_CANCELLATION:
             case WAN_MAKE_INVISIBLE:
                 if (oep && oep->engr_type != HEADSTONE) {
@@ -732,16 +737,18 @@ doengrave()
                     doknown = TRUE;
                 }
                 Strcpy(post_engr_text,
-                       Blind
+                       (Blind && !Deaf)
                           ? "You hear drilling!"
-                          : IS_GRAVE(levl[u.ux][u.uy].typ)
-                             ? "Chips fly out from the headstone."
-                             : is_ice(u.ux, u.uy)
-                                ? "Ice chips fly up from the ice surface!"
-                                : (level.locations[u.ux][u.uy].typ
-                                   == DRAWBRIDGE_DOWN)
-                                   ? "Splinters fly up from the bridge."
-                                   : "Gravel flies up from the floor.");
+                          : Blind
+                             ? "You feel tremors."
+                             : IS_GRAVE(levl[u.ux][u.uy].typ)
+                                 ? "Chips fly out from the headstone."
+                                 : is_ice(u.ux, u.uy)
+                                    ? "Ice chips fly up from the ice surface!"
+                                    : (level.locations[u.ux][u.uy].typ
+                                       == DRAWBRIDGE_DOWN)
+                                       ? "Splinters fly up from the bridge."
+                                       : "Gravel flies up from the floor.");
                 break;
             /* type = BURN wands */
             case WAN_FIRE:
@@ -767,7 +774,9 @@ doengrave()
                     Strcpy(post_engr_text, "Lightning arcs from the wand.");
                     doblind = TRUE;
                 } else
-                    Strcpy(post_engr_text, "You hear crackling!");
+                    Strcpy(post_engr_text, !Deaf
+                                ? "You hear crackling!"
+                                : "Your hair stands up!");
                 break;
 
             /* type = MARK wands */
@@ -989,8 +998,7 @@ doengrave()
     if (otmp != &zeroobj)
         You("%s the %s with %s.", everb, eloc, doname(otmp));
     else
-        You("%s the %s with your %s.", everb, eloc,
-            makeplural(body_part(FINGER)));
+        You("%s the %s with your %s.", everb, eloc, body_part(FINGERTIP));
 
     /* Prompt for engraving! */
     Sprintf(qbuf, "What do you want to %s the %s here?", everb, eloc);
@@ -1195,6 +1203,23 @@ int fd;
          * to be able to move again.
          */
         ep->engr_time = moves;
+    }
+}
+
+/* to support '#stats' wizard-mode command */
+void
+engr_stats(hdrfmt, hdrbuf, count, size)
+const char *hdrfmt;
+char *hdrbuf;
+long *count, *size;
+{
+    struct engr *ep;
+
+    Sprintf(hdrbuf, hdrfmt, (long) sizeof (struct engr));
+    *count = *size = 0L;
+    for (ep = head_engr; ep; ep = ep->nxt_engr) {
+        ++*count;
+        *size += (long) sizeof *ep + (long) ep->engr_lth;
     }
 }
 

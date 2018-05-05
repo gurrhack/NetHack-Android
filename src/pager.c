@@ -1,5 +1,6 @@
-/* NetHack 3.6	pager.c	$NHDT-Date: 1448482543 2015/11/25 20:15:43 $  $NHDT-Branch: master $:$NHDT-Revision: 1.86 $ */
+/* NetHack 3.6	pager.c	$NHDT-Date: 1523142395 2018/04/07 23:06:35 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.123 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* This file contains the command routines dowhatis() and dohelp() and */
@@ -17,8 +18,18 @@ STATIC_DCL struct permonst *FDECL(lookat, (int, int, char *, char *));
 STATIC_DCL void FDECL(checkfile, (char *, struct permonst *,
                                   BOOLEAN_P, BOOLEAN_P));
 STATIC_DCL void FDECL(look_all, (BOOLEAN_P,BOOLEAN_P));
-STATIC_DCL boolean FDECL(help_menu, (int *));
+STATIC_DCL void NDECL(whatdoes_help);
 STATIC_DCL void NDECL(docontact);
+STATIC_DCL void NDECL(dispfile_help);
+STATIC_DCL void NDECL(dispfile_shelp);
+STATIC_DCL void NDECL(dispfile_optionfile);
+STATIC_DCL void NDECL(dispfile_license);
+STATIC_DCL void NDECL(dispfile_debughelp);
+STATIC_DCL void NDECL(hmenu_doextversion);
+STATIC_DCL void NDECL(hmenu_dohistory);
+STATIC_DCL void NDECL(hmenu_dowhatis);
+STATIC_DCL void NDECL(hmenu_dowhatdoes);
+STATIC_DCL void NDECL(hmenu_doextlist);
 #ifdef PORT_HELP
 extern void NDECL(port_help);
 #endif
@@ -52,6 +63,8 @@ const char *new_str;
         return 0;
 
     space_left = BUFSZ - strlen(buf) - 1;
+    if (space_left < 1)
+        return 0;
     (void) strncat(buf, " or ", space_left);
     (void) strncat(buf, new_str, space_left - 4);
     return 1;
@@ -74,7 +87,67 @@ char *outbuf;
             mons[u.umonnum].mname, plname);
     if (u.usteed)
         Sprintf(eos(outbuf), ", mounted on %s", y_monnam(u.usteed));
+    if (u.uundetected || (Upolyd && youmonst.m_ap_type))
+        mhidden_description(&youmonst, FALSE, eos(outbuf));
     return outbuf;
+}
+
+/* describe a hidden monster; used for look_at during extended monster
+   detection and for probing; also when looking at self */
+void
+mhidden_description(mon, altmon, outbuf)
+struct monst *mon;
+boolean altmon; /* for probing: if mimicking a monster, say so */
+char *outbuf;
+{
+    struct obj *otmp;
+    boolean fakeobj, isyou = (mon == &youmonst);
+    int x = isyou ? u.ux : mon->mx, y = isyou ? u.uy : mon->my,
+        glyph = (level.flags.hero_memory && !isyou) ? levl[x][y].glyph
+                                                    : glyph_at(x, y);
+
+    *outbuf = '\0';
+    if (mon->m_ap_type == M_AP_FURNITURE
+        || mon->m_ap_type == M_AP_OBJECT) {
+        Strcpy(outbuf, ", mimicking ");
+        if (mon->m_ap_type == M_AP_FURNITURE) {
+            Strcat(outbuf, an(defsyms[mon->mappearance].explanation));
+        } else if (mon->m_ap_type == M_AP_OBJECT
+                   /* remembered glyph, not glyph_at() which is 'mon' */
+                   && glyph_is_object(glyph)) {
+        objfrommap:
+            otmp = (struct obj *) 0;
+            fakeobj = object_from_map(glyph, x, y, &otmp);
+            Strcat(outbuf, (otmp && otmp->otyp != STRANGE_OBJECT)
+                              ? ansimpleoname(otmp)
+                              : an(obj_descr[STRANGE_OBJECT].oc_name));
+            if (fakeobj)
+                dealloc_obj(otmp);
+        } else {
+            Strcat(outbuf, something);
+        }
+    } else if (mon->m_ap_type == M_AP_MONSTER) {
+        if (altmon)
+            Sprintf(outbuf, ", masquerading as %s",
+                    an(mons[mon->mappearance].mname));
+    } else if (isyou ? u.uundetected : mon->mundetected) {
+        Strcpy(outbuf, ", hiding");
+        if (hides_under(mon->data)) {
+            Strcat(outbuf, " under ");
+            /* remembered glyph, not glyph_at() which is 'mon' */
+            if (glyph_is_object(glyph))
+                goto objfrommap;
+            Strcat(outbuf, something);
+        } else if (is_hider(mon->data)) {
+            Sprintf(eos(outbuf), " on the %s",
+                    (is_flyer(mon->data) || mon->data->mlet == S_PIERCER)
+                       ? "ceiling"
+                       : surface(x, y)); /* trapper */
+        } else {
+            if (mon->data->mlet == S_EEL && is_pool(x, y))
+                Strcat(outbuf, " in murky water");
+        }
+    }
 }
 
 /* extracted from lookat(); also used by namefloorobj() */
@@ -85,10 +158,16 @@ struct obj **obj_p;
 {
     boolean fakeobj = FALSE;
     struct monst *mtmp;
-    struct obj *otmp = vobj_at(x, y);
+    struct obj *otmp;
     int glyphotyp = glyph_to_obj(glyph);
 
     *obj_p = (struct obj *) 0;
+    /* TODO: check inside containers in case glyph came from detection */
+    if ((otmp = sobj_at(glyphotyp, x, y)) == 0)
+        for (otmp = level.buriedobjlist; otmp; otmp = otmp->nobj)
+            if (otmp->ox == x && otmp->oy == y && otmp->otyp == glyphotyp)
+                break;
+
     /* there might be a mimic here posing as an object */
     mtmp = m_at(x, y);
     if (mtmp && is_obj_mappear(mtmp, (unsigned) glyphotyp))
@@ -109,9 +188,18 @@ struct obj **obj_p;
         if (mtmp && has_mcorpsenm(mtmp)) /* mimic as corpse/statue */
             otmp->corpsenm = MCORPSENM(mtmp);
     }
-    /* if located at adjacent spot, mark it as having been seen up close */
-    if (otmp && distu(x, y) <= 2 && !Blind && !Hallucination)
-        otmp->dknown = 1;
+    /* if located at adjacent spot, mark it as having been seen up close
+       (corpse type will be known even if dknown is 0, so we don't need a
+       touch check for cockatrice corpse--we're looking without touching) */
+    if (otmp && distu(x, y) <= 2 && !Blind && !Hallucination
+        /* redundant: we only look for an object which matches current
+           glyph among floor and buried objects; when !Blind, any buried
+           object's glyph will have been replaced by whatever is present
+           on the surface as soon as we moved next to its spot */
+        && (fakeobj || otmp->where == OBJ_FLOOR) /* not buried */
+        /* terrain mode views what's already known, doesn't learn new stuff */
+        && !iflags.terrainmode) /* so don't set dknown when in terrain mode */
+        otmp->dknown = 1; /* if a pile, clearly see the top item only */
 
     *obj_p = otmp;
     return fakeobj; /* when True, caller needs to dealloc *obj_p */
@@ -127,14 +215,16 @@ int x, y, glyph;
 
     if (otmp) {
         Strcpy(buf, (otmp->otyp != STRANGE_OBJECT)
-                     ? distant_name(otmp, xname)
+                     ? distant_name(otmp, doname_vague_quan)
                      : obj_descr[STRANGE_OBJECT].oc_name);
         if (fakeobj)
             dealloc_obj(otmp), otmp = 0;
     } else
         Strcpy(buf, something); /* sanity precaution */
 
-    if (levl[x][y].typ == STONE || levl[x][y].typ == SCORR)
+    if (otmp && otmp->where == OBJ_BURIED)
+        Strcat(buf, " (buried)");
+    else if (levl[x][y].typ == STONE || levl[x][y].typ == SCORR)
         Strcat(buf, " embedded in stone");
     else if (IS_WALL(levl[x][y].typ) || levl[x][y].typ == SDOOR)
         Strcat(buf, " embedded in a wall");
@@ -156,11 +246,9 @@ int x, y;
     char *name, monnambuf[BUFSZ];
     boolean accurate = !Hallucination;
 
-    if (mtmp->data == &mons[PM_COYOTE] && accurate)
-        name = coyotename(mtmp, monnambuf);
-    else
-        name = distant_monnam(mtmp, ARTICLE_NONE, monnambuf);
-
+    name = (mtmp->data == &mons[PM_COYOTE] && accurate)
+              ? coyotename(mtmp, monnambuf)
+              : distant_monnam(mtmp, ARTICLE_NONE, monnambuf);
     Sprintf(buf, "%s%s%s",
             (mtmp->mx != x || mtmp->my != y)
                 ? ((mtmp->isshk && accurate) ? "tail of " : "tail of a ")
@@ -171,9 +259,14 @@ int x, y;
                     ? "peaceful "
                     : "",
             name);
-    if (u.ustuck == mtmp)
-        Strcat(buf, (Upolyd && sticks(youmonst.data))
-                     ? ", being held" : ", holding you");
+    if (u.ustuck == mtmp) {
+        if (u.uswallow || iflags.save_uswallow) /* monster detection */
+            Strcat(buf, is_animal(mtmp->data)
+                          ? ", swallowing you" : ", engulfing you");
+        else
+            Strcat(buf, (Upolyd && sticks(youmonst.data))
+                          ? ", being held" : ", holding you");
+    }
     if (mtmp->mleashed)
         Strcat(buf, ", leashed to you");
 
@@ -186,6 +279,11 @@ int x, y;
             Sprintf(eos(buf), ", trapped in %s",
                     an(defsyms[trap_to_defsym(tt)].explanation));
     }
+
+    /* we know the hero sees a monster at this location, but if it's shown
+       due to persistant monster detection he might remember something else */
+    if (mtmp->mundetected || mtmp->m_ap_type)
+        mhidden_description(mtmp, FALSE, eos(buf));
 
     if (monbuf) {
         unsigned how_seen = howmonseen(mtmp);
@@ -231,11 +329,20 @@ int x, y;
                     Strcat(monbuf, ", ");
             }
             if (how_seen & MONSEEN_WARNMON) {
-                if (Hallucination)
+                if (Hallucination) {
                     Strcat(monbuf, "paranoid delusion");
-                else
-                    Sprintf(eos(monbuf), "warned of %s",
-                            makeplural(mtmp->data->mname));
+                } else {
+                    unsigned long mW = (context.warntype.obj
+                                        | context.warntype.polyd),
+                                  m2 = mtmp->data->mflags2;
+                    const char *whom = ((mW & M2_HUMAN & m2) ? "human"
+                                        : (mW & M2_ELF & m2) ? "elf"
+                                          : (mW & M2_ORC & m2) ? "orc"
+                                            : (mW & M2_DEMON & m2) ? "demon"
+                                              : mtmp->data->mname);
+
+                    Sprintf(eos(monbuf), "warned of %s", makeplural(whom));
+                }
                 how_seen &= ~MONSEEN_WARNMON;
                 if (how_seen)
                     Strcat(monbuf, ", ");
@@ -264,7 +371,9 @@ char *buf, *monbuf;
 
     buf[0] = monbuf[0] = '\0';
     glyph = glyph_at(x, y);
-    if (u.ux == x && u.uy == y && canspotself()) {
+    if (u.ux == x && u.uy == y && canspotself()
+        && !(iflags.save_uswallow && glyph == mon_to_glyph(u.ustuck))
+        && (!iflags.terrainmode || (iflags.terrainmode & TER_MON) != 0)) {
         /* fill in buf[] */
         (void) self_lookat(buf);
 
@@ -278,7 +387,8 @@ char *buf, *monbuf;
            (even if you could also see yourself via other means).
            Sensing self while blind or swallowed is treated as if it
            were by normal vision (cf canseeself()). */
-        if ((Invisible || u.uundetected) && !Blind && !u.uswallow) {
+        if ((Invisible || u.uundetected) && !Blind
+            && !(u.uswallow || iflags.save_uswallow)) {
             unsigned how = 0;
 
             if (Infravision)
@@ -289,19 +399,19 @@ char *buf, *monbuf;
                 how |= 4;
 
             if (how)
-                Sprintf(
-                    eos(buf), " [seen: %s%s%s%s%s]",
-                    (how & 1) ? "infravision" : "",
-                    /* add comma if telep and infrav */
-                    ((how & 3) > 2) ? ", " : "", (how & 2) ? "telepathy" : "",
-                    /* add comma if detect and (infrav or telep or both) */
-                    ((how & 7) > 4) ? ", " : "",
-                    (how & 4) ? "monster detection" : "");
+                Sprintf(eos(buf), " [seen: %s%s%s%s%s]",
+                        (how & 1) ? "infravision" : "",
+                        /* add comma if telep and infrav */
+                        ((how & 3) > 2) ? ", " : "",
+                        (how & 2) ? "telepathy" : "",
+                        /* add comma if detect and (infrav or telep or both) */
+                        ((how & 7) > 4) ? ", " : "",
+                        (how & 4) ? "monster detection" : "");
         }
     } else if (u.uswallow) {
-        /* all locations when swallowed other than the hero are the monster */
-        Sprintf(buf, "interior of %s",
-                Blind ? "a monster" : a_monnam(u.ustuck));
+        /* when swallowed, we're only called for spots adjacent to hero,
+           and blindness doesn't prevent hero from feeling what holds him */
+        Sprintf(buf, "interior of %s", a_monnam(u.ustuck));
         pm = u.ustuck->data;
     } else if (glyph_is_monster(glyph)) {
         bhitpos.x = x;
@@ -309,13 +419,30 @@ char *buf, *monbuf;
         if ((mtmp = m_at(x, y)) != 0) {
             look_at_monster(buf, monbuf, mtmp, x, y);
             pm = mtmp->data;
+        } else if (Hallucination) {
+            /* 'monster' must actually be a statue */
+            Strcpy(buf, rndmonnam((char *) 0));
         }
     } else if (glyph_is_object(glyph)) {
         look_at_object(buf, x, y, glyph); /* fill in buf[] */
     } else if (glyph_is_trap(glyph)) {
         int tnum = what_trap(glyph_to_trap(glyph));
 
-        Strcpy(buf, defsyms[trap_to_defsym(tnum)].explanation);
+        /* Trap detection displays a bear trap at locations having
+         * a trapped door or trapped container or both.
+         * TODO: we should create actual trap types for doors and
+         * chests so that they can have their own glyphs and tiles.
+         */
+        if (trapped_chest_at(tnum, x, y))
+            Strcpy(buf, "trapped chest"); /* might actually be a large box */
+        else if (trapped_door_at(tnum, x, y))
+            Strcpy(buf, "trapped door"); /* not "trap door"... */
+        else
+            Strcpy(buf, defsyms[trap_to_defsym(tnum)].explanation);
+    } else if (glyph_is_warning(glyph)) {
+        int warnindx = glyph_to_warning(glyph);
+
+        Strcpy(buf, def_warnsyms[warnindx].explanation);
     } else if (!glyph_is_cmap(glyph)) {
         Strcpy(buf, "unexplored area");
     } else
@@ -349,11 +476,16 @@ char *buf, *monbuf;
             if (!levl[x][y].seenv) {
                 Strcpy(buf, "unexplored");
                 break;
+            } else if (Underwater && !Is_waterlevel(&u.uz)) {
+                /* "unknown" == previously mapped but not visible when
+                   submerged; better terminology appreciated... */
+                Strcpy(buf, (distu(x, y) <= 2) ? "land" : "unknown");
+                break;
             } else if (levl[x][y].typ == STONE || levl[x][y].typ == SCORR) {
                 Strcpy(buf, "stone");
                 break;
             }
-            /*else FALLTHRU*/
+            /*FALLTHRU*/
         default:
             Strcpy(buf, defsyms[glyph_to_cmap(glyph)].explanation);
             break;
@@ -379,11 +511,9 @@ struct permonst *pm;
 boolean user_typed_name, without_asking;
 {
     dlb *fp;
-    char buf[BUFSZ], newstr[BUFSZ];
+    char buf[BUFSZ], newstr[BUFSZ], givenname[BUFSZ];
     char *ep, *dbase_str;
     unsigned long txt_offset = 0L;
-    int chk_skip;
-    boolean found_in_file = FALSE, skipping_entry = FALSE;
     winid datawin = WIN_ERR;
 
     fp = dlb_fopen(DATAFILE, "r");
@@ -391,12 +521,10 @@ boolean user_typed_name, without_asking;
         pline("Cannot open data file!");
         return;
     }
-
-    /*
-     * If someone passed us garbage, prevent fault.
-     */
-    if (!inp || (inp && strlen(inp) > (BUFSZ - 1))) {
-        pline("bad do_look buffer passed!");
+    /* If someone passed us garbage, prevent fault. */
+    if (!inp || strlen(inp) > (BUFSZ - 1)) {
+        impossible("bad do_look buffer passed (%s)!",
+                   !inp ? "null" : "too long");
         return;
     }
 
@@ -410,6 +538,18 @@ boolean user_typed_name, without_asking;
         dbase_str = strcpy(newstr, inp);
     (void) lcase(dbase_str);
 
+    /*
+     * TODO:
+     * The switch from xname() to doname_vague_quan() in look_at_obj()
+     * had the unintendded side-effect of making names picked from
+     * pointing at map objects become harder to simplify for lookup.
+     * We should split the prefix and suffix handling used by wish
+     * parsing and also wizmode monster generation out into separate
+     * routines and use those routines here.  This currently lacks
+     * erosion handling and probably lots of other bits and pieces
+     * that wishing already understands and most of this duplicates
+     * stuff already done for wish handling or monster generation.
+     */
     if (!strncmp(dbase_str, "interior of ", 12))
         dbase_str += 12;
     if (!strncmp(dbase_str, "a ", 2))
@@ -418,6 +558,15 @@ boolean user_typed_name, without_asking;
         dbase_str += 3;
     else if (!strncmp(dbase_str, "the ", 4))
         dbase_str += 4;
+    else if (!strncmp(dbase_str, "some ", 5))
+        dbase_str += 5;
+    else if (digit(*dbase_str)) {
+        /* remove count prefix ("2 ya") which can come from looking at map */
+        while (digit(*dbase_str))
+            ++dbase_str;
+        if (*dbase_str == ' ')
+            ++dbase_str;
+    }
     if (!strncmp(dbase_str, "tame ", 5))
         dbase_str += 5;
     else if (!strncmp(dbase_str, "peaceful ", 9))
@@ -426,117 +575,184 @@ boolean user_typed_name, without_asking;
         dbase_str += 10;
     if (!strncmp(dbase_str, "saddled ", 8))
         dbase_str += 8;
+    if (!strncmp(dbase_str, "blessed ", 8))
+        dbase_str += 8;
+    else if (!strncmp(dbase_str, "uncursed ", 9))
+        dbase_str += 9;
+    else if (!strncmp(dbase_str, "cursed ", 7))
+        dbase_str += 7;
+    if (!strncmp(dbase_str, "empty ", 6))
+        dbase_str += 6;
+    if (!strncmp(dbase_str, "partly used ", 12))
+        dbase_str += 12;
+    else if (!strncmp(dbase_str, "partly eaten ", 13))
+        dbase_str += 13;
     if (!strncmp(dbase_str, "statue of ", 10))
         dbase_str[6] = '\0';
     else if (!strncmp(dbase_str, "figurine of ", 12))
         dbase_str[8] = '\0';
+    /* remove enchantment ("+0 aklys"); [for 3.6.0 and earlier, this wasn't
+       needed because looking at items on the map used xname() rather than
+       doname() hence known enchantment was implicitly suppressed] */
+    if (*dbase_str && index("+-", dbase_str[0]) && digit(dbase_str[1])) {
+        ++dbase_str; /* skip sign */
+        while (digit(*dbase_str))
+            ++dbase_str;
+        if (*dbase_str == ' ')
+            ++dbase_str;
+    }
+    /* "towel", "wet towel", and "moist towel" share one data.base entry;
+       for "wet towel", we keep prefix so that the prompt will ask about
+       "wet towel"; for "moist towel", we also want to ask about "wet towel".
+       (note: strncpy() only terminates output string if the specified
+       count is bigger than the length of the substring being copied) */
+    if (!strncmp(dbase_str, "moist towel", 11))
+        (void) strncpy(dbase_str += 2, "wet", 3); /* skip "mo" replace "ist" */
 
     /* Make sure the name is non-empty. */
     if (*dbase_str) {
-        /* adjust the input to remove "named " and convert to lower case */
-        char *alt = 0; /* alternate description */
+        long pass1offset = -1L;
+        int chk_skip, pass = 1;
+        boolean yes_to_moreinfo, found_in_file, pass1found_in_file,
+                skipping_entry;
+        char *ap, *alt = 0; /* alternate description */
 
-        if ((ep = strstri(dbase_str, " named ")) != 0)
+        /* adjust the input to remove "named " and "called " */
+        if ((ep = strstri(dbase_str, " named ")) != 0) {
             alt = ep + 7;
-        else
-            ep = strstri(dbase_str, " called ");
-        if (!ep)
+            if ((ap = strstri(dbase_str, " called ")) != 0 && ap < ep)
+                ep = ap; /* "named" is alt but truncate at "called" */
+        } else if ((ep = strstri(dbase_str, " called ")) != 0) {
+            copynchars(givenname, ep + 8, BUFSZ - 1);
+            alt = givenname;
+        } else
             ep = strstri(dbase_str, ", ");
         if (ep && ep > dbase_str)
             *ep = '\0';
+        /* remove charges or "(lit)" or wizmode "(N aum)" */
+        if ((ep = strstri(dbase_str, " (")) != 0 && ep > dbase_str)
+            *ep = '\0';
+        if (alt && (ap = strstri(alt, " (")) != 0 && ap > alt)
+            *ap = '\0';
 
         /*
          * If the object is named, then the name is the alternate description;
          * otherwise, the result of makesingular() applied to the name is.
-         * This
-         * isn't strictly optimal, but named objects of interest to the user
-         * will usually be found under their name, rather than under their
-         * object type, so looking for a singular form is pointless.
+         * This isn't strictly optimal, but named objects of interest to the
+         * user will usually be found under their name, rather than under
+         * their object type, so looking for a singular form is pointless.
          */
         if (!alt)
             alt = makesingular(dbase_str);
 
-        /* skip first record; read second */
-        txt_offset = 0L;
-        if (!dlb_fgets(buf, BUFSZ, fp) || !dlb_fgets(buf, BUFSZ, fp)) {
-            impossible("can't read 'data' file");
-            (void) dlb_fclose(fp);
-            return;
-        } else if (sscanf(buf, "%8lx\n", &txt_offset) < 1 || txt_offset == 0L)
-            goto bad_data_file;
+        pass1found_in_file = FALSE;
+        for (pass = !strcmp(alt, dbase_str) ? 0 : 1; pass >= 0; --pass) {
+            found_in_file = skipping_entry = FALSE;
+            txt_offset = 0L;
+            if (dlb_fseek(fp, txt_offset, SEEK_SET) < 0 ) {
+                impossible("can't get to start of 'data' file");
+                goto checkfile_done;
+            }
+            /* skip first record; read second */
+            if (!dlb_fgets(buf, BUFSZ, fp) || !dlb_fgets(buf, BUFSZ, fp)) {
+                impossible("can't read 'data' file");
+                goto checkfile_done;
+            } else if (sscanf(buf, "%8lx\n", &txt_offset) < 1
+                       || txt_offset == 0L)
+                goto bad_data_file;
 
-        /* look for the appropriate entry */
-        while (dlb_fgets(buf, BUFSZ, fp)) {
-            if (*buf == '.')
-                break; /* we passed last entry without success */
+            /* look for the appropriate entry */
+            while (dlb_fgets(buf, BUFSZ, fp)) {
+                if (*buf == '.')
+                    break; /* we passed last entry without success */
 
-            if (digit(*buf)) {
-                /* a number indicates the end of current entry */
-                skipping_entry = FALSE;
-            } else if (!skipping_entry) {
-                if (!(ep = index(buf, '\n')))
-                    goto bad_data_file;
-                *ep = 0;
-                /* if we match a key that begins with "~", skip this entry */
-                chk_skip = (*buf == '~') ? 1 : 0;
-                if (pmatch(&buf[chk_skip], dbase_str)
-                    || (alt && pmatch(&buf[chk_skip], alt))) {
-                    if (chk_skip) {
-                        skipping_entry = TRUE;
-                        continue;
-                    } else {
-                        found_in_file = TRUE;
-                        break;
+                if (digit(*buf)) {
+                    /* a number indicates the end of current entry */
+                    skipping_entry = FALSE;
+                } else if (!skipping_entry) {
+                    if (!(ep = index(buf, '\n')))
+                        goto bad_data_file;
+                    (void) strip_newline((ep > buf) ? ep - 1 : ep);
+                    /* if we match a key that begins with "~", skip
+                       this entry */
+                    chk_skip = (*buf == '~') ? 1 : 0;
+                    if ((pass == 0 && pmatch(&buf[chk_skip], dbase_str))
+                        || (pass == 1 && alt && pmatch(&buf[chk_skip], alt))) {
+                        if (chk_skip) {
+                            skipping_entry = TRUE;
+                            continue;
+                        } else {
+                            found_in_file = TRUE;
+                            if (pass == 1)
+                                pass1found_in_file = TRUE;
+                            break;
+                        }
                     }
                 }
             }
+            if (found_in_file) {
+                long entry_offset, fseekoffset;
+                int entry_count;
+                int i;
+
+                /* skip over other possible matches for the info */
+                do {
+                    if (!dlb_fgets(buf, BUFSZ, fp))
+                        goto bad_data_file;
+                } while (!digit(*buf));
+                if (sscanf(buf, "%ld,%d\n", &entry_offset, &entry_count) < 2)
+                    goto bad_data_file;
+                fseekoffset = (long) txt_offset + entry_offset;
+                if (pass == 1)
+                    pass1offset = fseekoffset;
+                else if (fseekoffset == pass1offset)
+                    goto checkfile_done;
+
+                yes_to_moreinfo = FALSE;
+                if (!user_typed_name && !without_asking) {
+                    char *entrytext = pass ? alt : dbase_str;
+                    char question[QBUFSZ];
+
+                    Strcpy(question, "More info about \"");
+                    /* +2 => length of "\"?" */
+                    copynchars(eos(question), entrytext,
+                               (int) (sizeof question - 1
+                                      - (strlen(question) + 2)));
+                    Strcat(question, "\"?");
+                    if (yn(question) == 'y')
+                        yes_to_moreinfo = TRUE;
+                }
+
+                if (user_typed_name || without_asking || yes_to_moreinfo) {
+                    if (dlb_fseek(fp, fseekoffset, SEEK_SET) < 0) {
+                        pline("? Seek error on 'data' file!");
+                        goto checkfile_done;
+                    }
+                    datawin = create_nhwindow(NHW_MENU);
+                    for (i = 0; i < entry_count; i++) {
+                        if (!dlb_fgets(buf, BUFSZ, fp))
+                            goto bad_data_file;
+                        (void) strip_newline(buf);
+                        if (index(buf + 1, '\t') != 0)
+                            (void) tabexpand(buf + 1);
+                        putstr(datawin, 0, buf + 1);
+                    }
+                    display_nhwindow(datawin, FALSE);
+                    destroy_nhwindow(datawin), datawin = WIN_ERR;
+                }
+            } else if (user_typed_name && pass == 0 && !pass1found_in_file)
+                pline("I don't have any information on those things.");
         }
     }
+    goto checkfile_done; /* skip error feedback */
 
-    if (found_in_file) {
-        long entry_offset;
-        int entry_count;
-        int i;
-
-        /* skip over other possible matches for the info */
-        do {
-            if (!dlb_fgets(buf, BUFSZ, fp))
-                goto bad_data_file;
-        } while (!digit(*buf));
-        if (sscanf(buf, "%ld,%d\n", &entry_offset, &entry_count) < 2) {
-        bad_data_file:
-            impossible("'data' file in wrong format or corrupted");
-            /* window will exist if we came here from below via 'goto' */
-            if (datawin != WIN_ERR)
-                destroy_nhwindow(datawin);
-            (void) dlb_fclose(fp);
-            return;
-        }
-
-        if (user_typed_name || without_asking || yn("More info?") == 'y') {
-            if (dlb_fseek(fp, (long) txt_offset + entry_offset, SEEK_SET)
-                < 0) {
-                pline("? Seek error on 'data' file!");
-                (void) dlb_fclose(fp);
-                return;
-            }
-            datawin = create_nhwindow(NHW_MENU);
-            for (i = 0; i < entry_count; i++) {
-                if (!dlb_fgets(buf, BUFSZ, fp))
-                    goto bad_data_file;
-                if ((ep = index(buf, '\n')) != 0)
-                    *ep = 0;
-                if (index(buf + 1, '\t') != 0)
-                    (void) tabexpand(buf + 1);
-                putstr(datawin, 0, buf + 1);
-            }
-            display_nhwindow(datawin, FALSE);
-            destroy_nhwindow(datawin);
-        }
-    } else if (user_typed_name)
-        pline("I don't have any information on those things.");
-
+ bad_data_file:
+    impossible("'data' file in wrong format or corrupted");
+ checkfile_done:
+    if (datawin != WIN_ERR)
+        destroy_nhwindow(datawin);
     (void) dlb_fclose(fp);
+    return;
 }
 
 int
@@ -547,16 +763,15 @@ int sym;
 char *out_str;
 const char **firstmatch;
 {
-    boolean need_to_look = FALSE;
-    int glyph = NO_GLYPH;
+    static const char mon_interior[] = "the interior of a monster",
+                      unreconnoitered[] = "unreconnoitered";
     static char look_buf[BUFSZ];
     char prefix[BUFSZ];
-    int found = 0; /* count of matching syms found */
-    int i, alt_i;
-    int skipped_venom = 0;
-    boolean hit_trap;
+    int i, alt_i, glyph = NO_GLYPH,
+        skipped_venom = 0, found = 0; /* count of matching syms found */
+    boolean hit_trap, need_to_look = FALSE,
+            submerged = (Underwater && !Is_waterlevel(&u.uz));
     const char *x_str;
-    static const char *mon_interior = "the interior of a monster";
 
     if (looked) {
         int oc;
@@ -576,59 +791,96 @@ const char **firstmatch;
      */
 
     /*
-     * Special case: if identifying from the screen, and we're swallowed,
-     * and looking at something other than our own symbol, then just say
-     * "the interior of a monster".
+     * Handle restricted vision range (limited to adjacent spots when
+     * swallowed or underwater) cases first.
+     *
+     * 3.6.0 listed anywhere on map, other than self, as "interior
+     * of a monster" when swallowed, and non-adjacent water or
+     * non-water anywhere as "dark part of a room" when underwater.
+     * "unreconnoitered" is an attempt to convey "even if you knew
+     * what was there earlier, you don't know what is there in the
+     * current circumstance".
+     *
+     * (Note: 'self' will always be visible when swallowed so we don't
+     * need special swallow handling for <ux,uy>.
+     * Another note: for '#terrain' without monsters, u.uswallow and
+     * submerged will always both be False and skip this code.)
      */
-    if (u.uswallow && looked
-        && (is_swallow_sym(sym) || (int) showsyms[S_stone] == sym)) {
+    x_str = 0;
+    if (!looked) {
+        ; /* skip special handling */
+    } else if (((u.uswallow || submerged) && distu(cc.x, cc.y) > 2)
+               /* detection showing some category, so mostly background */
+               || ((iflags.terrainmode & (TER_DETECT | TER_MAP)) == TER_DETECT
+                   && glyph == cmap_to_glyph(S_stone))) {
+        x_str = unreconnoitered;
+        need_to_look = FALSE;
+    } else if (is_swallow_sym(sym)) {
+        x_str = mon_interior;
+        need_to_look = TRUE; /* for specific monster type */
+    }
+    if (x_str) {
+        /* we know 'found' is zero here, but guard against some other
+           special case being inserted ahead of us someday */
         if (!found) {
-            Sprintf(out_str, "%s%s", prefix, mon_interior);
-            *firstmatch = mon_interior;
+            Sprintf(out_str, "%s%s", prefix, x_str);
+            *firstmatch = x_str;
+            found++;
         } else {
-            found += append_str(out_str, mon_interior);
+            found += append_str(out_str, x_str); /* not 'an(x_str)' */
         }
-        need_to_look = TRUE;
-        goto didlook;
+        /* for is_swallow_sym(), we want to list the current symbol's
+           other possibilities (wand for '/', throne for '\\', &c) so
+           don't jump to the end for the x_str==mon_interior case */
+        if (x_str == unreconnoitered)
+            goto didlook;
     }
 
     /* Check for monsters */
-    for (i = 0; i < MAXMCLASSES; i++) {
-        if (sym == (looked ? showsyms[i + SYM_OFF_M] : def_monsyms[i].sym)
-            && def_monsyms[i].explain) {
-            need_to_look = TRUE;
-            if (!found) {
-                Sprintf(out_str, "%s%s", prefix, an(def_monsyms[i].explain));
-                *firstmatch = def_monsyms[i].explain;
-                found++;
-            } else {
-                found += append_str(out_str, an(def_monsyms[i].explain));
+    if (!iflags.terrainmode || (iflags.terrainmode & TER_MON) != 0) {
+        for (i = 0; i < MAXMCLASSES; i++) {
+            if (sym == (looked ? showsyms[i + SYM_OFF_M] : def_monsyms[i].sym)
+                && def_monsyms[i].explain) {
+                need_to_look = TRUE;
+                if (!found) {
+                    Sprintf(out_str, "%s%s",
+                            prefix, an(def_monsyms[i].explain));
+                    *firstmatch = def_monsyms[i].explain;
+                    found++;
+                } else {
+                    found += append_str(out_str, an(def_monsyms[i].explain));
+                }
             }
         }
+        /* handle '@' as a special case if it refers to you and you're
+           playing a character which isn't normally displayed by that
+           symbol; firstmatch is assumed to already be set for '@' */
+        if ((looked ? (sym == showsyms[S_HUMAN + SYM_OFF_M]
+                       && cc.x == u.ux && cc.y == u.uy)
+                    : (sym == def_monsyms[S_HUMAN].sym && !flags.showrace))
+            && !(Race_if(PM_HUMAN) || Race_if(PM_ELF)) && !Upolyd)
+            found += append_str(out_str, "you"); /* tack on "or you" */
     }
-    /* handle '@' as a special case if it refers to you and you're
-       playing a character which isn't normally displayed by that
-       symbol; firstmatch is assumed to already be set for '@' */
-    if ((looked ? (sym == showsyms[S_HUMAN + SYM_OFF_M]
-                   && cc.x == u.ux && cc.y == u.uy)
-                : (sym == def_monsyms[S_HUMAN].sym && !flags.showrace))
-        && !(Race_if(PM_HUMAN) || Race_if(PM_ELF)) && !Upolyd)
-        found += append_str(out_str, "you"); /* tack on "or you" */
 
     /* Now check for objects */
-    for (i = 1; i < MAXOCLASSES; i++) {
-        if (sym == (looked ? showsyms[i + SYM_OFF_O] : def_oc_syms[i].sym)) {
-            need_to_look = TRUE;
-            if (looked && i == VENOM_CLASS) {
-                skipped_venom++;
-                continue;
-            }
-            if (!found) {
-                Sprintf(out_str, "%s%s", prefix, an(def_oc_syms[i].explain));
-                *firstmatch = def_oc_syms[i].explain;
-                found++;
-            } else {
-                found += append_str(out_str, an(def_oc_syms[i].explain));
+    if (!iflags.terrainmode || (iflags.terrainmode & TER_OBJ) != 0) {
+        for (i = 1; i < MAXOCLASSES; i++) {
+            if (sym == (looked ? showsyms[i + SYM_OFF_O]
+                               : def_oc_syms[i].sym)
+                || (looked && i == ROCK_CLASS && glyph_is_statue(glyph))) {
+                need_to_look = TRUE;
+                if (looked && i == VENOM_CLASS) {
+                    skipped_venom++;
+                    continue;
+                }
+                if (!found) {
+                    Sprintf(out_str, "%s%s",
+                            prefix, an(def_oc_syms[i].explain));
+                    *firstmatch = def_oc_syms[i].explain;
+                    found++;
+                } else {
+                    found += append_str(out_str, an(def_oc_syms[i].explain));
+                }
             }
         }
     }
@@ -643,22 +895,21 @@ const char **firstmatch;
         }
     }
 
-#define is_cmap_trap(i) ((i) >= S_arrow_trap && (i) <= S_polymorph_trap)
-#define is_cmap_drawbridge(i) ((i) >= S_vodbridge && (i) <= S_hcdbridge)
-
     /* Now check for graphics symbols */
     alt_i = (sym == (looked ? showsyms[0] : defsyms[0].sym)) ? 0 : (2 + 1);
     for (hit_trap = FALSE, i = 0; i < MAXPCHARS; i++) {
         /* when sym is the default background character, we process
            i == 0 three times: unexplored, stone, dark part of a room */
         if (alt_i < 2) {
-            x_str = !alt_i++ ? "unexplored" : "stone";
+            x_str = !alt_i++ ? "unexplored" : submerged ? "unknown" : "stone";
             i = 0; /* for second iteration, undo loop increment */
             /* alt_i is now 1 or 2 */
         } else {
             if (alt_i++ == 2)
                 i = 0; /* undo loop increment */
             x_str = defsyms[i].explanation;
+            if (submerged && !strcmp(x_str, defsyms[0].explanation))
+                x_str = "land"; /* replace "dark part of a room" */
             /* alt_i is now 3 or more and no longer of interest */
         }
         if (sym == (looked ? showsyms[i] : defsyms[i].sym) && *x_str) {
@@ -668,6 +919,7 @@ const char **firstmatch;
             int article = strstri(x_str, " of a room") ? 2
                           : !(alt_i <= 2
                               || strcmp(x_str, "air") == 0
+                              || strcmp(x_str, "land") == 0
                               || strcmp(x_str, "water") == 0);
 
             if (!found) {
@@ -681,7 +933,7 @@ const char **firstmatch;
                 }
                 *firstmatch = x_str;
                 found++;
-            } else if (!u.uswallow && !(hit_trap && is_cmap_trap(i))
+            } else if (!(hit_trap && is_cmap_trap(i))
                        && !(found >= 3 && is_cmap_drawbridge(i))
                        /* don't mention vibrating square outside of Gehennom
                           unless this happens to be one (hallucination?) */
@@ -746,6 +998,10 @@ const char **firstmatch;
      * If we are looking at the screen, follow multiple possibilities or
      * an ambiguous explanation by something more detailed.
      */
+
+    if (found > 4)
+        Sprintf(out_str, "%s", "That can be many things");
+
  didlook:
     if (looked) {
         if (found > 1 || need_to_look) {
@@ -771,12 +1027,6 @@ const char **firstmatch;
     return found;
 }
 
-/* getpos() return values */
-#define LOOK_TRADITIONAL 0 /* '.' -- ask about "more info?" */
-#define LOOK_QUICK 1       /* ',' -- skip "more info?" */
-#define LOOK_ONCE 2        /* ';' -- skip and stop looping */
-#define LOOK_VERBOSE 3     /* ':' -- show more info w/o asking */
-
 /* also used by getpos hack in do_name.c */
 const char what_is_an_unknown_object[] = "an unknown object";
 
@@ -787,7 +1037,7 @@ coord *click_cc;
 {
     boolean quick = (mode == 1); /* use cursor; don't search for "more info" */
     boolean clicklook = (mode == 2); /* right mouse-click method */
-    char out_str[BUFSZ];
+    char out_str[BUFSZ] = DUMMY;
     const char *firstmatch = 0;
     struct permonst *pm = 0;
     int i = '\0', ans = 0;
@@ -801,9 +1051,7 @@ coord *click_cc;
         if (quick) {
             from_screen = TRUE; /* yes, we want to use the cursor */
             i = 'y';
-        }
-
-        if (i != 'y') {
+        } else {
             menu_item *pick_list = (menu_item *) 0;
             winid win;
             anything any;
@@ -891,6 +1139,10 @@ coord *click_cc;
         case '?':
             from_screen = FALSE;
             getlin("Specify what? (type the word)", out_str);
+            if (strcmp(out_str, " ")) /* keep single space as-is */
+                /* remove leading and trailing whitespace and
+                   condense consecutive internal whitespace */
+                mungspaces(out_str);
             if (out_str[0] == '\0' || out_str[0] == '\033')
                 return 0;
 
@@ -941,10 +1193,8 @@ coord *click_cc;
                     pline("Pick an object.");
 
                 ans = getpos(&cc, quick, what_is_an_unknown_object);
-                if (ans < 0 || cc.x < 0) {
-                    flags.verbose = save_verbose;
-                    return 0; /* done */
-                }
+                if (ans < 0 || cc.x < 0)
+                    break; /* done */
                 flags.verbose = FALSE; /* only print long question once */
             }
         }
@@ -954,8 +1204,7 @@ coord *click_cc;
 
         /* Finally, print out our explanation. */
         if (found) {
-            /* Used putmixed() because there may be an encoded glyph present
-             */
+            /* use putmixed() because there may be an encoded glyph present */
             putmixed(WIN_MESSAGE, 0, out_str);
 
             /* check the data file for information about this thing */
@@ -985,12 +1234,7 @@ boolean do_mons; /* True => monsters, False => objects */
 {
     winid win;
     int x, y, lo_x, lo_y, hi_x, hi_y, glyph, count = 0;
-    char buf[BUFSZ], outbuf[BUFSZ], coordbuf[12], fmt[12]; /* "%02d,%02d" */
-
-    /* row,column orientation rather than cartesian x,y */
-    Sprintf(fmt, "%%%sd,%%%sd",
-            (ROWNO <= 100) ? "02" : (ROWNO <= 1000) ? "03" : "",
-            (COLNO <= 100) ? "02" : (COLNO <= 1000) ? "03" : "");
+    char lookbuf[BUFSZ], outbuf[BUFSZ];
 
     win = create_nhwindow(NHW_TEXT);
     lo_y = nearby ? max(u.uy - BOLT_LIM, 0) : 0;
@@ -999,7 +1243,7 @@ boolean do_mons; /* True => monsters, False => objects */
     hi_x = nearby ? min(u.ux + BOLT_LIM, COLNO - 1) : COLNO - 1;
     for (y = lo_y; y <= hi_y; y++) {
         for (x = lo_x; x <= hi_x; x++) {
-            buf[0] = '\0';
+            lookbuf[0] = '\0';
             glyph = glyph_at(x, y);
             if (do_mons) {
                 if (glyph_is_monster(glyph)) {
@@ -1008,49 +1252,56 @@ boolean do_mons; /* True => monsters, False => objects */
                     bhitpos.x = x; /* [is this actually necessary?] */
                     bhitpos.y = y;
                     if (x == u.ux && y == u.uy && canspotself()) {
-                        (void) self_lookat(buf);
+                        (void) self_lookat(lookbuf);
                         ++count;
                     } else if ((mtmp = m_at(x, y)) != 0) {
-                        look_at_monster(buf, (char *) 0, mtmp, x, y);
+                        look_at_monster(lookbuf, (char *) 0, mtmp, x, y);
                         ++count;
                     }
                 } else if (glyph_is_invisible(glyph)) {
                     /* remembered, unseen, creature */
-                    Strcpy(buf, invisexplain);
+                    Strcpy(lookbuf, invisexplain);
                     ++count;
                 } else if (glyph_is_warning(glyph)) {
                     int warnindx = glyph_to_warning(glyph);
 
-                    Strcpy(buf, def_warnsyms[warnindx].explanation);
+                    Strcpy(lookbuf, def_warnsyms[warnindx].explanation);
                     ++count;
                 }
             } else { /* !do_mons */
                 if (glyph_is_object(glyph)) {
-                    look_at_object(buf, x, y, glyph);
+                    look_at_object(lookbuf, x, y, glyph);
                     ++count;
                 }
             }
-            if (*buf) {
-                if (count == 1) {
-                    char which[12];
+            if (*lookbuf) {
+                char coordbuf[20], which[12], cmode;
 
+                cmode = (iflags.getpos_coords != GPCOORDS_NONE)
+                           ? iflags.getpos_coords : GPCOORDS_MAP;
+                if (count == 1) {
                     Strcpy(which, do_mons ? "monsters" : "objects");
-                    if (nearby) {
-                        Sprintf(coordbuf, fmt, u.uy, u.ux);
+                    if (nearby)
                         Sprintf(outbuf, "%s currently shown near %s:",
-                                upstart(which), coordbuf);
-                    } else
+                                upstart(which),
+                                (cmode != GPCOORDS_COMPASS)
+                                  ? coord_desc(u.ux, u.uy, coordbuf, cmode)
+                                  : !canspotself() ? "your position" : "you");
+                    else
                         Sprintf(outbuf, "All %s currently shown on the map:",
                                 which);
                     putstr(win, 0, outbuf);
                     putstr(win, 0, "");
                 }
-                Sprintf(coordbuf, fmt, y, x);
-                /* prefix: "C  row,column  " */
-                Sprintf(outbuf, "%s  %s  ", encglyph(glyph), coordbuf);
+                /* prefix: "coords  C  " where 'C' is mon or obj symbol */
+                Sprintf(outbuf, (cmode == GPCOORDS_SCREEN) ? "%s  "
+                                  : (cmode == GPCOORDS_MAP) ? "%8s  "
+                                      : "%12s  ",
+                        coord_desc(x, y, coordbuf, cmode));
+                Sprintf(eos(outbuf), "%s  ", encglyph(glyph));
                 /* guard against potential overflow */
-                buf[sizeof buf - 1 - strlen(outbuf)] = '\0';
-                Strcat(outbuf, buf);
+                lookbuf[sizeof lookbuf - 1 - strlen(outbuf)] = '\0';
+                Strcat(outbuf, lookbuf);
                 putmixed(win, 0, outbuf);
             }
         }
@@ -1083,12 +1334,24 @@ int
 doidtrap()
 {
     register struct trap *trap;
-    int x, y, tt;
+    int x, y, tt, glyph;
 
     if (!getdir("^"))
         return 0;
     x = u.ux + u.dx;
     y = u.uy + u.dy;
+
+    /* check fake bear trap from confused gold detection */
+    glyph = glyph_at(x, y);
+    if (glyph_is_trap(glyph) && (tt = glyph_to_trap(glyph)) == BEAR_TRAP) {
+        boolean chesttrap = trapped_chest_at(tt, x, y);
+
+        if (chesttrap || trapped_door_at(tt, x, y)) {
+            pline("That is a trapped %s.", chesttrap ? "chest" : "door");
+            return 0; /* trap ID'd, but no time elapses */
+        }
+    }
+
     for (trap = ftrap; trap; trap = trap->ntrap)
         if (trap->tx == x && trap->ty == y) {
             if (!trap->tseen)
@@ -1119,42 +1382,262 @@ doidtrap()
     return 0;
 }
 
+/*
+    Implements a rudimentary if/elif/else/endif interpretor and use
+    conditionals in dat/cmdhelp to describe what command each keystroke
+    currently invokes, so that there isn't a lot of "(debug mode only)"
+    and "(if number_pad is off)" cluttering the feedback that the user
+    sees.  (The conditionals add quite a bit of clutter to the raw data
+    but users don't see that.  number_pad produces a lot of conditional
+    commands:  basic letters vs digits, 'g' vs 'G' for '5', phone
+    keypad vs normal layout of digits, and QWERTZ keyboard swap between
+    y/Y/^Y/M-y/M-Y/M-^Y and z/Z/^Z/M-z/M-Z/M-^Z.)
+    
+    The interpretor understands
+     '&#' for comment,
+     '&? option' for 'if' (also '&? !option'
+                           or '&? option=value[,value2,...]'
+                           or '&? !option=value[,value2,...]'),
+     '&: option' for 'elif' (with argument variations same as 'if';
+                             any number of instances for each 'if'),
+     '&:' for 'else' (also '&: #comment';
+                      0 or 1 instance for a given 'if'), and
+     '&.' for 'endif' (also '&. #comment'; required for each 'if').
+    
+    The option handling is a bit of a mess, with no generality for
+    which options to deal with and only a comma separated list of
+    integer values for the '=value' part.  number_pad is the only
+    supported option that has a value; the few others (wizard/debug,
+    rest_on_space, #if SHELL, #if SUSPEND) are booleans.
+*/
+
+STATIC_DCL void
+whatdoes_help()
+{
+    dlb *fp;
+    char *p, buf[BUFSZ];
+    winid tmpwin = create_nhwindow(NHW_TEXT);
+
+    fp = dlb_fopen(KEYHELP, "r");
+    if (!fp) {
+        pline("Cannot open \"%s\" data file!", KEYHELP);
+        display_nhwindow(WIN_MESSAGE, TRUE);
+        return;
+    }
+    while (dlb_fgets(buf, (int) sizeof buf, fp)) {
+        if (*buf == '#')
+            continue;
+        for (p = buf; *p; p++)
+            if (*p != ' ' && *p != '\t')
+                break;
+        putstr(tmpwin, 0, p);
+    }
+    (void) dlb_fclose(fp);
+    display_nhwindow(tmpwin, TRUE);
+    destroy_nhwindow(tmpwin);
+}
+
+#if 0
+#define WD_STACKLIMIT 5
+struct wd_stack_frame {
+    Bitfield(active, 1);
+    Bitfield(been_true, 1);
+    Bitfield(else_seen, 1);
+};
+
+STATIC_DCL boolean FDECL(whatdoes_cond, (char *, struct wd_stack_frame *,
+                                         int *, int));
+
+STATIC_OVL boolean
+whatdoes_cond(buf, stack, depth, lnum)
+char *buf;
+struct wd_stack_frame *stack;
+int *depth, lnum;
+{
+    const char badstackfmt[] = "cmdhlp: too many &%c directives at line %d.";
+    boolean newcond, neg, gotopt;
+    char *p, *q, act = buf[1];
+    int np = 0;
+
+    newcond = (act == '?' || !stack[*depth].been_true);
+    buf += 2;
+    mungspaces(buf);
+    if (act == '#' || *buf == '#' || !*buf || !newcond) {
+        gotopt = (*buf && *buf != '#');
+        *buf = '\0';
+        neg = FALSE; /* lint suppression */
+        p = q = (char *) 0;
+    } else {
+        gotopt = TRUE;
+        if ((neg = (*buf == '!')) != 0)
+            if (*++buf == ' ')
+                ++buf;
+        p = index(buf, '='), q = index(buf, ':');
+        if (!p || (q && q < p))
+            p = q;
+        if (p) { /* we have a value specified */
+            /* handle a space before or after (or both) '=' (or ':') */
+            if (p > buf && p[-1] == ' ')
+                p[-1] = '\0'; /* end of keyword in buf[] */
+            *p++ = '\0'; /* terminate keyword, advance to start of value */
+            if (*p == ' ')
+                p++;
+        }
+    }
+    if (*buf && (act == '?' || act == ':')) {
+        if (!strcmpi(buf, "number_pad")) {
+            if (!p) {
+                newcond = iflags.num_pad;
+            } else {
+                /* convert internal encoding (separate yes/no and 0..3)
+                   back to user-visible one (-1..4) */
+                np = iflags.num_pad ? (1 + iflags.num_pad_mode) /* 1..4 */
+                                    : (-1 * iflags.num_pad_mode); /* -1..0 */
+                newcond = FALSE;
+                for (; p; p = q) {
+                    q = index(p, ',');
+                    if (q)
+                        *q++ = '\0';
+                    if (atoi(p) == np) {
+                        newcond = TRUE;
+                        break;
+                    }
+                }
+            }
+        } else if (!strcmpi(buf, "rest_on_space")) {
+            newcond = flags.rest_on_space;
+        } else if (!strcmpi(buf, "debug") || !strcmpi(buf, "wizard")) {
+            newcond = flags.debug; /* == wizard */
+        } else if (!strcmpi(buf, "shell")) {
+#ifdef SHELL
+            /* should we also check sysopt.shellers? */
+            newcond = TRUE;
+#else
+            newcond = FALSE;
+#endif
+        } else if (!strcmpi(buf, "suspend")) {
+#ifdef SUSPEND
+            /* sysopt.shellers is also used for dosuspend()... */
+            newcond = TRUE;
+#else
+            newcond = FALSE;
+#endif
+        } else {
+            impossible(
+                "cmdhelp: unrecognized &%c conditional at line %d: \"%.20s\"",
+                       act, lnum, buf);
+            neg = FALSE;
+        }
+        /* this works for number_pad too: &? !number_pad:-1,0
+           would be true for 1..4 after negation */
+        if (neg)
+            newcond = !newcond;
+    }
+    switch (act) {
+    default:
+    case '#': /* comment */
+        break;
+    case '.': /* endif */
+        if (--*depth < 0) {
+            impossible(badstackfmt, '.', lnum);
+            *depth = 0;
+        }
+        break;
+    case ':': /* else or elif */
+        if (*depth == 0 || stack[*depth].else_seen) {
+            impossible(badstackfmt, ':', lnum);
+            *depth = 1; /* so that stack[*depth - 1] is a valid access */
+        }
+        if (stack[*depth].active || stack[*depth].been_true
+            || !stack[*depth - 1].active)
+            stack[*depth].active = 0;
+        else if (newcond)
+            stack[*depth].active = stack[*depth].been_true = 1;
+        if (!gotopt)
+            stack[*depth].else_seen = 1;
+        break;
+    case '?': /* if */
+        if (++*depth >= WD_STACKLIMIT) {
+            impossible(badstackfmt, '?', lnum);
+            *depth = WD_STACKLIMIT - 1;
+        }
+        stack[*depth].active = (newcond && stack[*depth - 1].active) ? 1 : 0;
+        stack[*depth].been_true = stack[*depth].active;
+        stack[*depth].else_seen = 0;
+        break;
+    }
+    return stack[*depth].active ? TRUE : FALSE;
+}
+#endif /* 0 */
+
 char *
 dowhatdoes_core(q, cbuf)
 char q;
 char *cbuf;
 {
+    char buf[BUFSZ];
+#if 0
     dlb *fp;
-    char bufr[BUFSZ];
-    register char *buf = &bufr[6], *ep, ctrl, meta;
+    struct wd_stack_frame stack[WD_STACKLIMIT];
+    boolean cond;
+    int ctrl, meta, depth = 0, lnum = 0;
+#endif /* 0 */
+    const char *ec_desc;
 
+    if ((ec_desc = key2extcmddesc(q)) != NULL) {
+        char keybuf[QBUFSZ];
+
+        Sprintf(buf, "%-8s%s.", key2txt(q, keybuf), ec_desc);
+        Strcpy(cbuf, buf);
+        return cbuf;
+    }
+    return 0;
+#if 0
     fp = dlb_fopen(CMDHELPFILE, "r");
     if (!fp) {
-        pline("Cannot open data file!");
+        pline("Cannot open \"%s\" data file!", CMDHELPFILE);
         return 0;
     }
 
-    ctrl = ((q <= '\033') ? (q - 1 + 'A') : 0);
-    meta = ((0x80 & q) ? (0x7f & q) : 0);
-    while (dlb_fgets(buf, BUFSZ - 6, fp)) {
-        if ((ctrl && *buf == '^' && *(buf + 1) == ctrl)
-            || (meta && *buf == 'M' && *(buf + 1) == '-'
-                && *(buf + 2) == meta) || *buf == q) {
-            ep = index(buf, '\n');
-            if (ep)
-                *ep = 0;
-            if (ctrl && buf[2] == '\t') {
-                buf = bufr + 1;
-                (void) strncpy(buf, "^?      ", 8);
-                buf[1] = ctrl;
-            } else if (meta && buf[3] == '\t') {
-                buf = bufr + 2;
+    meta = (0x80 & (uchar) q) != 0;
+    if (meta)
+        q &= 0x7f;
+    ctrl = (0x1f & (uchar) q) == (uchar) q;
+    if (ctrl)
+        q |= 0x40; /* NUL -> '@', ^A -> 'A', ... ^Z -> 'Z', ^[ -> '[', ... */
+    else if (q == 0x7f)
+        ctrl = 1, q = '?';
+
+    (void) memset((genericptr_t) stack, 0, sizeof stack);
+    cond = stack[0].active = 1;
+    while (dlb_fgets(buf, sizeof buf, fp)) {
+        ++lnum;
+        if (buf[0] == '&' && buf[1] && index("?:.#", buf[1])) {
+            cond = whatdoes_cond(buf, stack, &depth, lnum);
+            continue;
+        }
+        if (!cond)
+            continue;
+        if (meta ? (buf[0] == 'M' && buf[1] == '-'
+                    && (ctrl ? buf[2] == '^' && highc(buf[3]) == q
+                             : buf[2] == q))
+                 : (ctrl ? buf[0] == '^' && highc(buf[1]) == q
+                         : buf[0] == q)) {
+            (void) strip_newline(buf);
+            if (index(buf, '\t'))
+                (void) tabexpand(buf);
+            if (meta && ctrl && buf[4] == ' ') {
+                (void) strncpy(buf, "M-^?    ", 8);
+                buf[3] = q;
+            } else if (meta && buf[3] == ' ') {
                 (void) strncpy(buf, "M-?     ", 8);
-                buf[2] = meta;
-            } else if (buf[1] == '\t') {
-                buf = bufr;
+                buf[2] = q;
+            } else if (ctrl && buf[2] == ' ') {
+                (void) strncpy(buf, "^?      ", 8);
+                buf[1] = q;
+            } else if (buf[1] == ' ') {
+                (void) strncpy(buf, "?       ", 8);
                 buf[0] = q;
-                (void) strncpy(buf + 1, "       ", 7);
             }
             (void) dlb_fclose(fp);
             Strcpy(cbuf, buf);
@@ -1162,31 +1645,58 @@ char *cbuf;
         }
     }
     (void) dlb_fclose(fp);
+    if (depth != 0)
+        impossible("cmdhelp: mismatched &? &: &. conditionals.");
     return (char *) 0;
+#endif /* 0 */
 }
 
 int
 dowhatdoes()
 {
+    static boolean once = FALSE;
     char bufr[BUFSZ];
     char q, *reslt;
 
+    if (!once) {
+        pline("Ask about '&' or '?' to get more info.%s",
+#ifdef ALTMETA
+              iflags.altmeta ? "  (For ESC, type it twice.)" :
+#endif
+              "");
+        once = TRUE;
+    }
 #if defined(UNIX) || defined(VMS)
-    introff();
+    introff(); /* disables ^C but not ^\ */
 #endif
     q = yn_function("What command?", (char *) 0, '\0');
+#ifdef ALTMETA
+    if (q == '\033' && iflags.altmeta) {
+        /* in an ideal world, we would know whether another keystroke
+           was already pending, but this is not an ideal world...
+           if user typed ESC, we'll essentially hang until another
+           character is typed */
+        q = yn_function("]", (char *) 0, '\0');
+        if (q != '\033')
+            q = (char) ((uchar) q | 0200);
+    }
+#endif /*ALTMETA*/
 #if defined(UNIX) || defined(VMS)
-    intron();
+    intron(); /* reenables ^C */
 #endif
     reslt = dowhatdoes_core(q, bufr);
-    if (reslt)
-        pline1(reslt);
-    else
-        pline("I've never heard of such commands.");
+    if (reslt) {
+        if (q == '&' || q == '?')
+            whatdoes_help();
+        pline("%s", reslt);
+    } else {
+        pline("No such command '%s', char code %d (0%03o or 0x%02x).",
+              visctrl(q), (uchar) q, (uchar) q, (uchar) q);
+    }
     return 0;
 }
 
-void
+STATIC_OVL void
 docontact()
 {
     winid cwin = create_nhwindow(NHW_TEXT);
@@ -1216,123 +1726,135 @@ docontact()
     destroy_nhwindow(cwin);
 }
 
-/* data for help_menu() */
-static const char *help_menu_items[] = {
-    /*  0*/ "About NetHack (version information).",
-    /*  1*/ "Long description of the game and commands.",
-    /*  2*/ "List of game commands.",
-    /*  3*/ "Concise history of NetHack.",
-    /*  4*/ "Info on a character in the game display.",
-    /*  5*/ "Info on what a given key does.",
-    /*  6*/ "List of game options.",
-    /*  7*/ "Longer explanation of game options.",
-    /*  8*/ "List of extended commands.",
-    /*  9*/ "The NetHack license.",
-    /* 10*/ "Support information.",
-#ifdef PORT_HELP
-    "%s-specific help and commands.",
-#define PORT_HELP_ID 100
-#define WIZHLP_SLOT 12
-#else
-#define WIZHLP_SLOT 11
-#endif
-    "List of wizard-mode commands.", "", (char *) 0
-};
-
-STATIC_OVL boolean
-help_menu(sel)
-int *sel;
+void
+dispfile_help()
 {
-    winid tmpwin = create_nhwindow(NHW_MENU);
-#ifdef PORT_HELP
-    char helpbuf[QBUFSZ];
-#endif
-    int i, n;
-    menu_item *selected;
-    anything any;
-
-    any = zeroany; /* zero all bits */
-    start_menu(tmpwin);
-    if (!wizard)
-        help_menu_items[WIZHLP_SLOT] = "",
-        help_menu_items[WIZHLP_SLOT + 1] = (char *) 0;
-    for (i = 0; help_menu_items[i]; i++)
-#ifdef PORT_HELP
-        /* port-specific line has a %s in it for the PORT_ID */
-        if (help_menu_items[i][0] == '%') {
-            Sprintf(helpbuf, help_menu_items[i], PORT_ID);
-            any.a_int = PORT_HELP_ID + 1;
-            add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, helpbuf,
-                     MENU_UNSELECTED);
-        } else
-#endif
-        {
-            any.a_int = (*help_menu_items[i]) ? i + 1 : 0;
-            add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
-                     help_menu_items[i], MENU_UNSELECTED);
-        }
-    end_menu(tmpwin, "Select one item:");
-    n = select_menu(tmpwin, PICK_ONE, &selected);
-    destroy_nhwindow(tmpwin);
-    if (n > 0) {
-        *sel = selected[0].item.a_int - 1;
-        free((genericptr_t) selected);
-        return TRUE;
-    }
-    return FALSE;
+    display_file(HELP, TRUE);
 }
+
+void
+dispfile_shelp()
+{
+    display_file(SHELP, TRUE);
+}
+
+void
+dispfile_optionfile()
+{
+    display_file(OPTIONFILE, TRUE);
+}
+
+void
+dispfile_license()
+{
+    display_file(LICENSE, TRUE);
+}
+
+void
+dispfile_debughelp()
+{
+    display_file(DEBUGHELP, TRUE);
+}
+
+void
+hmenu_doextversion()
+{
+    (void) doextversion();
+}
+
+void
+hmenu_dohistory()
+{
+    (void) dohistory();
+}
+
+void
+hmenu_dowhatis()
+{
+    (void) dowhatis();
+}
+
+void
+hmenu_dowhatdoes()
+{
+    (void) dowhatdoes();
+}
+
+void
+hmenu_doextlist()
+{
+    (void) doextlist();
+}
+
+void
+domenucontrols()
+{
+    winid cwin = create_nhwindow(NHW_TEXT);
+    show_menu_controls(cwin, FALSE);
+    display_nhwindow(cwin, FALSE);
+    destroy_nhwindow(cwin);
+}
+
+/* data for dohelp() */
+static struct {
+    void (*f)();
+    const char *text;
+} help_menu_items[] = {
+    { hmenu_doextversion, "About NetHack (version information)." },
+    { dispfile_help, "Long description of the game and commands." },
+    { dispfile_shelp, "List of game commands." },
+    { hmenu_dohistory, "Concise history of NetHack." },
+    { hmenu_dowhatis, "Info on a character in the game display." },
+    { hmenu_dowhatdoes, "Info on what a given key does." },
+    { option_help, "List of game options." },
+    { dispfile_optionfile, "Longer explanation of game options." },
+    { dokeylist, "Full list of keyboard commands" },
+    { hmenu_doextlist, "List of extended commands." },
+    { domenucontrols, "List menu control keys" },
+    { dispfile_license, "The NetHack license." },
+    { docontact, "Support information." },
+#ifdef PORT_HELP
+    { port_help, "%s-specific help and commands." },
+#endif
+    { dispfile_debughelp, "List of wizard-mode commands." },
+    { NULL, (char *) 0 }
+};
 
 /* the '?' command */
 int
 dohelp()
 {
-    int sel = 0;
+    winid tmpwin = create_nhwindow(NHW_MENU);
+    char helpbuf[QBUFSZ];
+    int i, n;
+    menu_item *selected;
+    anything any;
+    int sel;
+    char *bufptr;
 
-    if (help_menu(&sel)) {
-        switch (sel) {
-        case 0:
-            (void) doextversion();
-            break;
-        case 1:
-            display_file(HELP, TRUE);
-            break;
-        case 2:
-            display_file(SHELP, TRUE);
-            break;
-        case 3:
-            (void) dohistory();
-            break;
-        case 4:
-            (void) dowhatis();
-            break;
-        case 5:
-            (void) dowhatdoes();
-            break;
-        case 6:
-            option_help();
-            break;
-        case 7:
-            display_file(OPTIONFILE, TRUE);
-            break;
-        case 8:
-            (void) doextlist();
-            break;
-        case 9:
-            display_file(LICENSE, TRUE);
-            break;
-        case 10:
-            (void) docontact();
-            break;
-#ifdef PORT_HELP
-        case PORT_HELP_ID:
-            port_help();
-            break;
-#endif
-        default:
-            /* handle slot 11 or 12 */
-            display_file(DEBUGHELP, TRUE);
-            break;
+    any = zeroany; /* zero all bits */
+    start_menu(tmpwin);
+
+    for (i = 0; help_menu_items[i].text; i++) {
+        if (!wizard && help_menu_items[i].f == dispfile_debughelp)
+            continue;
+        if (help_menu_items[i].text[0] == '%') {
+            Sprintf(helpbuf, help_menu_items[i].text, PORT_ID);
+            bufptr = helpbuf;
+        } else {
+            bufptr = (char *)help_menu_items[i].text;
         }
+        any.a_int = i + 1;
+        add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
+                 bufptr, MENU_UNSELECTED);
+    }
+    end_menu(tmpwin, "Select one item:");
+    n = select_menu(tmpwin, PICK_ONE, &selected);
+    destroy_nhwindow(tmpwin);
+    if (n > 0) {
+        sel = selected[0].item.a_int - 1;
+        free((genericptr_t) selected);
+        (void)(*help_menu_items[sel].f)();
     }
     return 0;
 }

@@ -1,14 +1,18 @@
 #
-# NetHack 3.6  macosx10.11 $NHDT-Date: 1445622451 2015/10/23 17:47:31 $  $NHDT-Branch: master $:$NHDT-Revision: 1.0 $
+# NetHack 3.6  macosx10.11 $NHDT-Date: 1515549543 2018/01/10 01:59:03 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.48 $
 # Copyright (c) Kenneth Lorber, Kensington, Maryland, 2015.
 # NetHack may be freely redistributed.  See license for details.
 #
 #-PRE
 # Mac OS X (Darwin) hints file
-# This is for Mac OS X 10.10 or later.  If this doesn't work for some other
+# This is for Mac OS X 10.10 or later, and has been tested on 10.11
+# (El Capitan). If this doesn't work for some other
 # version of Mac OS X, make a new file for that OS, don't change this one.
 # And let us know about it.
 # Useful info: http://www.opensource.apple.com/darwinsource/index.html
+
+# You'll need to obtain and install XQuartz if you want X11 support.
+# (Attempting to run X11.app will describe where to get it.)
 
 # This hints file can build several different types of installations.
 # Edit the next section to match the type of build you need.
@@ -100,6 +104,8 @@ LFLAGS=-L/opt/X11/lib
 VARDATND = x11tiles NetHack.ad pet_mark.xbm pilemark.xbm
 POSTINSTALL+= bdftopcf win/X11/nh10.bdf > $(HACKDIR)/nh10.pcf; (cd $(HACKDIR); mkfontdir);
 CFLAGS += -DX11_GRAPHICS -I/opt/X11/include
+# avoid repeated complaints about _X_NONNULL(args...) in <X11/Xfuncproto.h>
+CFLAGS += -Wno-variadic-macros
 endif	# WANT_WIN_X11
 
 ifdef WANT_WIN_QT
@@ -154,7 +160,7 @@ ROOTCHECK= [[ `id -u` == 0 ]] || ( echo "Must run install with sudo."; exit 1)
 # XXX it's nice we don't write over sysconf, but we've already erased it
 # make sure we have group GAMEUID and group GAMEGRP
 PREINSTALL= . sys/unix/hints/macosx.sh user2 $(GAMEUID); . sys/unix/hints/macosx.sh group2 $(GAMEGRP); mkdir $(SHELLDIR); chown $(GAMEUID) $(SHELLDIR)
-POSTINSTALL+= cp -n sys/unix/sysconf $(HACKDIR)/sysconf; $(CHOWN) $(GAMEUID) $(HACKDIR)/sysconf; $(CHGRP) $(GAMEGRP) $(HACKDIR)/sysconf; chmod $(VARFILEPERM) $(HACKDIR)/sysconf;
+POSTINSTALL+= sys/unix/hints/macosx.sh editsysconf sys/unix/sysconf $(HACKDIR)/sysconf; $(CHOWN) $(GAMEUID) $(HACKDIR)/sysconf; $(CHGRP) $(GAMEGRP) $(HACKDIR)/sysconf; chmod $(VARFILEPERM) $(HACKDIR)/sysconf;
 CFLAGS+=-DSYSCF -DSYSCF_FILE=\"$(HACKDIR)/sysconf\" -DSECURE
 else ifdef WANT_SOURCE_INSTALL
 PREFIX=$(abspath $(NHSROOT))
@@ -166,6 +172,7 @@ CHGRP=/usr/bin/true
 GAMEPERM = 0700
 VARFILEPERM = 0600
 VARDIRPERM = 0700
+POSTINSTALL+= sys/unix/hints/macosx.sh editsysconf sys/unix/sysconf $(HACKDIR)/sysconf;
 # We can use "make all" to build the whole thing - but it misses some things:
 MOREALL=$(MAKE) install
 CFLAGS+=-DSYSCF -DSYSCF_FILE=\"$(HACKDIR)/sysconf\" -DSECURE
@@ -182,7 +189,7 @@ ifdef WANT_WIN_X11
 # install nethack.rc as ~/.nethackrc if no ~/.nethackrc exists
 PREINSTALL= cp -n win/X11/nethack.rc ~/.nethackrc
 endif	# WANT_WIN_X11
-POSTINSTALL+= cp -n sys/unix/sysconf $(HACKDIR)/sysconf; $(CHOWN) $(GAMEUID) $(HACKDIR)/sysconf; $(CHGRP) $(GAMEGRP) $(HACKDIR)/sysconf; chmod $(VARFILEPERM) $(HACKDIR)/sysconf;
+POSTINSTALL+= sys/unix/hints/macosx.sh editsysconf sys/unix/sysconf $(HACKDIR)/sysconf; $(CHOWN) $(GAMEUID) $(HACKDIR)/sysconf; $(CHGRP) $(GAMEGRP) $(HACKDIR)/sysconf; chmod $(VARFILEPERM) $(HACKDIR)/sysconf;
 CFLAGS+=-DSYSCF -DSYSCF_FILE=\"$(HACKDIR)/sysconf\" -DSECURE
 endif	# !WANT_SOURCE_INSTALL
 
@@ -265,7 +272,7 @@ build_package_root:
 	install -p doc/recover.6 $(PKGROOT_UG)/man/man6
 	install -p doc/Guidebook $(PKGROOT_UG)/doc
 	install -p dat/nhdat $(PKGROOT_UGLN)
-	sed 's/^GDBPATH/#GDBPATH/' sys/unix/sysconf | sed 's/^GREPPATH=\/bin\/grep/GREPPATH=\/usr\/bin\/grep/' | sed 's/^PANICTRACE_GDB=[12]/PANICTRACE_GDB=0/' > $(PKGROOT_UGLN)/sysconf
+	sys/unix/hints/macosx.sh editsysconf sys/unix/sysconf $(PKGROOT_UGLN)/sysconf
 	cd dat; install -p $(DATNODLB) ../$(PKGROOT_UGLN)
 # XXX these files should be somewhere else for good Mac form
 	touch $(PKGROOT_UGLN)/perm $(PKGROOT_UGLN)/record $(PKGROOT_UGLN)/logfile $(PKGROOT_UGLN)/xlogfile
@@ -274,6 +281,7 @@ build_package_root:
 
 	mkdir -p PKGSCRIPTS
 	echo '#!/bin/sh'                              >  PKGSCRIPTS/postinstall
+	echo dseditgroup -o create -r '"Games Group"' -s 3600 $(GAMEGRP) >> PKGSCRIPTS/postinstall
 	echo $(CHOWN) -R $(GAMEUID) $(HACKDIR)        >> PKGSCRIPTS/postinstall
 	echo $(CHGRP) -R $(GAMEGRP) $(HACKDIR)        >> PKGSCRIPTS/postinstall
 	echo $(CHOWN) $(GAMEUID) $(SHELLDIR)/nethack  >> PKGSCRIPTS/postinstall
@@ -282,7 +290,9 @@ build_package_root:
 	echo $(CHGRP) $(GAMEGRP) $(SHELLDIR)/recover  >> PKGSCRIPTS/postinstall
 	echo chmod $(VARDIRPERM)  $(HACKDIR)          >> PKGSCRIPTS/postinstall
 	echo chmod $(VARDIRPERM)  $(HACKDIR)/save     >> PKGSCRIPTS/postinstall
+	echo chmod $(FILEPERM)    $(HACKDIR)/license  >> PKGSCRIPTS/postinstall
 	echo chmod $(FILEPERM)    $(HACKDIR)/nhdat    >> PKGSCRIPTS/postinstall
+	echo chmod $(FILEPERM)    $(HACKDIR)/symbols  >> PKGSCRIPTS/postinstall
 	echo chmod $(VARFILEPERM) $(HACKDIR)/perm     >> PKGSCRIPTS/postinstall
 	echo chmod $(VARFILEPERM) $(HACKDIR)/record   >> PKGSCRIPTS/postinstall
 	echo chmod $(VARFILEPERM) $(HACKDIR)/logfile  >> PKGSCRIPTS/postinstall

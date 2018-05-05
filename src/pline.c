@@ -1,15 +1,66 @@
-/* NetHack 3.6	pline.c	$NHDT-Date: 1432512770 2015/05/25 00:12:50 $  $NHDT-Branch: master $:$NHDT-Revision: 1.42 $ */
+/* NetHack 3.6	pline.c	$NHDT-Date: 1520964541 2018/03/13 18:09:01 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.66 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #define NEED_VARARGS /* Uses ... */ /* comment line for pre-compiled headers \
                                        */
 #include "hack.h"
 
-static boolean no_repeat = FALSE;
+static unsigned pline_flags = 0;
 static char prevmsg[BUFSZ];
 
 static char *FDECL(You_buf, (int));
+#if defined(MSGHANDLER) && (defined(POSIX_TYPES) || defined(__GNUC__))
+static void FDECL(execplinehandler, (const char *));
+#endif
+
+#ifdef DUMPLOG
+/* also used in end.c */
+unsigned saved_pline_index = 0; /* slot in saved_plines[] to use next */
+char *saved_plines[DUMPLOG_MSG_COUNT] = { (char *) 0 };
+
+/* keep the most recent DUMPLOG_MSG_COUNT messages */
+void
+dumplogmsg(line)
+const char *line;
+{
+    /*
+     * TODO:
+     *  This essentially duplicates message history, which is
+     *  currently implemented in an interface-specific manner.
+     *  The core should take responsibility for that and have
+     *  this share it.
+     */
+    unsigned indx = saved_pline_index; /* next slot to use */
+    char *oldest = saved_plines[indx]; /* current content of that slot */
+
+    if (oldest && strlen(oldest) >= strlen(line)) {
+        /* this buffer will gradually shrink until the 'else' is needed;
+           there's no pressing need to track allocation size instead */
+        Strcpy(oldest, line);
+    } else {
+        if (oldest)
+            free((genericptr_t) oldest);
+        saved_plines[indx] = dupstr(line);
+    }
+    saved_pline_index = (indx + 1) % DUMPLOG_MSG_COUNT;
+}
+
+/* called during save (unlike the interface-specific message history,
+   this data isn't saved and restored); end-of-game releases saved_pline[]
+   while writing its contents to the final dump log */
+void
+dumplogfreemessages()
+{
+    unsigned indx;
+
+    for (indx = 0; indx < DUMPLOG_MSG_COUNT; ++indx)
+        if (saved_plines[indx])
+            free((genericptr_t) saved_plines[indx]), saved_plines[indx] = 0;
+    saved_pline_index = 0;
+}
+#endif
 
 /*VARARGS1*/
 /* Note that these declarations rely on knowledge of the internals
@@ -46,9 +97,11 @@ void pline
 VA_DECL(const char *, line)
 #endif /* USE_STDARG | USE_VARARG */
 {       /* start of vpline() or of nested block in USE_OLDARG's pline() */
+    static int in_pline = 0;
     char pbuf[3 * BUFSZ];
     int ln;
-    xchar msgtyp;
+    int msgtyp;
+    boolean no_repeat;
     /* Do NOT use VA_START and VA_END in here... see above */
 
     if (!line || !*line)
@@ -78,27 +131,61 @@ VA_DECL(const char *, line)
         pbuf[BUFSZ - 1] = '\0';
         line = pbuf;
     }
-    if (!iflags.window_inited) {
+
+#ifdef DUMPLOG
+    /* We hook here early to have options-agnostic output.
+     * Unfortunately, that means Norep() isn't honored (general issue) and
+     * that short lines aren't combined into one longer one (tty behavior).
+     */
+    if ((pline_flags & SUPPRESS_HISTORY) == 0)
+        dumplogmsg(line);
+#endif
+    /* use raw_print() if we're called too early (or perhaps too late
+       during shutdown) or if we're being called recursively (probably
+       via debugpline() in the interface code) */
+    if (in_pline++ || !iflags.window_inited) {
+        /* [we should probably be using raw_printf("\n%s", line) here] */
         raw_print(line);
         iflags.last_msg = PLNMSG_UNKNOWN;
-        return;
+        goto pline_done;
     }
-#ifndef MAC
-    if (no_repeat && !strcmp(line, toplines))
-        return;
-#endif /* MAC */
+
+    msgtyp = MSGTYP_NORMAL;
+    no_repeat = (pline_flags & PLINE_NOREPEAT) ? TRUE : FALSE;
+    if ((pline_flags & OVERRIDE_MSGTYPE) == 0) {
+        msgtyp = msgtype_type(line, no_repeat);
+        if (msgtyp == MSGTYP_NOSHOW
+            || (msgtyp == MSGTYP_NOREP && !strcmp(line, prevmsg)))
+            /* FIXME: we need a way to tell our caller that this message
+             * was suppressed so that caller doesn't set iflags.last_msg
+             * for something that hasn't been shown, otherwise a subsequent
+             * message which uses alternate wording based on that would be
+             * doing so out of context and probably end up seeming silly.
+             * (Not an issue for no-repeat but matters for no-show.)
+             */
+            goto pline_done;
+    }
+
     if (vision_full_recalc)
         vision_recalc(0);
     if (u.ux)
         flush_screen(1); /* %% */
-    msgtyp = msgtype_type(line);
-    if (msgtyp == MSGTYP_NOSHOW) return;
-    if (msgtyp == MSGTYP_NOREP && !strcmp(line, prevmsg)) return;
+
     putstr(WIN_MESSAGE, 0, line);
+
+#if defined(MSGHANDLER) && (defined(POSIX_TYPES) || defined(__GNUC__))
+    execplinehandler(line);
+#endif
+
     /* this gets cleared after every pline message */
     iflags.last_msg = PLNMSG_UNKNOWN;
-    strncpy(prevmsg, line, BUFSZ);
-    if (msgtyp == MSGTYP_STOP) display_nhwindow(WIN_MESSAGE, TRUE); /* --more-- */
+    (void) strncpy(prevmsg, line, BUFSZ), prevmsg[BUFSZ - 1] = '\0';
+    if (msgtyp == MSGTYP_STOP)
+        display_nhwindow(WIN_MESSAGE, TRUE); /* --more-- */
+
+ pline_done:
+    --in_pline;
+    return;
 
 #if !(defined(USE_STDARG) || defined(USE_VARARGS))
     /* provide closing brace for the nested block
@@ -107,15 +194,31 @@ VA_DECL(const char *, line)
 #endif
 }
 
+/* pline() variant which can override MSGTYPE handling or suppress
+   message history (tty interface uses pline() to issue prompts and
+   they shouldn't be blockable via MSGTYPE=hide) */
+/*VARARGS2*/
+void custompline
+VA_DECL2(unsigned, pflags, const char *, line)
+{
+    VA_START(line);
+    VA_INIT(line, const char *);
+    pline_flags = pflags;
+    vpline(line, VA_ARGS);
+    pline_flags = 0;
+    VA_END();
+    return;
+}
+
 /*VARARGS1*/
 void Norep
 VA_DECL(const char *, line)
 {
     VA_START(line);
     VA_INIT(line, const char *);
-    no_repeat = TRUE;
+    pline_flags = PLINE_NOREPEAT;
     vpline(line, VA_ARGS);
-    no_repeat = FALSE;
+    pline_flags = 0;
     VA_END();
     return;
 }
@@ -328,6 +431,9 @@ VA_DECL(const char *, line)
         pbuf[BUFSZ - 1] = '\0'; /* terminate strncpy or truncate vsprintf */
     }
     raw_print(line);
+#if defined(MSGHANDLER) && (defined(POSIX_TYPES) || defined(__GNUC__))
+    execplinehandler(line);
+#endif
 #if !(defined(USE_STDARG) || defined(USE_VARARGS))
     VA_END(); /* (see vpline) */
 #endif
@@ -347,242 +453,52 @@ VA_DECL(const char *, s)
     Vsprintf(pbuf, s, VA_ARGS);
     pbuf[BUFSZ - 1] = '\0'; /* sanity */
     paniclog("impossible", pbuf);
-    pline("%s", pbuf);
-    pline("Program in disorder - perhaps you'd better #quit.");
+    pline("%s", VA_PASS1(pbuf));
+    pline(VA_PASS1(
+       "Program in disorder!  (Saving and reloading may fix this problem.)"));
     program_state.in_impossible = 0;
     VA_END();
 }
 
-const char *
-align_str(alignment)
-aligntyp alignment;
+#if defined(MSGHANDLER) && (defined(POSIX_TYPES) || defined(__GNUC__))
+static boolean use_pline_handler = TRUE;
+static void
+execplinehandler(line)
+const char *line;
 {
-    switch ((int) alignment) {
-    case A_CHAOTIC:
-        return "chaotic";
-    case A_NEUTRAL:
-        return "neutral";
-    case A_LAWFUL:
-        return "lawful";
-    case A_NONE:
-        return "unaligned";
-    }
-    return "unknown";
-}
+    int f;
+    const char *args[3];
+    char *env;
 
-void
-mstatusline(mtmp)
-register struct monst *mtmp;
-{
-    aligntyp alignment = mon_aligntyp(mtmp);
-    char info[BUFSZ], monnambuf[BUFSZ];
+    if (!use_pline_handler)
+        return;
 
-    info[0] = 0;
-    if (mtmp->mtame) {
-        Strcat(info, ", tame");
-        if (wizard) {
-            Sprintf(eos(info), " (%d", mtmp->mtame);
-            if (!mtmp->isminion)
-                Sprintf(eos(info), "; hungry %ld; apport %d",
-                        EDOG(mtmp)->hungrytime, EDOG(mtmp)->apport);
-            Strcat(info, ")");
-        }
-    } else if (mtmp->mpeaceful)
-        Strcat(info, ", peaceful");
-    if (mtmp->cham >= LOW_PM && mtmp->data != &mons[mtmp->cham])
-        /* don't reveal the innate form (chameleon, vampire, &c),
-           just expose the fact that this current form isn't it */
-        Strcat(info, ", shapechanger");
-    /* pets eating mimic corpses mimic while eating, so this comes first */
-    if (mtmp->meating)
-        Strcat(info, ", eating");
-    /* a stethoscope exposes mimic before getting here so this
-       won't be relevant for it, but wand of probing doesn't */
-    if (mtmp->m_ap_type)
-        Sprintf(eos(info), ", mimicking %s",
-                (mtmp->m_ap_type == M_AP_FURNITURE)
-                    ? an(defsyms[mtmp->mappearance].explanation)
-                    : (mtmp->m_ap_type == M_AP_OBJECT)
-                          ? ((mtmp->mappearance == GOLD_PIECE)
-                                 ? "gold"
-                                 : an(simple_typename(mtmp->mappearance)))
-                          : (mtmp->m_ap_type == M_AP_MONSTER)
-                                ? an(mons[mtmp->mappearance].mname)
-                                : something); /* impossible... */
-    if (mtmp->mcan)
-        Strcat(info, ", cancelled");
-    if (mtmp->mconf)
-        Strcat(info, ", confused");
-    if (mtmp->mblinded || !mtmp->mcansee)
-        Strcat(info, ", blind");
-    if (mtmp->mstun)
-        Strcat(info, ", stunned");
-    if (mtmp->msleeping)
-        Strcat(info, ", asleep");
-#if 0 /* unfortunately mfrozen covers temporary sleep and being busy \
-         (donning armor, for instance) as well as paralysis */
-	else if (mtmp->mfrozen)	  Strcat(info, ", paralyzed");
-#else
-    else if (mtmp->mfrozen || !mtmp->mcanmove)
-        Strcat(info, ", can't move");
-#endif
-    /* [arbitrary reason why it isn't moving] */
-    else if (mtmp->mstrategy & STRAT_WAITMASK)
-        Strcat(info, ", meditating");
-    if (mtmp->mflee)
-        Strcat(info, ", scared");
-    if (mtmp->mtrapped)
-        Strcat(info, ", trapped");
-    if (mtmp->mspeed)
-        Strcat(info, mtmp->mspeed == MFAST ? ", fast" : mtmp->mspeed == MSLOW
-                                                            ? ", slow"
-                                                            : ", ???? speed");
-    if (mtmp->mundetected)
-        Strcat(info, ", concealed");
-    if (mtmp->minvis)
-        Strcat(info, ", invisible");
-    if (mtmp == u.ustuck)
-        Strcat(info, sticks(youmonst.data)
-                         ? ", held by you"
-                         : !u.uswallow ? ", holding you"
-                                       : attacktype_fordmg(u.ustuck->data,
-                                                           AT_ENGL, AD_DGST)
-                                             ? ", digesting you"
-                                             : is_animal(u.ustuck->data)
-                                                   ? ", swallowing you"
-                                                   : ", engulfing you");
-    if (mtmp == u.usteed)
-        Strcat(info, ", carrying you");
-
-    /* avoid "Status of the invisible newt ..., invisible" */
-    /* and unlike a normal mon_nam, use "saddled" even if it has a name */
-    Strcpy(monnambuf, x_monnam(mtmp, ARTICLE_THE, (char *) 0,
-                               (SUPPRESS_IT | SUPPRESS_INVISIBLE), FALSE));
-
-    pline("Status of %s (%s):  Level %d  HP %d(%d)  AC %d%s.", monnambuf,
-          align_str(alignment), mtmp->m_lev, mtmp->mhp, mtmp->mhpmax,
-          find_mac(mtmp), info);
-}
-
-void
-ustatusline()
-{
-    char info[BUFSZ];
-
-    info[0] = '\0';
-    if (Sick) {
-        Strcat(info, ", dying from");
-        if (u.usick_type & SICK_VOMITABLE)
-            Strcat(info, " food poisoning");
-        if (u.usick_type & SICK_NONVOMITABLE) {
-            if (u.usick_type & SICK_VOMITABLE)
-                Strcat(info, " and");
-            Strcat(info, " illness");
-        }
-    }
-    if (Stoned)
-        Strcat(info, ", solidifying");
-    if (Slimed)
-        Strcat(info, ", becoming slimy");
-    if (Strangled)
-        Strcat(info, ", being strangled");
-    if (Vomiting)
-        Strcat(info, ", nauseated"); /* !"nauseous" */
-    if (Confusion)
-        Strcat(info, ", confused");
-    if (Blind) {
-        Strcat(info, ", blind");
-        if (u.ucreamed) {
-            if ((long) u.ucreamed < Blinded || Blindfolded
-                || !haseyes(youmonst.data))
-                Strcat(info, ", cover");
-            Strcat(info, "ed by sticky goop");
-        } /* note: "goop" == "glop"; variation is intentional */
-    }
-    if (Stunned)
-        Strcat(info, ", stunned");
-    if (!u.usteed && Wounded_legs) {
-        const char *what = body_part(LEG);
-        if ((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
-            what = makeplural(what);
-        Sprintf(eos(info), ", injured %s", what);
-    }
-    if (Glib)
-        Sprintf(eos(info), ", slippery %s", makeplural(body_part(HAND)));
-    if (u.utrap)
-        Strcat(info, ", trapped");
-    if (Fast)
-        Strcat(info, Very_fast ? ", very fast" : ", fast");
-    if (u.uundetected)
-        Strcat(info, ", concealed");
-    if (Invis)
-        Strcat(info, ", invisible");
-    if (u.ustuck) {
-        if (sticks(youmonst.data))
-            Strcat(info, ", holding ");
-        else
-            Strcat(info, ", held by ");
-        Strcat(info, mon_nam(u.ustuck));
+    if (!(env = nh_getenv("NETHACK_MSGHANDLER"))) {
+        use_pline_handler = FALSE;
+        return;
     }
 
-    pline("Status of %s (%s%s):  Level %d  HP %d(%d)  AC %d%s.", plname,
-          (u.ualign.record >= 20)
-              ? "piously "
-              : (u.ualign.record > 13)
-                    ? "devoutly "
-                    : (u.ualign.record > 8)
-                          ? "fervently "
-                          : (u.ualign.record > 3)
-                                ? "stridently "
-                                : (u.ualign.record == 3)
-                                      ? ""
-                                      : (u.ualign.record >= 1)
-                                            ? "haltingly "
-                                            : (u.ualign.record == 0)
-                                                  ? "nominally "
-                                                  : "insufficiently ",
-          align_str(u.ualign.type),
-          Upolyd ? mons[u.umonnum].mlevel : u.ulevel, Upolyd ? u.mh : u.uhp,
-          Upolyd ? u.mhmax : u.uhpmax, u.uac, info);
-}
+    f = fork();
+    if (f == 0) { /* child */
+        args[0] = env;
+        args[1] = line;
+        args[2] = NULL;
+        (void) setgid(getgid());
+        (void) setuid(getuid());
+        (void) execv(args[0], (char *const *) args);
+        perror((char *) 0);
+        (void) fprintf(stderr, "Exec to message handler %s failed.\n", env);
+        nh_terminate(EXIT_FAILURE);
+    } else if (f > 0) {
+        int status;
 
-void
-self_invis_message()
-{
-    pline("%s %s.",
-          Hallucination ? "Far out, man!  You" : "Gee!  All of a sudden, you",
-          See_invisible ? "can see right through yourself"
-                        : "can't see yourself");
-}
-
-void
-pudding_merge_message(otmp, otmp2)
-struct obj *otmp;
-struct obj *otmp2;
-{
-    boolean visible =
-        cansee(otmp->ox, otmp->oy) || cansee(otmp2->ox, otmp2->oy);
-    boolean onfloor = otmp->where == OBJ_FLOOR || otmp2->where == OBJ_FLOOR;
-    boolean inpack = carried(otmp) || carried(otmp2);
-
-    /* the player will know something happened inside his own inventory */
-    if ((!Blind && visible) || inpack) {
-        if (Hallucination) {
-            if (onfloor) {
-                You_see("parts of the floor melting!");
-            } else if (inpack) {
-                Your("pack reaches out and grabs something!");
-            }
-            /* even though we can see where they should be,
-             * they'll be out of our view (minvent or container)
-             * so don't actually show anything */
-        } else if (onfloor || inpack) {
-            pline("The %s coalesce%s.", makeplural(obj_typename(otmp->otyp)),
-                  inpack ? " inside your pack" : "");
-        }
-    } else {
-        You_hear("a faint sloshing sound.");
+        waitpid(f, &status, 0);
+    } else if (f == -1) {
+        perror((char *) 0);
+        use_pline_handler = FALSE;
+        pline("%s", VA_PASS1("Fork to message handler failed."));
     }
 }
+#endif /* defined(POSIX_TYPES) || defined(__GNUC__) */
 
 /*pline.c*/

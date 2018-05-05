@@ -1,5 +1,6 @@
-#	NetHack Makefile.
-# NetHack 3.6  Makefile.dat	$NHDT-Date: 1447844574 2015/11/18 11:02:54 $  $NHDT-Branch: master $:$NHDT-Revision: 1.18 $
+#      NetHack Datafiles Makefile.dat $NHDT-Date: 1447844574 2018/04/25 19:25:54 $ $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.22 $
+# Copyright (c) 2018 by Pasi Kallinen
+# NetHack may be freely redistributed.  See license for details.
 
 # Root of source tree:
 NHSROOT=..
@@ -31,9 +32,11 @@ all:	$(VARDAT) spec_levs quest_levs dungeon
 	(cd ../util ; $(MAKE) tile2bmp)
 
 x11tiles: ../util/tile2x11 ../win/share/monsters.txt ../win/share/objects.txt \
-				../win/share/other.txt
+				../win/share/other.txt \
+                                ../win/share/monsters.txt
 	../util/tile2x11 ../win/share/monsters.txt ../win/share/objects.txt \
-				../win/share/other.txt
+				../win/share/other.txt \
+                                -grayscale ../win/share/monsters.txt
 
 beostiles: ../util/tile2beos ../win/share/monsters.txt \
 				../win/share/objects.txt \
@@ -48,7 +51,13 @@ nhtiles.bmp: ../util/tile2bmp ../win/share/monsters.txt \
 	../util/tile2bmp $@
 
 NetHack.ad: ../win/X11/NetHack.ad
-	cp ../win/X11/NetHack.ad NetHack.ad
+# handle "#define foo bar" -lines
+	grep ^#define ../win/X11/NetHack.ad | \
+		sed -e 's/^#define/s/g' -e 's/  */ /g' \
+		    -e 's/$$/ g/g' > NetHack.ad.tmp
+	grep -v ^#define ../win/X11/NetHack.ad | \
+		sed -f NetHack.ad.tmp > NetHack.ad
+	-rm -f NetHack.ad.tmp
 
 pet_mark.xbm: ../win/X11/pet_mark.xbm
 	cp ../win/X11/pet_mark.xbm pet_mark.xbm
@@ -160,3 +169,4 @@ spotless:
 	-rm -f spec_levs quest_levs *.lev $(VARDAT) dungeon dungeon.pdf
 	-rm -f nhdat x11tiles beostiles pet_mark.xbm pilemark.xbm rip.xpm mapbg.xpm
 	-rm -f rip.img GEM_RSC.RSC title.img nh16.img NetHack.ad
+	-rm -f nhsplash.xpm nhtiles.bmp

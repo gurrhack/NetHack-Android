@@ -1,4 +1,4 @@
-/* NetHack 3.6	wintty.c	$NHDT-Date: 1449052583 2015/12/02 10:36:23 $  $NHDT-Branch: master $:$NHDT-Revision: 1.116 $ */
+/* NetHack 3.6	wintty.c	$NHDT-Date: 1520825319 2018/03/12 03:28:39 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.142 $ */
 /* Copyright (c) David Cohrs, 1991                                */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,10 +31,18 @@ extern void msmsg(const char *, ...);
 #include "wintty.h"
 
 #ifdef CLIPPING /* might want SIGWINCH */
-#if defined(BSD) || defined(ULTRIX) || defined(AIX_31) \
-    || defined(_BULL_SOURCE)
+#if defined(BSD) || defined(ULTRIX) || defined(AIX_31) || defined(_BULL_SOURCE)
 #include <signal.h>
 #endif
+#endif
+
+#ifdef TTY_TILES_ESCCODES
+extern short glyph2tile[];
+#define TILE_ANSI_COMMAND 'z'
+#define AVTC_GLYPH_START   0
+#define AVTC_GLYPH_END     1
+#define AVTC_SELECT_WINDOW 2
+#define AVTC_INLINE_SYNC   3
 #endif
 
 extern char mapped_menu_cmds[]; /* from options.c */
@@ -45,17 +53,22 @@ extern NEARDATA winid WIN_STATUS;
 /* Interface definition, for windows.c */
 struct window_procs tty_procs = {
     "tty",
+    (0
 #ifdef MSDOS
-    WC_TILED_MAP | WC_ASCII_MAP |
+     | WC_TILED_MAP | WC_ASCII_MAP
 #endif
 #if defined(WIN32CON)
-        WC_MOUSE_SUPPORT |
+     | WC_MOUSE_SUPPORT
 #endif
-        WC_COLOR | WC_HILITE_PET | WC_INVERSE | WC_EIGHT_BIT_IN,
+     | WC_COLOR | WC_HILITE_PET | WC_INVERSE | WC_EIGHT_BIT_IN),
+    (0
 #if defined(SELECTSAVED)
-    WC2_SELECTSAVED |
+     | WC2_SELECTSAVED
 #endif
-        WC2_DARKGRAY,
+#if defined(STATUS_HILITES)
+     | WC2_HILITE_STATUS | WC2_HITPOINTBAR | WC2_FLUSH_STATUS
+#endif
+     | WC2_DARKGRAY),
     tty_init_nhwindows, tty_player_selection, tty_askname, tty_get_nh_event,
     tty_exit_nhwindows, tty_suspend_nhwindows, tty_resume_nhwindows,
     tty_create_nhwindow, tty_clear_nhwindow, tty_display_nhwindow,
@@ -88,13 +101,12 @@ struct window_procs tty_procs = {
     genl_preference_update,
 #endif
     tty_getmsghistory, tty_putmsghistory,
-#ifdef STATUS_VIA_WINDOWPORT
     tty_status_init,
     genl_status_finish, genl_status_enablefield,
-    tty_status_update,
 #ifdef STATUS_HILITES
-    tty_status_threshold,
-#endif
+    tty_status_update,
+#else
+    genl_status_update,
 #endif
     genl_can_suspend_yes,
 };
@@ -144,14 +156,15 @@ STATIC_DCL void FDECL(erase_menu_or_text,
 STATIC_DCL void FDECL(free_window_info, (struct WinDesc *, BOOLEAN_P));
 STATIC_DCL void FDECL(dmore, (struct WinDesc *, const char *));
 STATIC_DCL void FDECL(set_item_state, (winid, int, tty_menu_item *));
-STATIC_DCL void FDECL(set_all_on_page,
-                      (winid, tty_menu_item *, tty_menu_item *));
-STATIC_DCL void FDECL(unset_all_on_page,
-                      (winid, tty_menu_item *, tty_menu_item *));
-STATIC_DCL void FDECL(invert_all_on_page,
-                      (winid, tty_menu_item *, tty_menu_item *, CHAR_P));
-STATIC_DCL void FDECL(invert_all,
-                      (winid, tty_menu_item *, tty_menu_item *, CHAR_P));
+STATIC_DCL void FDECL(set_all_on_page, (winid, tty_menu_item *,
+                                        tty_menu_item *));
+STATIC_DCL void FDECL(unset_all_on_page, (winid, tty_menu_item *,
+                                          tty_menu_item *));
+STATIC_DCL void FDECL(invert_all_on_page, (winid, tty_menu_item *,
+                                           tty_menu_item *, CHAR_P));
+STATIC_DCL void FDECL(invert_all, (winid, tty_menu_item *,
+                                   tty_menu_item *, CHAR_P));
+STATIC_DCL void FDECL(toggle_menu_attr, (BOOLEAN_P, int, int));
 STATIC_DCL void FDECL(process_menu_window, (winid, struct WinDesc *));
 STATIC_DCL void FDECL(process_text_window, (winid, struct WinDesc *));
 STATIC_DCL tty_menu_item *FDECL(reverse, (tty_menu_item *));
@@ -175,6 +188,36 @@ static const char default_menu_cmds[] = {
     MENU_INVERT_PAGE,   MENU_SEARCH,      0 /* null terminator */
 };
 
+#ifdef TTY_TILES_ESCCODES
+static int vt_tile_current_window = -2;
+
+void
+print_vt_code(i, c, d)
+int i, c, d;
+{
+    if (iflags.vt_tiledata) {
+        if (c >= 0) {
+            if (i == AVTC_SELECT_WINDOW) {
+                if (c == vt_tile_current_window) return;
+                vt_tile_current_window = c;
+            }
+            if (d >= 0)
+                printf("\033[1;%d;%d;%d%c", i, c, d, TILE_ANSI_COMMAND);
+            else
+                printf("\033[1;%d;%d%c", i, c, TILE_ANSI_COMMAND);
+        } else {
+            printf("\033[1;%d%c", i, TILE_ANSI_COMMAND);
+        }
+    }
+}
+#else
+# define print_vt_code(i, c, d) ;
+#endif /* !TTY_TILES_ESCCODES */
+#define print_vt_code1(i)     print_vt_code((i), -1, -1)
+#define print_vt_code2(i,c)   print_vt_code((i), (c), -1)
+#define print_vt_code3(i,c,d) print_vt_code((i), (c), (d))
+
+
 /* clean up and quit */
 STATIC_OVL void
 bail(mesg)
@@ -182,13 +225,26 @@ const char *mesg;
 {
     clearlocks();
     tty_exit_nhwindows(mesg);
-    terminate(EXIT_SUCCESS);
+    nh_terminate(EXIT_SUCCESS);
     /*NOTREACHED*/
 }
 
 #if defined(SIGWINCH) && defined(CLIPPING)
+STATIC_DCL void FDECL(winch_handler, (int));
+
+    /*
+     * This really ought to just set a flag like the hangup handler does,
+     * then check the flag at "safe" times, in case the signal arrives
+     * while something fragile is executing.  Better to have a brief period
+     * where display updates don't fit the new size than for tty internals
+     * to become corrupted.
+     *
+     * 'winch_seen' has been "notyet" for a long time....
+     */
+/*ARGUSED*/
 STATIC_OVL void
-winch()
+winch_handler(sig_unused) /* signal handler is called with at least 1 arg */
+int sig_unused UNUSED;
 {
     int oldLI = LI, oldCO = CO, i;
     register struct WinDesc *cw;
@@ -306,11 +362,8 @@ char **argv UNUSED;
     ttyDisplay->lastwin = WIN_ERR;
 
 #if defined(SIGWINCH) && defined(CLIPPING) && !defined(NO_SIGNAL)
-    (void) signal(SIGWINCH, winch);
+    (void) signal(SIGWINCH, (SIG_RET_TYPE) winch_handler);
 #endif
-
-    /* add one a space forward menu command alias */
-    add_menu_cmd_alias(' ', MENU_NEXT_PAGE);
 
     tty_clear_nhwindow(BASE_WINDOW);
 
@@ -331,14 +384,25 @@ void
 tty_player_selection()
 {
     int i, k, n, choice, nextpick;
-    boolean getconfirmation;
+    boolean getconfirmation, picksomething;
     char pick4u = 'n';
     char pbuf[QBUFSZ], plbuf[QBUFSZ];
     winid win;
     anything any;
     menu_item *selected = 0;
 
-    if (flags.randomall) {
+    /* Used to avoid "Is this ok?" if player has already specified all
+     * four facets of role.
+     * Note that rigid_role_checks might force any unspecified facets to
+     * have a specific value, but that will still require confirmation;
+     * player can specify the forced ones if avoiding that is demanded.
+     */
+    picksomething = (ROLE == ROLE_NONE || RACE == ROLE_NONE
+                     || GEND == ROLE_NONE || ALGN == ROLE_NONE);
+    /* Used for '-@';
+     * choose randomly without asking for all unspecified facets.
+     */
+    if (flags.randomall && picksomething) {
         if (ROLE == ROLE_NONE)
             ROLE = ROLE_RANDOM;
         if (RACE == ROLE_NONE)
@@ -349,7 +413,8 @@ tty_player_selection()
             ALGN = ROLE_RANDOM;
     }
 
-    /* prevent an unnecessary prompt */
+    /* prevent unnecessary prompting if role forces race (samurai) or gender
+       (valkyrie) or alignment (rogue), or race forces alignment (orc), &c */
     rigid_role_checks();
 
     /* Should we randomly pick for the player? */
@@ -416,20 +481,35 @@ makepicks:
                     /* populate the menu with role choices */
                     setup_rolemenu(win, TRUE, RACE, GEND, ALGN);
                     /* add miscellaneous menu entries */
-                    role_menu_extra(ROLE_RANDOM, win);
-                    any.a_int = 0; /* separator, not a choice */
-                    add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, "",
+                    role_menu_extra(ROLE_RANDOM, win, TRUE);
+                    any = zeroany; /* separator, not a choice */
+                    add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
                              MENU_UNSELECTED);
-                    role_menu_extra(RS_RACE, win);
-                    role_menu_extra(RS_GENDER, win);
-                    role_menu_extra(RS_ALGNMNT, win);
+                    role_menu_extra(RS_RACE, win, FALSE);
+                    role_menu_extra(RS_GENDER, win, FALSE);
+                    role_menu_extra(RS_ALGNMNT, win, FALSE);
                     if (gotrolefilter())
-                        role_menu_extra(RS_filter, win);
-                    role_menu_extra(ROLE_NONE, win); /* quit */
+                        role_menu_extra(RS_filter, win, FALSE);
+                    role_menu_extra(ROLE_NONE, win, FALSE); /* quit */
                     Strcpy(pbuf, "Pick a role or profession");
                     end_menu(win, pbuf);
                     n = select_menu(win, PICK_ONE, &selected);
-                    choice = (n == 1) ? selected[0].item.a_int : ROLE_NONE;
+                    /*
+                     * PICK_ONE with preselected choice behaves strangely:
+                     *  n == -1 -- <escape>, so use quit choice;
+                     *  n ==  0 -- explicitly chose preselected entry,
+                     *             toggling it off, so use it;
+                     *  n ==  1 -- implicitly chose preselected entry
+                     *             with <space> or <return>;
+                     *  n ==  2 -- explicitly chose a different entry, so
+                     *             both it and preselected one are in list.
+                     */
+                    if (n > 0) {
+                        choice = selected[0].item.a_int;
+                        if (n > 1 && choice == ROLE_RANDOM)
+                            choice = selected[1].item.a_int;
+                    } else
+                        choice = (n == 0) ? ROLE_RANDOM : ROLE_NONE;
                     if (selected)
                         free((genericptr_t) selected), selected = 0;
                     destroy_nhwindow(win);
@@ -500,21 +580,25 @@ makepicks:
                         /* populate the menu with role choices */
                         setup_racemenu(win, TRUE, ROLE, GEND, ALGN);
                         /* add miscellaneous menu entries */
-                        role_menu_extra(ROLE_RANDOM, win);
+                        role_menu_extra(ROLE_RANDOM, win, TRUE);
                         any.a_int = 0; /* separator, not a choice */
-                        add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, "",
+                        add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
                                  MENU_UNSELECTED);
-                        role_menu_extra(RS_ROLE, win);
-                        role_menu_extra(RS_GENDER, win);
-                        role_menu_extra(RS_ALGNMNT, win);
+                        role_menu_extra(RS_ROLE, win, FALSE);
+                        role_menu_extra(RS_GENDER, win, FALSE);
+                        role_menu_extra(RS_ALGNMNT, win, FALSE);
                         if (gotrolefilter())
-                            role_menu_extra(RS_filter, win);
-                        role_menu_extra(ROLE_NONE, win); /* quit */
+                            role_menu_extra(RS_filter, win, FALSE);
+                        role_menu_extra(ROLE_NONE, win, FALSE); /* quit */
                         Strcpy(pbuf, "Pick a race or species");
                         end_menu(win, pbuf);
                         n = select_menu(win, PICK_ONE, &selected);
-                        choice = (n == 1) ? selected[0].item.a_int
-                                          : ROLE_NONE;
+                        if (n > 0) {
+                            choice = selected[0].item.a_int;
+                            if (n > 1 && choice == ROLE_RANDOM)
+                                choice = selected[1].item.a_int;
+                        } else
+                            choice = (n == 0) ? ROLE_RANDOM : ROLE_NONE;
                         if (selected)
                             free((genericptr_t) selected), selected = 0;
                         destroy_nhwindow(win);
@@ -589,21 +673,25 @@ makepicks:
                         /* populate the menu with gender choices */
                         setup_gendmenu(win, TRUE, ROLE, RACE, ALGN);
                         /* add miscellaneous menu entries */
-                        role_menu_extra(ROLE_RANDOM, win);
+                        role_menu_extra(ROLE_RANDOM, win, TRUE);
                         any.a_int = 0; /* separator, not a choice */
-                        add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, "",
+                        add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
                                  MENU_UNSELECTED);
-                        role_menu_extra(RS_ROLE, win);
-                        role_menu_extra(RS_RACE, win);
-                        role_menu_extra(RS_ALGNMNT, win);
+                        role_menu_extra(RS_ROLE, win, FALSE);
+                        role_menu_extra(RS_RACE, win, FALSE);
+                        role_menu_extra(RS_ALGNMNT, win, FALSE);
                         if (gotrolefilter())
-                            role_menu_extra(RS_filter, win);
-                        role_menu_extra(ROLE_NONE, win); /* quit */
+                            role_menu_extra(RS_filter, win, FALSE);
+                        role_menu_extra(ROLE_NONE, win, FALSE); /* quit */
                         Strcpy(pbuf, "Pick a gender or sex");
                         end_menu(win, pbuf);
                         n = select_menu(win, PICK_ONE, &selected);
-                        choice = (n == 1) ? selected[0].item.a_int
-                                          : ROLE_NONE;
+                        if (n > 0) {
+                            choice = selected[0].item.a_int;
+                            if (n > 1 && choice == ROLE_RANDOM)
+                                choice = selected[1].item.a_int;
+                        } else
+                            choice = (n == 0) ? ROLE_RANDOM : ROLE_NONE;
                         if (selected)
                             free((genericptr_t) selected), selected = 0;
                         destroy_nhwindow(win);
@@ -674,21 +762,25 @@ makepicks:
                         start_menu(win);
                         any = zeroany; /* zero out all bits */
                         setup_algnmenu(win, TRUE, ROLE, RACE, GEND);
-                        role_menu_extra(ROLE_RANDOM, win);
+                        role_menu_extra(ROLE_RANDOM, win, TRUE);
                         any.a_int = 0; /* separator, not a choice */
-                        add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, "",
+                        add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
                                  MENU_UNSELECTED);
-                        role_menu_extra(RS_ROLE, win);
-                        role_menu_extra(RS_RACE, win);
-                        role_menu_extra(RS_GENDER, win);
+                        role_menu_extra(RS_ROLE, win, FALSE);
+                        role_menu_extra(RS_RACE, win, FALSE);
+                        role_menu_extra(RS_GENDER, win, FALSE);
                         if (gotrolefilter())
-                            role_menu_extra(RS_filter, win);
-                        role_menu_extra(ROLE_NONE, win); /* quit */
+                            role_menu_extra(RS_filter, win, FALSE);
+                        role_menu_extra(ROLE_NONE, win, FALSE); /* quit */
                         Strcpy(pbuf, "Pick an alignment or creed");
                         end_menu(win, pbuf);
                         n = select_menu(win, PICK_ONE, &selected);
-                        choice = (n == 1) ? selected[0].item.a_int
-                                          : ROLE_NONE;
+                        if (n > 0) {
+                            choice = selected[0].item.a_int;
+                            if (n > 1 && choice == ROLE_RANDOM)
+                                choice = selected[1].item.a_int;
+                        } else
+                            choice = (n == 0) ? ROLE_RANDOM : ROLE_NONE;
                         if (selected)
                             free((genericptr_t) selected), selected = 0;
                         destroy_nhwindow(win);
@@ -742,7 +834,7 @@ makepicks:
      *           q - quit
      *           (end)
      */
-    getconfirmation = (pick4u != 'a' && !flags.randomall);
+    getconfirmation = (picksomething && pick4u != 'a' && !flags.randomall);
     while (getconfirmation) {
         tty_clear_nhwindow(BASE_WINDOW);
         role_selection_prolog(ROLE_NONE, BASE_WINDOW);
@@ -760,11 +852,11 @@ makepicks:
                 races[RACE].adj,
                 (GEND == 1 && roles[ROLE].name.f) ? roles[ROLE].name.f
                                                   : roles[ROLE].name.m);
-        add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, pbuf,
+        add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, pbuf,
                  MENU_UNSELECTED);
         /* blank separator */
         any.a_int = 0;
-        add_menu(win, NO_GLYPH, &any, ' ', 0, ATR_NONE, "", MENU_UNSELECTED);
+        add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
         /* [ynaq] menu choices */
         any.a_int = 1;
         add_menu(win, NO_GLYPH, &any, 'y', 0, ATR_NONE, "Yes; start game",
@@ -1075,6 +1167,8 @@ tty_askname()
         while ((c = tty_nhgetch()) != '\n') {
             if (c == EOF)
                 c = '\033';
+            if (c == '\r')
+                break;
             if (c == '\033') {
                 ct = 0;
                 break;
@@ -1205,9 +1299,7 @@ const char *str;
         }
     }
     WIN_MAP = WIN_MESSAGE = WIN_INVEN = WIN_ERR; /* these are all gone now */
-#ifndef STATUS_VIA_WINDOWPORT
     WIN_STATUS = WIN_ERR;
-#endif
 #ifdef FREE_ALL_MEMORY
     if (BASE_WINDOW != WIN_ERR && wins[BASE_WINDOW]) {
         free_window_info(wins[BASE_WINDOW], TRUE);
@@ -1414,6 +1506,8 @@ winid window;
         panic(winpanicstr, window);
     ttyDisplay->lastwin = window;
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
     switch (cw->type) {
     case NHW_MESSAGE:
         if (ttyDisplay->toplin) {
@@ -1433,7 +1527,7 @@ winid window;
     case NHW_MAP:
         /* cheap -- clear the whole thing and tell nethack to redraw botl */
         context.botlx = 1;
-    /* fall into ... */
+        /*FALLTHRU*/
     case NHW_BASE:
         clear_screen();
         break;
@@ -1605,6 +1699,31 @@ char acc; /* group accelerator, 0 => all */
     }
 }
 
+/* support menucolor in addition to caller-supplied attribute */
+STATIC_OVL void
+toggle_menu_attr(on, color, attr)
+boolean on;
+int color, attr;
+{
+    if (on) {
+        term_start_attr(attr);
+#ifdef TEXTCOLOR
+        if (color != NO_COLOR)
+            term_start_color(color);
+#endif
+    } else {
+#ifdef TEXTCOLOR
+        if (color != NO_COLOR)
+            term_end_color();
+#endif
+        term_end_attr(attr);
+    }
+
+#ifndef TEXTCOLOR
+    nhUse(color);
+#endif
+}
+
 STATIC_OVL void
 process_menu_window(window, cw)
 winid window;
@@ -1612,7 +1731,7 @@ struct WinDesc *cw;
 {
     tty_menu_item *page_start, *page_end, *curr;
     long count;
-    int n, curr_page, page_lines, resp_len;
+    int n, attr_n, curr_page, page_lines, resp_len;
     boolean finished, counting, reset_count;
     char *cp, *rp, resp[QBUFSZ], gacc[QBUFSZ], *msave, *morestr, really_morc;
 #define MENU_EXPLICIT_CHOICE 0x7f /* pseudo menu manipulation char */
@@ -1683,8 +1802,8 @@ struct WinDesc *cw;
                 page_end = cw->plist[curr_page + 1];
                 for (page_lines = 0, curr = page_start; curr != page_end;
                      page_lines++, curr = curr->next) {
-                    int color = NO_COLOR, attr = ATR_NONE;
-                    boolean menucolr = FALSE;
+                    int attr, color = NO_COLOR;
+
                     if (curr->selector)
                         *rp++ = curr->selector;
 
@@ -1694,6 +1813,23 @@ struct WinDesc *cw;
 
                     (void) putchar(' ');
                     ++ttyDisplay->curx;
+
+                    if (!iflags.use_menu_color
+                        || !get_menu_coloring(curr->str, &color, &attr))
+                        attr = curr->attr;
+
+                    /* which character to start attribute highlighting;
+                       whole line for headers and such, after the selector
+                       character and space and selection indicator for menu
+                       lines (including fake ones that simulate grayed-out
+                       entries, so we don't rely on curr->identifier here) */
+                    attr_n = 0; /* whole line */
+                    if (curr->str[0] && curr->str[1] == ' '
+                        && curr->str[2] && index("-+#", curr->str[2])
+                        && curr->str[3] == ' ')
+                        /* [0]=letter, [1]==space, [2]=[-+#], [3]=space */
+                        attr_n = 4; /* [4:N]=entry description */
+
                     /*
                      * Don't use xputs() because (1) under unix it calls
                      * tputstr() which will interpret a '*' as some kind
@@ -1701,27 +1837,20 @@ struct WinDesc *cw;
                      * actually output the character.  We're faster doing
                      * this.
                      */
-                    if (iflags.use_menu_color
-                        && (menucolr = get_menu_coloring(curr->str, &color,
-                                                         &attr))) {
-                        term_start_attr(attr);
-#ifdef TEXTCOLOR
-                        if (color != NO_COLOR)
-                            term_start_color(color);
-#endif
-                    } else
-                        term_start_attr(curr->attr);
                     for (n = 0, cp = curr->str;
+                         *cp &&
 #ifndef WIN32CON
-                         *cp
-                         && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
-                         cp++, n++)
+                            (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
 #else
-                         *cp
-                         && (int) ttyDisplay->curx < (int) ttyDisplay->cols;
-                         cp++, n++, ttyDisplay->curx++)
+                            (int) ttyDisplay->curx < (int) ttyDisplay->cols;
+                         ttyDisplay->curx++,
 #endif
-                        if (n == 2 && curr->identifier.a_void != 0
+                         cp++, n++) {
+                        if (n == attr_n && (color != NO_COLOR
+                                            || attr != ATR_NONE))
+                            toggle_menu_attr(TRUE, color, attr);
+                        if (n == 2
+                            && curr->identifier.a_void != 0
                             && curr->selected) {
                             if (curr->count == -1L)
                                 (void) putchar('+'); /* all selected */
@@ -1729,15 +1858,10 @@ struct WinDesc *cw;
                                 (void) putchar('#'); /* count selected */
                         } else
                             (void) putchar(*cp);
-                    if (iflags.use_menu_color && menucolr) {
-#ifdef TEXTCOLOR
-                        if (color != NO_COLOR)
-                            term_end_color();
-#endif
-                        term_end_attr(attr);
-                    } else
-                        term_end_attr(curr->attr);
-                }
+                    } /* for *cp */
+                    if (n > attr_n && (color != NO_COLOR || attr != ATR_NONE))
+                        toggle_menu_attr(FALSE, color, attr);
+                } /* if npages > 0 */
             } else {
                 page_start = 0;
                 page_end = 0;
@@ -1757,6 +1881,7 @@ struct WinDesc *cw;
 
             /* set extra chars.. */
             Strcat(resp, default_menu_cmds);
+            Strcat(resp, " ");                  /* next page or end */
             Strcat(resp, "0123456789\033\n\r"); /* counts, quit */
             Strcat(resp, gacc);                 /* group accelerators */
             Strcat(resp, mapped_menu_cmds);
@@ -1792,7 +1917,8 @@ struct WinDesc *cw;
             /* special case: '0' is also the default ball class */
             if (!counting && index(gacc, morc))
                 goto group_accel;
-        /* fall through to count the zero */
+            /* fall through to count the zero */
+            /*FALLTHRU*/
         case '1':
         case '2':
         case '3':
@@ -1840,12 +1966,15 @@ struct WinDesc *cw;
                 break;
             }
         /* else fall through */
+        case ' ':
         case MENU_NEXT_PAGE:
             if (cw->npages > 0 && curr_page != cw->npages - 1) {
                 curr_page++;
                 page_start = 0;
-            } else
-                finished = TRUE; /* questionable behavior */
+            } else if (morc == ' ') {
+                /* ' ' finishes menus here, but stop '>' doing the same. */
+                finished = TRUE;
+            }
             break;
         case MENU_PREVIOUS_PAGE:
             if (cw->npages > 0 && curr_page != 0) {
@@ -2047,6 +2176,8 @@ boolean blocking; /* with ttys, all windows are blocking */
     ttyDisplay->lastwin = window;
     ttyDisplay->rawprint = 0;
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
     switch (cw->type) {
     case NHW_MESSAGE:
         if (ttyDisplay->toplin == 1) {
@@ -2067,6 +2198,7 @@ boolean blocking; /* with ttys, all windows are blocking */
             tty_display_nhwindow(WIN_MESSAGE, TRUE);
             return;
         }
+        /*FALLTHRU*/
     case NHW_BASE:
         (void) fflush(stdout);
         break;
@@ -2095,13 +2227,15 @@ boolean blocking; /* with ttys, all windows are blocking */
         if (ttyDisplay->toplin == 1)
             tty_display_nhwindow(WIN_MESSAGE, TRUE);
 #ifdef H2344_BROKEN
-        if (cw->maxrow >= (int) ttyDisplay->rows)
+        if (cw->maxrow >= (int) ttyDisplay->rows
+            || !iflags.menu_overlay)
 #else
-        if (cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows)
+        if (cw->offx == 10 || cw->maxrow >= (int) ttyDisplay->rows
+            || !iflags.menu_overlay)
 #endif
         {
             cw->offx = 0;
-            if (cw->offy) {
+            if (cw->offy || iflags.menu_overlay) {
                 tty_curs(window, 1, 0);
                 cl_eos();
             } else
@@ -2129,6 +2263,8 @@ winid window;
 
     if (window == WIN_ERR || (cw = wins[window]) == (struct WinDesc *) 0)
         panic(winpanicstr, window);
+
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
 
     switch (cw->type) {
     case NHW_MESSAGE:
@@ -2199,6 +2335,8 @@ register int x, y; /* not xchar: perhaps xchar is unsigned and
         panic(winpanicstr, window);
     ttyDisplay->lastwin = window;
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
 #if defined(USE_TILES) && defined(MSDOS)
     adjust_cursor_flags(cw);
 #endif
@@ -2229,7 +2367,13 @@ register int x, y; /* not xchar: perhaps xchar is unsigned and
         }
         debugpline4("bad curs positioning win %d %s (%d,%d)", window, s, x,
                     y);
-        return;
+        /* This return statement caused a functional difference between DEBUG and
+           non-DEBUG operation, so it is being commented out. It caused tty_curs()
+           to fail to move the cursor to the location it needed to be if the x,y
+           range checks failed, leaving the next piece of output to be displayed
+           at whatever random location the cursor happened to be at prior. */
+
+        /* return; */
     }
 #endif
     x += cw->offx;
@@ -2287,6 +2431,8 @@ char ch;
     if (window == WIN_ERR || (cw = wins[window]) == (struct WinDesc *) 0)
         panic(winpanicstr, window);
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
     switch (cw->type) {
     case NHW_STATUS:
     case NHW_MAP:
@@ -2309,22 +2455,30 @@ compress_str(str)
 const char *str;
 {
     static char cbuf[BUFSZ];
-    /* compress in case line too long */
-    if ((int) strlen(str) >= CO) {
-        register const char *bp0 = str;
-        register char *bp1 = cbuf;
 
-        do {
-#ifdef CLIPPING
-            if (*bp0 != ' ' || bp0[1] != ' ')
-#else
-            if (*bp0 != ' ' || bp0[1] != ' ' || bp0[2] != ' ')
-#endif
-                *bp1++ = *bp0;
-        } while (*bp0++);
-    } else
-        return str;
-    return cbuf;
+    /* compress out consecutive spaces if line is too long;
+       topline wrapping converts space at wrap point into newline,
+       we reverse that here */
+    if ((int) strlen(str) >= CO || index(str, '\n')) {
+        const char *in_str = str;
+        char c, *outstr = cbuf, *outend = &cbuf[sizeof cbuf - 1];
+        boolean was_space = TRUE; /* True discards all leading spaces;
+                                     False would retain one if present */
+
+        while ((c = *in_str++) != '\0' && outstr < outend) {
+            if (c == '\n')
+                c = ' ';
+            if (was_space && c == ' ')
+                continue;
+            *outstr++ = c;
+            was_space = (c == ' ');
+        }
+        if ((was_space && outstr > cbuf) || outstr == outend)
+            --outstr; /* remove trailing space or make room for terminator */
+        *outstr = '\0';
+        str = cbuf;
+    }
+    return str;
 }
 
 void
@@ -2354,6 +2508,8 @@ const char *str;
 
     ttyDisplay->lastwin = window;
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
     switch (cw->type) {
     case NHW_MESSAGE:
         /* really do this later */
@@ -2376,14 +2532,32 @@ const char *str;
         nb = str;
         for (i = cw->curx + 1, n0 = cw->cols; i < n0; i++, nb++) {
             if (!*nb) {
+#ifndef STATUS_HILITES
                 if (*ob || context.botlx) {
+#else
+                /* STATUS_HILITES will call cl_end() when finished
+                 * its sequence of putstr's.  We don't want to call
+                 * cl_end() with each putstr() which may cause flashing
+                 * in the Windows port
+                 */
+                if (context.botlx) {
+#endif
                     /* last char printed may be in middle of line */
                     tty_curs(WIN_STATUS, i, cw->cury);
                     cl_end();
                 }
                 break;
             }
+#ifdef STATUS_HILITES
+            /* Don't optimize the putsym away, in case it happens
+               to be the same character but different color/attr.
+               We don't optimize on iflags.use_status_hilites either,
+               in case old chars were written with highlighting and
+               that option has just now been toggled off.  [We could
+               do better by tracking color/attr more closely.] */
+#else
             if (*ob != *nb)
+#endif
                 tty_putsym(WIN_STATUS, i, cw->cury, *nb);
             if (*ob)
                 ob++;
@@ -2391,13 +2565,9 @@ const char *str;
 
         (void) strncpy(&cw->data[cw->cury][j], str, cw->cols - j - 1);
         cw->data[cw->cury][cw->cols - 1] = '\0'; /* null terminate */
-#ifdef STATUS_VIA_WINDOWPORT
-        if (!iflags.use_status_hilites) {
-#endif
-            cw->cury = (cw->cury + 1) % 2;
-            cw->curx = 0;
-#ifdef STATUS_VIA_WINDOWPORT
-        }
+#ifndef STATUS_HILITES
+        cw->cury = (cw->cury + 1) % 2;
+        cw->curx = 0;
 #endif
         break;
     case NHW_MAP:
@@ -2465,7 +2635,7 @@ const char *str;
         }
         if (cw->data[cw->cury])
             free((genericptr_t) cw->data[cw->cury]);
-        n0 = strlen(str) + 1;
+        n0 = (long) strlen(str) + 1L;
         ob = cw->data[cw->cury] = (char *) alloc((unsigned) n0 + 1);
         *ob++ = (char) (attr + 1); /* avoid nuls, for convenience */
         Strcpy(ob, str);
@@ -2519,7 +2689,7 @@ boolean complain;
             }
             if (complain)
                 sleep(10); /* want to wait_synch() but stdin is gone */
-            terminate(EXIT_FAILURE);
+            nh_terminate(EXIT_FAILURE);
         }
         (void) close(fd);
 #ifdef notyet
@@ -2891,10 +3061,17 @@ register int xmin, ymax;
     register int y;
     register struct WinDesc *cw = wins[WIN_MAP];
 
+#if 0   /* this optimization is not valuable enough to justify
+           abusing core internals... */
     if (u.uswallow) { /* Can be done more efficiently */
         swallowed(1);
+        /* without this flush, if we happen to follow --More-- displayed in
+           leftmost column, the cursor gets left in the wrong place after
+           <docorner<more<update_topl<tty_putstr calls unwind back to core */
+        flush_screen(0);
         return;
     }
+#endif /*0*/
 
 #if defined(SIGWINCH) && defined(CLIPPING)
     if (ymax > LI)
@@ -3050,8 +3227,12 @@ int bkglyph UNUSED;
     /* map glyph to character and color */
     (void) mapglyph(glyph, &ch, &color, &special, x, y);
 
+    print_vt_code2(AVTC_SELECT_WINDOW, window);
+
     /* Move the cursor. */
     tty_curs(window, x, y);
+
+    print_vt_code3(AVTC_GLYPH_START, glyph2tile[glyph], special);
 
 #ifndef NO_TERMS
     if (ul_hack && ch == '_') { /* non-destructive underscore */
@@ -3073,7 +3254,8 @@ int bkglyph UNUSED;
     /* must be after color check; term_end_color may turn off inverse too */
     if (((special & MG_PET) && iflags.hilite_pet)
         || ((special & MG_OBJPILE) && iflags.hilite_pile)
-        || ((special & MG_DETECT) && iflags.use_inverse)) {
+        || ((special & MG_DETECT) && iflags.use_inverse)
+        || ((special & MG_BW_LAVA) && iflags.use_inverse)) {
         term_start_attr(ATR_INVERSE);
         reverse_on = TRUE;
     }
@@ -3096,6 +3278,8 @@ int bkglyph UNUSED;
 #endif
     }
 
+    print_vt_code1(AVTC_GLYPH_END);
+
     wins[window]->curx++; /* one character over */
     ttyDisplay->curx++;   /* the real cursor moved too */
 }
@@ -3106,6 +3290,7 @@ const char *str;
 {
     if (ttyDisplay)
         ttyDisplay->rawprint++;
+    print_vt_code2(AVTC_SELECT_WINDOW, NHW_BASE);
 #if defined(MICRO) || defined(WIN32CON)
     msmsg("%s\n", str);
 #else
@@ -3120,6 +3305,7 @@ const char *str;
 {
     if (ttyDisplay)
         ttyDisplay->rawprint++;
+    print_vt_code2(AVTC_SELECT_WINDOW, NHW_BASE);
     term_start_raw_bold();
 #if defined(MICRO) || defined(WIN32CON)
     msmsg("%s", str);
@@ -3149,6 +3335,7 @@ tty_nhgetch()
     char nestbuf;
 #endif
 
+    print_vt_code1(AVTC_INLINE_SYNC);
     (void) fflush(stdout);
     /* Note: if raw_print() and wait_synch() get called to report terminal
      * initialization problems, then wins[] and ttyDisplay might not be
@@ -3171,6 +3358,14 @@ tty_nhgetch()
         i = '\033'; /* same for EOF */
     if (ttyDisplay && ttyDisplay->toplin == 1)
         ttyDisplay->toplin = 2;
+#ifdef TTY_TILES_ESCCODES
+    {
+        /* hack to force output of the window select code */
+        int tmp = vt_tile_current_window;
+        vt_tile_current_window++;
+        print_vt_code2(AVTC_SELECT_WINDOW, tmp);
+    }
+#endif /* TTY_TILES_ESCCODES */
     return i;
 }
 
@@ -3233,58 +3428,40 @@ char *posbar;
 }
 #endif
 
-#ifdef STATUS_VIA_WINDOWPORT
 /*
  * The following data structures come from the genl_ routines in
  * src/windows.c and as such are considered to be on the window-port
  * "side" of things, rather than the NetHack-core "side" of things.
  */
 
-extern const char *status_fieldnm[MAXBLSTATS];
 extern const char *status_fieldfmt[MAXBLSTATS];
 extern char *status_vals[MAXBLSTATS];
 extern boolean status_activefields[MAXBLSTATS];
 extern winid WIN_STATUS;
 
 #ifdef STATUS_HILITES
-typedef struct hilite_data_struct {
-    int thresholdtype;
-    anything threshold;
-    int behavior;
-    int under;
-    int over;
-} hilite_data_t;
-static hilite_data_t tty_status_hilites[MAXBLSTATS];
+static long tty_condition_bits;
 static int tty_status_colors[MAXBLSTATS];
+int hpbar_percent, hpbar_color;
 
-struct color_option {
-    int color;
-    int attr_bits;
-};
-
-static void FDECL(start_color_option, (struct color_option));
-static void FDECL(end_color_option, (struct color_option));
-static void FDECL(apply_color_option, (struct color_option, const char *));
-static void FDECL(add_colored_text, (const char *, char *));
-#endif
+static int FDECL(condcolor, (long, unsigned long *));
+static int FDECL(condattr, (long, unsigned long *));
+#endif /* STATUS_HILITES */
 
 void
 tty_status_init()
 {
+#ifdef STATUS_HILITES
     int i;
+
+    for (i = 0; i < MAXBLSTATS; ++i)
+        tty_status_colors[i] = NO_COLOR; /* no color */
+    tty_condition_bits = 0L;
+    hpbar_percent = 0, hpbar_color = NO_COLOR;
+#endif /* STATUS_HILITES */
 
     /* let genl_status_init do most of the initialization */
     genl_status_init();
-
-    for (i = 0; i < MAXBLSTATS; ++i) {
-#ifdef STATUS_HILITES
-        tty_status_colors[i] = NO_COLOR; /* no color */
-        tty_status_hilites[i].thresholdtype = 0;
-        tty_status_hilites[i].behavior = BL_TH_NONE;
-        tty_status_hilites[i].under = BL_HILITE_NONE;
-        tty_status_hilites[i].over = BL_HILITE_NONE;
-#endif /* STATUS_HILITES */
-    }
 }
 
 /*
@@ -3304,35 +3481,119 @@ tty_status_init()
  *      -- ptr is usually a "char *", unless fldindex is BL_CONDITION.
  *         If fldindex is BL_CONDITION, then ptr is a long value with
  *         any or none of the following bits set (from botl.h):
- *              BL_MASK_BLIND           0x00000001L
- *              BL_MASK_CONF            0x00000002L
- *              BL_MASK_FOODPOIS        0x00000004L
- *              BL_MASK_ILL             0x00000008L
- *              BL_MASK_HALLU           0x00000010L
- *              BL_MASK_STUNNED         0x00000020L
- *              BL_MASK_SLIMED          0x00000040L
- *      -- The value passed for BL_GOLD includes a leading
- *         symbol for GOLD "$:nnn". If the window port needs to use
- *         the textual gold amount without the leading "$:" the port
- *         will have to add 2 to the passed "ptr" for the BL_GOLD case.
+ *              BL_MASK_STONE           0x00000001L
+ *              BL_MASK_SLIME           0x00000002L
+ *              BL_MASK_STRNGL          0x00000004L
+ *              BL_MASK_FOODPOIS        0x00000008L
+ *              BL_MASK_TERMILL         0x00000010L
+ *              BL_MASK_BLIND           0x00000020L
+ *              BL_MASK_DEAF            0x00000040L
+ *              BL_MASK_STUN            0x00000080L
+ *              BL_MASK_CONF            0x00000100L
+ *              BL_MASK_HALLU           0x00000200L
+ *              BL_MASK_LEV             0x00000400L
+ *              BL_MASK_FLY             0x00000800L
+ *              BL_MASK_RIDE            0x00001000L
+ *      -- The value passed for BL_GOLD includes an encoded leading
+ *         symbol for GOLD "\GXXXXNNNN:nnn". If the window port needs to use
+ *         the textual gold amount without the leading "$:" the port will
+ *         have to skip past ':' in the passed "ptr" for the BL_GOLD case.
+ *      -- color is an unsigned int.
+ *               color_index = color & 0x00FF;       CLR_* value
+ *               attribute   = color & 0xFF00 >> 8;  BL_* values
+ *         This holds the color and attribute that the field should
+ *         be displayed in.
+ *         This is relevant for everything except BL_CONDITION fldindex.
+ *         If fldindex is BL_CONDITION, this parameter should be ignored,
+ *         as condition hilighting is done via the next colormasks
+ *         parameter instead.
+ *
+ *      -- colormasks - pointer to cond_hilites[] array of colormasks.
+ *         Only relevant for BL_CONDITION fldindex. The window port
+ *         should ignore this parameter for other fldindex values.
+ *         Each condition bit must only ever appear in one of the
+ *         CLR_ array members, but can appear in multiple HL_ATTCLR_
+ *         offsets (because more than one attribute can co-exist).
+ *         See doc/window.doc for more details.
  */
+
+
+/* new approach through status_update() only */
+#define Begin_Attr(m) \
+            if (m) {                                                          \
+                if ((m) & HL_BOLD)                                            \
+                    term_start_attr(ATR_BOLD);                                \
+                if ((m) & HL_INVERSE)                                         \
+                    term_start_attr(ATR_INVERSE);                             \
+                if ((m) & HL_ULINE)                                           \
+                    term_start_attr(ATR_ULINE);                               \
+                if ((m) & HL_BLINK)                                           \
+                    term_start_attr(ATR_BLINK);                               \
+                if ((m) & HL_DIM)                                             \
+                    term_start_attr(ATR_DIM);                                 \
+	    }
+
+#define End_Attr(m) \
+            if (m) {                                                          \
+                if ((m) & HL_DIM)                                             \
+                    term_end_attr(ATR_DIM);                                   \
+                if ((m) & HL_BLINK)                                           \
+                    term_end_attr(ATR_BLINK);                                 \
+                if ((m) & HL_ULINE)                                           \
+                    term_end_attr(ATR_ULINE);                                 \
+                if ((m) & HL_INVERSE)                                         \
+                    term_end_attr(ATR_INVERSE);                               \
+                if ((m) & HL_BOLD)                                            \
+                    term_end_attr(ATR_BOLD);                                  \
+	    }
+
+#ifdef STATUS_HILITES
+
+#ifdef TEXTCOLOR
+#define MaybeDisplayCond(bm,txt) \
+            if (tty_condition_bits & (bm)) {                                  \
+                putstr(WIN_STATUS, 0, " ");                                   \
+                if (iflags.hilite_delta) {                                    \
+                    attrmask = condattr(bm, colormasks);                      \
+                    Begin_Attr(attrmask);                                     \
+                    if ((coloridx = condcolor(bm, colormasks)) != NO_COLOR)   \
+                        term_start_color(coloridx);                           \
+		}                                                             \
+                putstr(WIN_STATUS, 0, txt);                                   \
+                if (iflags.hilite_delta) {                                    \
+                    if (coloridx != NO_COLOR)                                 \
+                        term_end_color();                                     \
+                    End_Attr(attrmask);                                       \
+		}                                                             \
+            }
+#else
+#define MaybeDisplayCond(bm,txt) \
+            if (tty_condition_bits & (bm)) {                                  \
+                putstr(WIN_STATUS, 0, " ");                                   \
+                if (iflags.hilite_delta) {                                    \
+                    attrmask = condattr(bm, colormasks);                      \
+                    Begin_Attr(attrmask);                                     \
+		}                                                             \
+                putstr(WIN_STATUS, 0, txt);                                   \
+                if (iflags.hilite_delta) {                                    \
+                    End_Attr(attrmask);                                       \
+		}                                                             \
+            }
+#endif
+
 void
-tty_status_update(fldidx, ptr, chg, percent)
-int fldidx, chg, percent;
+tty_status_update(fldidx, ptr, chg, percent, color, colormasks)
+int fldidx, chg UNUSED, percent UNUSED, color;
 genericptr_t ptr;
+unsigned long *colormasks;
 {
-    long cond, *condptr = (long *) ptr;
-    register int i;
+    long *condptr = (long *) ptr;
+    int i, attrmask = 0;
+#ifdef TEXTCOLOR
+    int coloridx = NO_COLOR;
+#endif
     char *text = (char *) ptr;
-    /* Mapping BL attributes to tty attributes
-     * BL_HILITE_NONE     -1 + 3 = 2 (statusattr[2])
-     * BL_HILITE_INVERSE  -2 + 3 = 1 (statusattr[1])
-     * BL_HILITE_BOLD     -3 + 3 = 0 (statusattr[0])
-     */
-    int statusattr[] = { ATR_BOLD, ATR_INVERSE, ATR_NONE };
-    int attridx = 0;
-    long value = -1L;
-    static boolean beenhere = FALSE;
+    static boolean oncearound = FALSE; /* prevent premature partial display */
     enum statusfields fieldorder[2][15] = {
         { BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, BL_ALIGN,
           BL_SCORE, BL_FLUSH, BL_FLUSH, BL_FLUSH, BL_FLUSH, BL_FLUSH,
@@ -3341,244 +3602,233 @@ genericptr_t ptr;
           BL_AC, BL_XP, BL_EXP, BL_HD, BL_TIME, BL_HUNGER,
           BL_CAP, BL_CONDITION, BL_FLUSH }
     };
+    int attridx = 0;
 
     if (fldidx != BL_FLUSH) {
         if (!status_activefields[fldidx])
             return;
         switch (fldidx) {
         case BL_CONDITION:
-            cond = *condptr;
-            *status_vals[fldidx] = '\0';
-            if (cond & BL_MASK_BLIND)
-                Strcat(status_vals[fldidx], " Blind");
-            if (cond & BL_MASK_CONF)
-                Strcat(status_vals[fldidx], " Conf");
-            if (cond & BL_MASK_FOODPOIS)
-                Strcat(status_vals[fldidx], " FoodPois");
-            if (cond & BL_MASK_ILL)
-                Strcat(status_vals[fldidx], " Ill");
-            if (cond & BL_MASK_STUNNED)
-                Strcat(status_vals[fldidx], " Stun");
-            if (cond & BL_MASK_HALLU)
-                Strcat(status_vals[fldidx], " Hallu");
-            if (cond & BL_MASK_SLIMED)
-                Strcat(status_vals[fldidx], " Slime");
-            value = cond;
+            tty_condition_bits = *condptr;
+            oncearound = TRUE;
             break;
         default:
-            value = atol(text);
             Sprintf(status_vals[fldidx],
+                    (fldidx == BL_TITLE && iflags.wc2_hitpointbar) ? "%-30s" :
                     status_fieldfmt[fldidx] ? status_fieldfmt[fldidx] : "%s",
                     text);
-            break;
-        }
-
-#ifdef STATUS_HILITES
-        switch (tty_status_hilites[fldidx].behavior) {
-        case BL_TH_NONE:
+#ifdef TEXTCOLOR
+            tty_status_colors[fldidx] = color;
+#else
             tty_status_colors[fldidx] = NO_COLOR;
-            break;
-        case BL_TH_UPDOWN:
-            if (chg > 0)
-                tty_status_colors[fldidx] = tty_status_hilites[fldidx].over;
-            else if (chg < 0)
-                tty_status_colors[fldidx] = tty_status_hilites[fldidx].under;
-            else
-                tty_status_colors[fldidx] = NO_COLOR;
-            break;
-        case BL_TH_VAL_PERCENTAGE:  {
-            int pct_th = 0;
-
-            if (tty_status_hilites[fldidx].thresholdtype != ANY_INT) {
-                impossible(
-                "tty_status_update: unsupported percentage threshold type %d",
-                           tty_status_hilites[fldidx].thresholdtype);
-            } else {
-                pct_th = tty_status_hilites[fldidx].threshold.a_int;
-                tty_status_colors[fldidx] = (percent >= pct_th)
-                                           ? tty_status_hilites[fldidx].over
-                                           : tty_status_hilites[fldidx].under;
+#endif
+            if (iflags.wc2_hitpointbar && fldidx == BL_HP) {
+                hpbar_percent = percent;
+#ifdef TEXTCOLOR
+                hpbar_color = color;
+#else
+                hpbar_color = NO_COLOR;
+#endif
             }
             break;
         }
-        case BL_TH_VAL_ABSOLUTE: {
-            int c = NO_COLOR;
-            int o = tty_status_hilites[fldidx].over;
-            int u = tty_status_hilites[fldidx].under;
-            anything *t = &tty_status_hilites[fldidx].threshold;
-
-            switch (tty_status_hilites[fldidx].thresholdtype) {
-            case ANY_LONG:
-                c = (value >= t->a_long) ? o : u;
-                break;
-            case ANY_INT:
-                c = (value >= t->a_int) ? o : u;
-                break;
-            case ANY_UINT:
-                c = ((unsigned long) value >= t->a_uint) ? o : u;
-                break;
-            case ANY_ULONG:
-                c = ((unsigned long) value >= t->a_ulong) ? o : u;
-                break;
-            case ANY_MASK32:
-                c = (value & t->a_ulong) ? o : u;
-                break;
-            default:
-                impossible(
-                "tty_status_update: unsupported absolute threshold type %d\n",
-                           tty_status_hilites[fldidx].thresholdtype);
-                break;
-            }
-            tty_status_colors[fldidx] = c;
-            break;
-        } /* case */
-        } /* switch */
-#endif /* STATUS_HILITES */
     }
 
-    /* For now, this version copied from the genl_ version currently
-     * updates everything on the display, everytime
-     */
-
-    if (!beenhere || !iflags.use_status_hilites) {
-        char newbot1[MAXCO], newbot2[MAXCO];
-
-        newbot1[0] = '\0';
-        for (i = 0; fieldorder[0][i] >= 0; ++i) {
-            int idx1 = fieldorder[0][i];
-
-            if (status_activefields[idx1])
-                Strcat(newbot1, status_vals[idx1]);
-        }
-        newbot2[0] = '\0';
-        for (i = 0; fieldorder[1][i] >= 0; ++i) {
-            int idx2 = fieldorder[1][i];
-
-            if (status_activefields[idx2])
-                Strcat(newbot2, status_vals[idx2]);
-        }
-
-        curs(WIN_STATUS, 1, 0);
-        putstr(WIN_STATUS, 0, newbot1);
-        curs(WIN_STATUS, 1, 1);
-        putmixed(WIN_STATUS, 0, newbot2); /* putmixed() due to GOLD glyph */
-        beenhere = TRUE;
-        return;
-    }
+    if (!oncearound) return;
 
     curs(WIN_STATUS, 1, 0);
     for (i = 0; fieldorder[0][i] != BL_FLUSH; ++i) {
         int fldidx1 = fieldorder[0][i];
-
         if (status_activefields[fldidx1]) {
-            if (tty_status_colors[fldidx1] < 0 &&
-                    tty_status_colors[fldidx1] >= -3) {
-                /* attribute, not a color */
-                attridx = tty_status_colors[fldidx1] + 3;
-                term_start_attr(statusattr[attridx]);
-                putstr(WIN_STATUS, 0, status_vals[fldidx1]);
-                term_end_attr(statusattr[attridx]);
+            if (fldidx1 != BL_TITLE || !iflags.wc2_hitpointbar) {
 #ifdef TEXTCOLOR
-            } else if (tty_status_colors[fldidx1] != CLR_MAX) {
-                if (tty_status_colors[fldidx1] != NO_COLOR)
-                    term_start_color(tty_status_colors[fldidx1]);
-                putstr(WIN_STATUS, 0, status_vals[fldidx1]);
-                if (tty_status_colors[fldidx1] != NO_COLOR)
-                    term_end_color();
+                coloridx = tty_status_colors[fldidx1] & 0x00FF;
 #endif
-            } else
-                putstr(WIN_STATUS, 0, status_vals[fldidx1]);
+                attridx = (tty_status_colors[fldidx1] & 0xFF00) >> 8;
+                text = status_vals[fldidx1];
+                if (iflags.hilite_delta) {
+                    if (*text == ' ') {
+                        putstr(WIN_STATUS, 0, " ");
+                        text++;
+                    }
+                    /* multiple attributes can be in effect concurrently */
+                    Begin_Attr(attridx);
+#ifdef TEXTCOLOR
+                    if (coloridx != NO_COLOR && coloridx != CLR_MAX)
+	                term_start_color(coloridx);
+#endif
+	        }
+
+                putstr(WIN_STATUS, 0, text);
+
+                if (iflags.hilite_delta) {
+#ifdef TEXTCOLOR
+                    if (coloridx != NO_COLOR)
+	                term_end_color();
+#endif
+                    End_Attr(attridx);
+                }
+            } else {
+                /* hitpointbar using hp percent calculation */
+                int bar_pos, bar_len;
+                char *bar2 = (char *)0;
+                char bar[MAXCO], savedch;
+                boolean twoparts = FALSE;
+
+                text = status_vals[fldidx1];
+                bar_len = strlen(text);
+                if (bar_len < MAXCO-1) {
+                    Strcpy(bar, text);
+                    bar_pos = (bar_len * hpbar_percent) / 100;
+                    if (bar_pos < 1 && hpbar_percent > 0)
+                        bar_pos = 1;
+                    if (bar_pos >= bar_len && hpbar_percent < 100)
+                        bar_pos = bar_len - 1;
+                    if (bar_pos > 0 && bar_pos < bar_len) {
+                        twoparts = TRUE;
+                        bar2 = &bar[bar_pos];
+                        savedch = *bar2;
+                        *bar2 = '\0';
+                    }
+		}
+                if (iflags.hilite_delta && iflags.wc2_hitpointbar) {
+                    putstr(WIN_STATUS, 0, "[");
+#ifdef TEXTCOLOR
+                    coloridx = hpbar_color & 0x00FF;
+                    /* attridx = (hpbar_color & 0xFF00) >> 8; */
+                    if (coloridx != NO_COLOR)
+                        term_start_color(coloridx);
+#endif
+                    term_start_attr(ATR_INVERSE);
+                    putstr(WIN_STATUS, 0, bar);
+                    term_end_attr(ATR_INVERSE);
+#ifdef TEXTCOLOR
+                    if (coloridx != NO_COLOR)
+                        term_end_color();
+#endif
+                    if (twoparts) {
+                        *bar2 = savedch;
+                        putstr(WIN_STATUS, 0, bar2);
+                    }
+                    putstr(WIN_STATUS, 0, "]");
+                } else
+                    putstr(WIN_STATUS, 0, text);
+            }
         }
     }
+    cl_end();
     curs(WIN_STATUS, 1, 1);
     for (i = 0; fieldorder[1][i] != BL_FLUSH; ++i) {
         int fldidx2 = fieldorder[1][i];
 
         if (status_activefields[fldidx2]) {
-            if (tty_status_colors[fldidx2] < 0 &&
-                    tty_status_colors[fldidx2] >= -3) {
-                /* attribute, not a color */
-                attridx = tty_status_colors[fldidx2] + 3;
-                term_start_attr(statusattr[attridx]);
-                putstr(WIN_STATUS, 0, status_vals[fldidx2]);
-                term_end_attr(statusattr[attridx]);
+            if (fldidx2 != BL_CONDITION) {
 #ifdef TEXTCOLOR
-            } else if (tty_status_colors[fldidx2] != CLR_MAX) {
-                if (tty_status_colors[fldidx2] != NO_COLOR)
-                    term_start_color(tty_status_colors[fldidx2]);
+                coloridx = tty_status_colors[fldidx2] & 0x00FF;
+#endif
+                attridx = (tty_status_colors[fldidx2] & 0xFF00) >> 8;
+                text = status_vals[fldidx2];
+                if (iflags.hilite_delta) {
+                    if (*text == ' ') {
+                        putstr(WIN_STATUS, 0, " ");
+                        text++;
+                    }
+                    /* multiple attributes can be in effect concurrently */
+                    Begin_Attr(attridx);
+#ifdef TEXTCOLOR
+                    if (coloridx != NO_COLOR && coloridx != CLR_MAX)
+                        term_start_color(coloridx);
+#endif
+		}
+
                 if (fldidx2 == BL_GOLD) {
                     /* putmixed() due to GOLD glyph */
-                   putmixed(WIN_STATUS, 0, status_vals[fldidx2]);
+                    putmixed(WIN_STATUS, 0, text);
                 } else {
-                   putstr(WIN_STATUS, 0, status_vals[fldidx2]);
+                    putstr(WIN_STATUS, 0, text);
                 }
-                if (tty_status_colors[fldidx2] != NO_COLOR)
-                    term_end_color();
+
+                if (iflags.hilite_delta) {
+#ifdef TEXTCOLOR
+       	            if (coloridx != NO_COLOR)
+                        term_end_color();
 #endif
-            } else
-                putstr(WIN_STATUS, 0, status_vals[fldidx2]);
+                    End_Attr(attridx);
+                }
+            } else {
+                MaybeDisplayCond(BL_MASK_STONE, "Stone");
+                MaybeDisplayCond(BL_MASK_SLIME, "Slime");
+                MaybeDisplayCond(BL_MASK_STRNGL, "Strngl");
+                MaybeDisplayCond(BL_MASK_FOODPOIS, "FoodPois");
+                MaybeDisplayCond(BL_MASK_TERMILL, "TermIll");
+                MaybeDisplayCond(BL_MASK_BLIND, "Blind");
+                MaybeDisplayCond(BL_MASK_DEAF, "Deaf");
+                MaybeDisplayCond(BL_MASK_STUN, "Stun");
+                MaybeDisplayCond(BL_MASK_CONF, "Conf");
+                MaybeDisplayCond(BL_MASK_HALLU, "Hallu");
+                MaybeDisplayCond(BL_MASK_LEV, "Lev");
+                MaybeDisplayCond(BL_MASK_FLY, "Fly");
+                MaybeDisplayCond(BL_MASK_RIDE, "Ride");
+	    }
         }
     }
+    cl_end();
     return;
 }
 
-#ifdef STATUS_HILITES
+#ifdef TEXTCOLOR
 /*
- *  status_threshold(int fldidx, int threshholdtype, anything threshold,
- *                   int behavior, int under, int over)
- *
- *        -- called when a hiliting preference is added, changed, or
- *           removed.
- *        -- the fldindex identifies which field is having its hiliting
- *           preference set. It is an integer index value from botl.h
- *        -- fldindex could be any one of the following from botl.h:
- *           BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH,
- *           BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX,
- *           BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX,
- *           BL_LEVELDESC, BL_EXP, BL_CONDITION
- *        -- datatype is P_INT, P_UINT, P_LONG, or P_MASK.
- *        -- threshold is an "anything" union which can contain the
- *           datatype value.
- *        -- behavior is used to define how threshold is used and can
- *           be BL_TH_NONE, BL_TH_VAL_PERCENTAGE, BL_TH_VAL_ABSOLUTE,
- *           or BL_TH_UPDOWN. BL_TH_NONE means don't do anything above
- *           or below the threshold.  BL_TH_VAL_PERCENTAGE treats the
- *           threshold value as a precentage of the maximum possible
- *           value. BL_TH_VAL_ABSOLUTE means that the threshold is an
- *           actual value. BL_TH_UPDOWN means that threshold is not
- *           used, and the two below/above hilite values indicate how
- *           to display something going down (under) or rising (over).
- *        -- under is the hilite attribute used if value is below the
- *           threshold. The attribute can be BL_HILITE_NONE,
- *           BL_HILITE_INVERSE, BL_HILITE_BOLD (-1, -2, or -3), or one
- *           of the color indexes of CLR_BLACK, CLR_RED, CLR_GREEN,
- *           CLR_BROWN, CLR_BLUE, CLR_MAGENTA, CLR_CYAN, CLR_GRAY,
- *           CLR_ORANGE, CLR_BRIGHT_GREEN, CLR_YELLOW, CLR_BRIGHT_BLUE,
- *           CLR_BRIGHT_MAGENTA, CLR_BRIGHT_CYAN, or CLR_WHITE (0 - 15).
- *        -- over is the hilite attribute used if value is at or above
- *           the threshold. The attribute can be BL_HILITE_NONE,
- *           BL_HILITE_INVERSE, BL_HILITE_BOLD (-1, -2, or -3), or one
- *           of the color indexes of CLR_BLACK, CLR_RED, CLR_GREEN,
- *           CLR_BROWN, CLR_BLUE, CLR_MAGENTA, CLR_CYAN, CLR_GRAY,
- *           CLR_ORANGE, CLR_BRIGHT_GREEN, CLR_YELLOW, CLR_BRIGHT_BLUE,
- *           CLR_BRIGHT_MAGENTA, CLR_BRIGHT_CYAN, or CLR_WHITE (0 - 15).
+ * Return what color this condition should
+ * be displayed in based on user settings.
  */
-void
-tty_status_threshold(fldidx, thresholdtype, threshold, behavior, under, over)
-int fldidx, thresholdtype;
-int behavior, under, over;
-anything threshold;
+int condcolor(bm, bmarray)
+long bm;
+unsigned long *bmarray;
 {
-    tty_status_hilites[fldidx].thresholdtype = thresholdtype;
-    tty_status_hilites[fldidx].threshold = threshold;
-    tty_status_hilites[fldidx].behavior = behavior;
-    tty_status_hilites[fldidx].under = under;
-    tty_status_hilites[fldidx].over = over;
-    return;
-}
+    int i;
 
+    if (bm && bmarray)
+        for (i = 0; i < CLR_MAX; ++i) {
+            if (bmarray[i] && (bm & bmarray[i]))
+                return i;
+        }
+    return NO_COLOR;
+}
+#endif /* TEXTCOLOR */
+
+int condattr(bm, bmarray)
+long bm;
+unsigned long *bmarray;
+{
+    int attr = 0;
+    int i;
+
+    if (bm && bmarray) {
+        for (i = HL_ATTCLR_DIM; i < BL_ATTCLR_MAX; ++i) {
+            if (bmarray[i] && (bm & bmarray[i])) {
+                switch(i) {
+                    case HL_ATTCLR_DIM:
+                        attr |= HL_DIM;
+                        break;
+                    case HL_ATTCLR_BLINK:
+                        attr |= HL_BLINK;
+                        break;
+                    case HL_ATTCLR_ULINE:
+                        attr |= HL_ULINE;
+                        break;
+                    case HL_ATTCLR_INVERSE:
+                        attr |= HL_INVERSE;
+                        break;
+                    case HL_ATTCLR_BOLD:
+                        attr |= HL_BOLD;
+                        break;
+                }
+            }
+        }
+    }
+    return attr;
+}
 #endif /* STATUS_HILITES */
-#endif /*STATUS_VIA_WINDOWPORT*/
 
 #endif /* TTY_GRAPHICS */
 

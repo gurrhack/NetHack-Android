@@ -134,16 +134,25 @@ struct obj *otmp;
         if (otmp->owornmask)
             remove_worn_item(otmp, FALSE);
         freeinv(otmp);
-        /* mpickobj may free otmp it if merges, but we have already
-           checked for a saddle above, so no merger should happen */
-        (void) mpickobj(mtmp, otmp);
-        mtmp->misc_worn_check |= W_SADDLE;
-        otmp->owornmask = W_SADDLE;
-        otmp->leashmon = mtmp->m_id;
-        update_mon_intrinsics(mtmp, otmp, TRUE, FALSE);
+        put_saddle_on_mon(otmp, mtmp);
     } else
         pline("%s resists!", Monnam(mtmp));
     return 1;
+}
+
+void
+put_saddle_on_mon(saddle, mtmp)
+struct obj *saddle;
+struct monst *mtmp;
+{
+    if (!can_saddle(mtmp) || which_armor(mtmp, W_SADDLE))
+        return;
+    if (mpickobj(mtmp, saddle))
+        panic("merged saddle?");
+    mtmp->misc_worn_check |= W_SADDLE;
+    saddle->owornmask = W_SADDLE;
+    saddle->leashmon = mtmp->m_id;
+    update_mon_intrinsics(mtmp, saddle, TRUE, FALSE);
 }
 
 /*** Riding the monster ***/
@@ -280,12 +289,13 @@ boolean force;      /* Quietly force this animal */
         return (FALSE);
     }
     if (!force && Underwater && !is_swimmer(ptr)) {
-        You_cant("ride that creature while under water.");
+        You_cant("ride that creature while under %s.",
+                 hliquid("water"));
         return (FALSE);
     }
     if (!can_saddle(mtmp) || !can_ride(mtmp)) {
         You_cant("ride such a creature.");
-        return (0);
+        return FALSE;
     }
 
     /* Is the player impaired? */
@@ -332,7 +342,8 @@ boolean force;      /* Quietly force this animal */
     u.usteed = mtmp;
     remove_monster(mtmp->mx, mtmp->my);
     teleds(mtmp->mx, mtmp->my, TRUE);
-    return (TRUE);
+    context.botl = TRUE;
+    return TRUE;
 }
 
 /* You and your steed have moved */
@@ -474,6 +485,7 @@ int reason; /* Player was thrown off etc. */
     switch (reason) {
     case DISMOUNT_THROWN:
         verb = "are thrown";
+        /*FALLTHRU*/
     case DISMOUNT_FELL:
         You("%s off of %s!", verb, mon_nam(mtmp));
         if (!have_spot)
@@ -555,7 +567,8 @@ int reason; /* Player was thrown off etc. */
                         adjalign(-1);
                     }
                 } else if (is_lava(u.ux, u.uy)) {
-                    pline("%s is pulled into the lava!", Monnam(mtmp));
+                    pline("%s is pulled into the %s!", Monnam(mtmp),
+                          hliquid("lava"));
                     if (!likes_lava(mdat)) {
                         killed(mtmp);
                         adjalign(-1);
@@ -610,11 +623,11 @@ int reason; /* Player was thrown off etc. */
         in_steed_dismounting = TRUE;
         (void) float_down(0L, W_SADDLE);
         in_steed_dismounting = FALSE;
-        context.botl = 1;
+        context.botl = TRUE;
         (void) encumber_msg();
         vision_full_recalc = 1;
     } else
-        context.botl = 1;
+        context.botl = TRUE;
     /* polearms behave differently when not mounted */
     if (uwep && is_pole(uwep))
         unweapon = TRUE;

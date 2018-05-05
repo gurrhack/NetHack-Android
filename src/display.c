@@ -1,4 +1,4 @@
-/* NetHack 3.6	display.c	$NHDT-Date: 1446808439 2015/11/06 11:13:59 $  $NHDT-Branch: master $:$NHDT-Revision: 1.77 $ */
+/* NetHack 3.6	display.c	$NHDT-Date: 1524780381 2018/04/26 22:06:21 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.90 $ */
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.                                          */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -137,7 +137,6 @@ STATIC_DCL int FDECL(set_crosswall, (int, int));
 STATIC_DCL void FDECL(set_seenv, (struct rm *, int, int, int, int));
 STATIC_DCL void FDECL(t_warn, (struct rm *));
 STATIC_DCL int FDECL(wall_angle, (struct rm *));
-STATIC_DCL int FDECL(get_unicode_codepoint, (int ch));
 
 #define remember_topology(x, y) (lastseentyp[x][y] = levl[x][y].typ)
 
@@ -278,6 +277,19 @@ register xchar x, y;
     }
 }
 
+boolean
+unmap_invisible(x, y)
+int x, y;
+{
+    if (isok(x,y) && glyph_is_invisible(levl[x][y].glyph)) {
+        unmap_object(x, y);
+        newsym(x, y);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
 /*
  * unmap_object()
  *
@@ -379,6 +391,7 @@ xchar worm_tail;            /* mon is actually a worm tail */
         default:
             impossible("display_monster:  bad m_ap_type value [ = %d ]",
                        (int) mon->m_ap_type);
+            /*FALLTHRU*/
         case M_AP_NOTHING:
             show_glyph(x, y, mon_to_glyph(mon));
             break;
@@ -425,24 +438,29 @@ xchar worm_tail;            /* mon is actually a worm tail */
         }
     }
 
-    /* If the mimic is unsuccessfully mimicing something, display the monster
+    /* If the mimic is unsuccessfully mimicing something, display the monster.
      */
     if (!mon_mimic || sensed) {
         int num;
 
         /* [ALI] Only use detected glyphs when monster wouldn't be
          * visible by any other means.
+         *
+         * There are no glyphs for "detected pets" so we have to
+         * decide whether to display such things as detected or as tame.
+         * If both are being highlighted in the same way, it doesn't
+         * matter, but if not, showing them as pets is preferrable.
          */
-        if (sightflags == DETECTED && !mon->mtame) {
-            if (worm_tail)
-                num = detected_monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
-            else
-                num = detected_mon_to_glyph(mon);
-        } else if (mon->mtame && !Hallucination) {
+        if (mon->mtame && !Hallucination) {
             if (worm_tail)
                 num = petnum_to_glyph(PM_LONG_WORM_TAIL);
             else
                 num = pet_to_glyph(mon);
+        } else if (sightflags == DETECTED) {
+            if (worm_tail)
+                num = detected_monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
+            else
+                num = detected_mon_to_glyph(mon);
         } else {
             if (worm_tail)
                 num = monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
@@ -467,16 +485,10 @@ display_warning(mon)
 register struct monst *mon;
 {
     int x = mon->mx, y = mon->my;
-    int wl = (int) (mon->m_lev / 4);
     int glyph;
 
     if (mon_warning(mon)) {
-        if (wl > WARNCOUNT - 1)
-            wl = WARNCOUNT - 1;
-        /* 3.4.1: this really ought to be rn2(WARNCOUNT), but value "0"
-           isn't handled correctly by the what_is routine so avoid it */
-        if (Hallucination)
-            wl = rn1(WARNCOUNT - 1, 1);
+        int wl = Hallucination ? rn1(WARNCOUNT - 1, 1) : warning_of(mon);
         glyph = warning_to_glyph(wl);
     } else if (MATCH_WARN_OF_MON(mon)) {
         glyph = mon_to_glyph(mon);
@@ -484,7 +496,26 @@ register struct monst *mon;
         impossible("display_warning did not match warning type?");
         return;
     }
+    /* warning glyph is drawn on the monster layer; unseen
+       monster glyph is drawn on the object/trap/floor layer;
+       if we see a 'warning' move onto 'remembered, unseen' we
+       need to explicitly remove that in order for it to not
+       reappear when the warned-of monster moves off that spot */
+    if (glyph_is_invisible(levl[x][y].glyph))
+        unmap_object(x, y);
     show_glyph(x, y, glyph);
+}
+
+int
+warning_of(mon)
+struct monst *mon;
+{
+    int wl = 0, tmp = 0;
+    if (mon_warning(mon)) {
+        tmp = (int) (mon->m_lev / 4);    /* match display.h */
+        wl = (tmp > WARNCOUNT - 1) ? WARNCOUNT - 1 : tmp;
+    }
+    return wl;
 }
 
 
@@ -525,8 +556,7 @@ xchar x, y;
     if (!isok(x, y))
         return;
     lev = &(levl[x][y]);
-    /* If the hero's memory of an invisible monster is accurate, we want to
-     * keep
+    /* If hero's memory of an invisible monster is accurate, we want to keep
      * him from detecting the same monster over and over again on each turn.
      * We must return (so we don't erase the monster).  (We must also, in the
      * search function, be sure to skip over previously detected 'I's.)
@@ -534,8 +564,10 @@ xchar x, y;
     if (glyph_is_invisible(lev->glyph) && m_at(x, y))
         return;
 
-    /* The hero can't feel non pool locations while under water. */
-    if (Underwater && !Is_waterlevel(&u.uz) && !is_pool(x, y))
+    /* The hero can't feel non pool locations while under water
+       except for lava and ice. */
+    if (Underwater && !Is_waterlevel(&u.uz)
+        && !is_pool_or_lava(x, y) && !is_ice(x, y))
         return;
 
     /* Set the seen vector as if the hero had seen it.
@@ -567,6 +599,8 @@ xchar x, y;
         } else if (IS_DOOR(lev->typ)) {
             map_background(x, y, 1);
         } else if (IS_ROOM(lev->typ) || IS_POOL(lev->typ)) {
+            boolean do_room_glyph;
+
             /*
              * An open room or water location.  Normally we wouldn't touch
              * this, but we have to get rid of remembered boulder symbols.
@@ -592,20 +626,18 @@ xchar x, y;
              * We could also just display what is currently on the top of the
              * object stack (if anything).
              */
-            if (lev->glyph == objnum_to_glyph(BOULDER)) {
-                if (lev->typ != ROOM && lev->seenv) {
+            do_room_glyph = FALSE;
+            if (lev->glyph == objnum_to_glyph(BOULDER)
+                || glyph_is_invisible(lev->glyph)) {
+                if (lev->typ != ROOM && lev->seenv)
                     map_background(x, y, 1);
-                } else {
-                    lev->glyph = (flags.dark_room && iflags.use_color
-                                  && !Is_rogue_level(&u.uz))
-                                     ? cmap_to_glyph(S_darkroom)
-                                     : (lev->waslit ? cmap_to_glyph(S_room)
-                                                    : cmap_to_glyph(S_stone));
-                    show_glyph(x, y, lev->glyph);
-                }
-            } else if ((lev->glyph >= cmap_to_glyph(S_stone)
-                        && lev->glyph < cmap_to_glyph(S_darkroom))
-                       || glyph_is_invisible(levl[x][y].glyph)) {
+                else
+                    do_room_glyph = TRUE;
+            } else if (lev->glyph >= cmap_to_glyph(S_stone)
+                       && lev->glyph < cmap_to_glyph(S_darkroom)) {
+                do_room_glyph = TRUE;
+            }
+            if (do_room_glyph) {
                 lev->glyph = (flags.dark_room && iflags.use_color
                               && !Is_rogue_level(&u.uz))
                                  ? cmap_to_glyph(S_darkroom)
@@ -660,7 +692,7 @@ xchar x, y;
             show_glyph(x, y, lev->glyph = cmap_to_glyph(S_corr));
     }
     /* draw monster on top if we can sense it */
-    if ((x != u.ux || y != u.uy) && (mon = m_at(x, y)) && sensemon(mon))
+    if ((x != u.ux || y != u.uy) && (mon = m_at(x, y)) != 0 && sensemon(mon))
         display_monster(x, y, mon,
                         (tp_sensemon(mon) || MATCH_WARN_OF_MON(mon))
                             ? PHYSICALLY_SEEN
@@ -696,18 +728,9 @@ register int x, y;
         return;
     }
     if (Underwater && !Is_waterlevel(&u.uz)) {
-        /* don't do anything unless (x,y) is an adjacent underwater position
-         */
-        int dx, dy;
-        if (!is_pool(x, y))
-            return;
-        dx = x - u.ux;
-        if (dx < 0)
-            dx = -dx;
-        dy = y - u.uy;
-        if (dy < 0)
-            dy = -dy;
-        if (dx > 1 || dy > 1)
+        /* when underwater, don't do anything unless <x,y> is an
+           adjacent water or lava or ice position */
+        if (!(is_pool_or_lava(x, y) || is_ice(x, y)) || distu(x, y) > 2)
             return;
     }
 
@@ -1012,9 +1035,10 @@ int first;
     static xchar lastx, lasty; /* last swallowed position */
     int swallower, left_ok, rght_ok;
 
-    if (first)
+    if (first) {
         cls();
-    else {
+        bot();
+    } else {
         register int x, y;
 
         /* Clear old location */
@@ -1098,9 +1122,13 @@ int mode;
                     show_glyph(x, y, cmap_to_glyph(S_stone));
     }
 
+    /*
+     * TODO?  Should this honor Xray radius rather than force radius 1?
+     */
+
     for (x = u.ux - 1; x <= u.ux + 1; x++)
         for (y = u.uy - 1; y <= u.uy + 1; y++)
-            if (isok(x, y) && is_pool(x, y)) {
+            if (isok(x, y) && (is_pool_or_lava(x, y) || is_ice(x, y))) {
                 if (Blind && !(x == u.ux && y == u.uy))
                     show_glyph(x, y, cmap_to_glyph(S_stone));
                 else
@@ -1202,8 +1230,7 @@ set_mimic_blocking()
     for (mon = fmon; mon; mon = mon->nmon) {
         if (DEADMONSTER(mon))
             continue;
-        if (mon->minvis && (is_door_mappear(mon)
-                            || is_obj_mappear(mon,BOULDER))) {
+        if (mon->minvis && is_lightblocker_mappear(mon)) {
             if (See_invisible)
                 block_point(mon->mx, mon->my);
             else
@@ -1319,6 +1346,21 @@ typedef struct {
 static gbuf_entry gbuf[ROWNO][COLNO];
 static char gbuf_start[ROWNO];
 static char gbuf_stop[ROWNO];
+
+/* FIXME: This is a dirty hack, because newsym() doesn't distinguish
+ * between object piles and single objects, it doesn't mark the location
+ * for update. */
+void
+newsym_force(x, y)
+register int x, y;
+{
+    newsym(x,y);
+    gbuf[y][x].new = 1;
+    if (gbuf_start[y] > x)
+        gbuf_start[y] = x;
+    if (gbuf_stop[y] < x)
+        gbuf_stop[y] = x;
+}
 
 /*
  * Store the glyph in the 3rd screen for later flushing.
@@ -1512,238 +1554,6 @@ int cursor_on_u;
 
 /* =========================================================================
  */
-
-#ifdef DUMP_LOG
-/* D: Added to dump screen to output file */
-STATIC_PTR uchar get_glyph_char(glyph, oclass)
-int glyph;
-int *oclass;
-{
-    uchar   ch;
-    register int offset;
-    *oclass = 0;
-
-    if (glyph >= NO_GLYPH)
-        return ' ';
-
-    /*
-     *  Map the glyph back to a character.
-     *
-     *  Warning:  For speed, this makes an assumption on the order of
-     *		  offsets.  The order is set in display.h.
-     */
-    if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
-	ch = def_warnsyms[offset].sym;
-    } else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
-	/* see swallow_to_glyph() in display.c */
-	ch = (uchar) defsyms[S_sw_tl + (offset & 0x7)].sym;
-    } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {	/* zap beam */
-	/* see zapdir_to_glyph() in display.c */
-	ch = defsyms[S_vbeam + (offset & 0x3)].sym;
-    } else if ((offset = (glyph - GLYPH_CMAP_OFF)) >= 0) {	/* cmap */
-	ch = defsyms[offset].sym;
-	*oclass = -1;
-    } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
-	ch = def_oc_syms[(int)objects[offset].oc_class].sym;
-	*oclass = (int)objects[offset].oc_class;
-    } else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) { /* mon ridden */
-	ch = def_monsyms[(int)mons[offset].mlet].sym;
-    } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
-	ch = def_oc_syms[(int)objects[CORPSE].oc_class].sym;
-    } else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) { /* mon detect */
-	ch = def_monsyms[(int)mons[offset].mlet].sym;
-    } else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {  /* invisible */
-	ch = DEF_INVISIBLE;
-    } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
-	ch = def_monsyms[(int)mons[offset].mlet].sym;
-    } else {						    /* a monster */
-	//ch = monsyms[(int)mons[glyph].mlet];
-	ch = def_monsyms[(int)mons[glyph].mlet].sym;
-    }
-    return ch;
-}
-
-#ifdef TTY_GRAPHICS
-extern const char * FDECL(compress_str, (const char *));
-#else
-const char*
-compress_str(str) /* copied from win/tty/wintty.c */
-const char *str;
-{
-	static char cbuf[BUFSZ];
-	/* compress in case line too long */
-	if((int)strlen(str) >= 80) {
-		register const char *bp0 = str;
-		register char *bp1 = cbuf;
-
-		do {
-			if(*bp0 != ' ' || bp0[1] != ' ')
-				*bp1++ = *bp0;
-		} while(*bp0++);
-	} else
-	    return str;
-	return cbuf;
-}
-#endif /* TTY_GRAPHICS */
-
-/** Take a screen dump */
-static int cp437_to_unicode[] = {
-	0x00A0, 0x263A, 0x263B, 0x2665, 0x2248, 0x2663, 0x2660, 0x2022, 0x25D8, 0x25CB, 0x25D9, 0x2660, 0x2661, 0x266A, 0x266B, 0x2609,
-	0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x2607, 0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
-	0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
-	0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
-	0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F,
-	0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
-	0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
-	0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x2206,
-	0x00C7, 0x00FC, 0x00E9, 0x00E2, 0x00E4, 0x00E0, 0x00E5, 0x00E7, 0x00EA, 0x00EB, 0x00E8, 0x00EF, 0x00EE, 0x00EC, 0x00C4, 0x00C5,
-	0x00C9, 0x00E6, 0x00C6, 0x00F4, 0x00F6, 0x00F2, 0x00FB, 0x00F9, 0x00FF, 0x00D6, 0x00DC, 0x00A2, 0x00A3, 0x00A5, 0x20A3, 0x0192,
-	0x00E1, 0x00ED, 0x00F3, 0x00FA, 0x00F1, 0x00D1, 0x00AA, 0x00BA, 0x00BF, 0x2310, 0x00AC, 0x00BD, 0x00BC, 0x00A1, 0x00AB, 0x00BB,
-	0x2591, 0x2592, 0x2591, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556, 0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
-	0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
-	0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
-	0x03B1, 0x00DF, 0x0393, 0x03C0, 0x03A3, 0x03C3, 0x00B5, 0x03C4, 0x03A6, 0x0398, 0x03A9, 0x03B4, 0x221E, 0x03C6, 0x25A0, 0x002B,
-	0x2261, 0x00B1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00F7, 0x2248, 0x00B0, 0x2219, 0x00B7, 0x221A, 0x207F, 0x00B2, 0x25A0, 0x00A0
-};
-
-STATIC_OVL
-int get_unicode_codepoint(int ch)
-{
-	if (ch >= 0 && ch <= 0xff)
-		return cp437_to_unicode[ch];
-	return ch;
-}
-void
-dump_screen()
-{
-    register int x,y;
-    int lastc = -1;
-    /* D: botl.c has a closer approximation to the size, but we'll go with
-     *    this */
-    /* Longest monster name:    guardian naga hatchling
-     * Longest dungeon feature: altar to Amaterasu Omikami (lawful) */
-#define BUFSIZE_PER_SQUARE 200
-    char buf[COLNO*BUFSIZE_PER_SQUARE], html_buf[COLNO*BUFSIZE_PER_SQUARE], html_c[BUFSZ], tmpbuf[BUFSIZE_PER_SQUARE], *ptr;
-    int ch, glyph, oclass;
-    int color;
-    unsigned special;
-    const char *dfeature = (char *)0;
-    char dfeaturebuf[BUFSZ];
-
-    dump_html("<pre class=\"nh_screen\">\n", "");
-    for (y = 0; y < ROWNO; y++) {
-	buf[0] = '\0';
-	html_buf[0] = '\0';
-	lastc = 0;
-	for (x = 1; x < COLNO; x++) {
-	    /* map glyph to character and color */
-	    glyph = gbuf[y][x].glyph;
-	    mapglyph(glyph, &ch, &color, &special, x, y);
-	    /* we can't use ch for output as that may be non-ASCII due
-	     * to DEC- or IBMgraphics */
-	    uchar c = get_glyph_char(glyph, &oclass);
-
-	    /* determine unicode point for HTML output */
-	    int unicode_codepoint = get_unicode_codepoint(ch);
-	    if (unicode_codepoint > 127) {
-	      Sprintf(html_c, "&#%d;", unicode_codepoint);
-	    } else {
-	      Sprintf(html_c, "%s", html_escape_character(unicode_codepoint));
-	    }
-	    dfeature = dfeature_at(x, y, dfeaturebuf);
-
-	    if (c == ' ')
-		Strcpy(tmpbuf, "&nbsp;");
-	    else if (x == u.ux && y == u.uy)
-		Sprintf(tmpbuf, "<span title=\"you\" class=\"nh_inv_%d nh_player\">%s</span>", color, html_c);
-	    else if (special & (MG_PET|MG_DETECT))
-		Sprintf(tmpbuf, "<span class=\"nh_inv_%d nh_pet\">%s</span>", color, html_c);
-	    else if (special & (MG_PET|MG_DETECT))
-		Sprintf(tmpbuf, "<span class=\"nh_inv_%d\">%s</span>", color, html_c);
-	    else if (special & MG_OBJPILE && dfeature != NULL)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_inv_%d\">%s</span>", dfeature, color, html_c);
-	    else if (special & MG_OBJPILE)
-		Sprintf(tmpbuf, "<span class=\"nh_inv_%d\">%s</span>", color, html_c);
-	    else if (oclass < 0 && IS_DOOR(levl[x][y].typ) && levl[x][y].doormask >= D_ISOPEN)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_door\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && IS_DRAWBRIDGE(levl[x][y].typ))
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_drawbridge\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == POOL)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_pool\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == MOAT)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_moat\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == WATER)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_water\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == LAVAPOOL)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_lava\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == IRONBARS)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_ironbars\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == CORR)
-		Sprintf(tmpbuf, "<span class=\"nh_corridor\">%s</span>", html_c);
-	    else if (oclass < 0 && levl[x][y].typ == STAIRS)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>", dfeature, color, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == LADDER)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_ladder\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == FOUNTAIN)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_fountain\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == THRONE)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_throne\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == SINK)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_sink\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == GRAVE)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_grave\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == ALTAR)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_altar\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == TREE)
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_tree\">%s</span>", dfeature, html_c);
-	    else if (oclass < 0 && levl[x][y].typ == ICE)
-		Sprintf(tmpbuf, "<span class=\"nh_ice\">%s</span>", html_c);
-	    else if (oclass < 0 && glyph_is_trap(glyph)) {
-		/* See bug C343-20, the level data can actually be gone
-		 * already, even though the map is still showing a trap.
-		 * Thus prevent null pointer crashes. */
-		struct trap *t = t_at(x,y);
-		Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>",
-				t ? defsyms[trap_to_defsym(t->ttyp)].explanation : "trap",
-				color, html_c);
-	    } else {
-		struct monst *mtmp = m_at(x,y);
-		if (mtmp && canspotmon(mtmp)) {
-			Sprintf(tmpbuf, "<span title=\"%s\" class=\"nh_color_%d\">%s</span>", m_monnam(mtmp), color, html_link(mtmp->data->mname, html_c));
-		} else {
-			Sprintf(tmpbuf, "<span class=\"nh_color_%d\">%s</span>", color, html_c);
-		}
-	    }
-	    /* Warning in case there's no crash */
-	    if (strlen(tmpbuf) > BUFSIZE_PER_SQUARE) {
-		pline("tmpbuf > %d: %zd, %s", BUFSIZE_PER_SQUARE, strlen(tmpbuf), tmpbuf);
-	    }
-	    /* HTML map */
-	    Strcat(html_buf, tmpbuf);
-
-	    /* ASCII map */
-	    Sprintf(tmpbuf, "%c", c);
-	    Strcat(buf, tmpbuf);
-
-	    if (c != ' ')
-		    lastc = x;
-	}
-	dump_html("<span class=\"nh_screen\">%s</span>\n", html_buf);
-	buf[lastc] = '\0';
-	dump_text("%s\n", buf);
-    }
-    dump("", "");
-    bot1str(buf);
-    ptr = (char *) compress_str((const char *) buf);
-    dump("", ptr);
-    bot2str(buf);
-    dump("", buf);
-    dump_html("</pre><br/>\n", "");
-    dump("", "");
-    dump("", "");
-#undef BUFSIZE_PER_SQUARE
-}
-#endif /* DUMP_LOG */
 
 /*
  * back_to_glyph()
@@ -1961,7 +1771,8 @@ xchar x, y;
     int idx, bkglyph = NO_GLYPH;
     struct rm *lev = &levl[x][y];
 
-    if (iflags.use_background_glyph) {
+    if (iflags.use_background_glyph && lev->seenv != 0
+            && gbuf[y][x].glyph != cmap_to_glyph(S_stone)) {
         switch (lev->typ) {
         case SCORR:
         case STONE:
@@ -1982,8 +1793,15 @@ xchar x, y;
         case CLOUD:
            idx = S_cloud;
            break;
+        case POOL:
+        case MOAT:
+           idx = S_pool;
+           break;
         case WATER:
            idx = S_water;
+           break;
+        case LAVAPOOL:
+           idx = S_lava;
            break;
         default:
            idx = S_room;

@@ -20,11 +20,20 @@
 #endif
 #endif
 
+#undef Protection /* We have a global name space collision.  No source file
+                     using win32api.h should be using the Protection macro
+                     from youprop.h.
+                     A better fix would be to ensure we include all window
+                     header files before we start clobbering the global name
+                     space with NetHack specific macros. */
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include <tchar.h>
 #include "hack.h"
+#include "color.h"
 
 /* Create an array to keep track of the various windows */
 
@@ -94,6 +103,8 @@ typedef struct mswin_nhwindow_app {
         regNetHackMode; /* NetHack mode means no Windows keys in some places
                            */
 
+    COLORREF regMapColors[CLR_MAX];
+
     LONG regMainMinX;
     LONG regMainMinY;
     LONG regMainMaxX;
@@ -154,6 +165,7 @@ void mswin_cliparound(int x, int y);
 void mswin_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph, int bkglyph);
 void mswin_raw_print(const char *str);
 void mswin_raw_print_bold(const char *str);
+void mswin_raw_print_flush();
 int mswin_nhgetch(void);
 int mswin_nh_poskey(int *x, int *y, int *mod);
 void mswin_nhbell(void);
@@ -172,18 +184,11 @@ void mswin_preference_update(const char *pref);
 char *mswin_getmsghistory(BOOLEAN_P init);
 void mswin_putmsghistory(const char *msg, BOOLEAN_P);
 
-#ifdef STATUS_VIA_WINDOWPORT
 void mswin_status_init(void);
 void mswin_status_finish(void);
 void mswin_status_enablefield(int fieldidx, const char *nm, const char *fmt,
                               boolean enable);
-void mswin_status_update(int idx, genericptr_t ptr, int chg, int percent);
-
-#ifdef STATUS_HILITES
-void mswin_status_threshold(int fldidx, int thresholdtype, anything threshold,
-                            int behavior, int under, int over);
-#endif /* STATUS_HILITES */
-#endif /*STATUS_VIA_WINDOWPORT*/
+void mswin_status_update(int idx, genericptr_t ptr, int chg, int percent, int color, unsigned long *colormasks);
 
 /* helper function */
 HWND mswin_hwnd_from_winid(winid wid);
@@ -201,6 +206,7 @@ void mswin_write_reg(void);
 
 void mswin_get_window_placement(int type, LPRECT rt);
 void mswin_update_window_placement(int type, LPRECT rt);
+void mswin_apply_window_style(HWND hwnd);
 
 int NHMessageBox(HWND hWnd, LPCTSTR text, UINT type);
 
@@ -222,7 +228,7 @@ extern COLORREF status_fg_color;
 extern COLORREF message_bg_color;
 extern COLORREF message_fg_color;
 
-#define SYSCLR_TO_BRUSH(x) ((HBRUSH)((x) + 1))
+#define SYSCLR_TO_BRUSH(x) ((HBRUSH)(((intptr_t) x) + 1))
 
 /* unicode stuff */
 #define NH_CODEPAGE (SYMHANDLING(H_IBM) ? GetOEMCP() : GetACP())

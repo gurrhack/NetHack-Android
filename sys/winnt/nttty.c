@@ -1,4 +1,4 @@
-/* NetHack 3.6	nttty.c	$NHDT-Date: 1431737067 2015/05/16 00:44:27 $  $NHDT-Branch: master $:$NHDT-Revision: 1.63 $ */
+/* NetHack 3.6	nttty.c	$NHDT-Date: 1520825872 2018/03/12 03:37:52 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.70 $ */
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,11 +20,6 @@
 #include <sys\stat.h>
 #include "win32api.h"
 
-void FDECL(cmov, (int, int));
-void FDECL(nocmov, (int, int));
-int FDECL(process_keystroke,
-          (INPUT_RECORD *, boolean *, BOOLEAN_P numberpad, int portdebug));
-
 /*
  * The following WIN32 Console API routines are used in this file.
  *
@@ -41,6 +36,19 @@ int FDECL(process_keystroke,
  * GetConsoleOutputCP
  */
 
+static BOOL FDECL(CtrlHandler, (DWORD));
+static void FDECL(xputc_core, (char));
+void FDECL(cmov, (int, int));
+void FDECL(nocmov, (int, int));
+int FDECL(process_keystroke,
+          (INPUT_RECORD *, boolean *, BOOLEAN_P numberpad, int portdebug));
+static void NDECL(init_ttycolor);
+static void NDECL(really_move_cursor);
+static void NDECL(check_and_set_font);
+static boolean NDECL(check_font_widths);
+static void NDECL(set_known_good_console_font);
+static void NDECL(restore_original_console_font);
+
 /* Win32 Console handles for input and output */
 HANDLE hConIn;
 HANDLE hConOut;
@@ -50,6 +58,14 @@ CONSOLE_SCREEN_BUFFER_INFO csbi, origcsbi;
 COORD ntcoord;
 INPUT_RECORD ir;
 
+/* Support for changing console font if existing glyph widths are too wide */
+boolean console_font_changed;
+CONSOLE_FONT_INFOEX original_console_font_info;
+UINT original_console_code_page;
+
+extern boolean getreturn_enabled; /* from sys/share/pcsys.c */
+extern int redirect_stdout;
+
 /* Flag for whether NetHack was launched via the GUI, not the command line.
  * The reason we care at all, is so that we can get
  * a final RETURN at the end of the game when launched from the GUI
@@ -58,17 +74,59 @@ INPUT_RECORD ir;
  * from the command line.
  */
 int GUILaunched;
-extern int redirect_stdout;
-static BOOL FDECL(CtrlHandler, (DWORD));
-
 /* Flag for whether unicode is supported */
 static boolean has_unicode;
-
+static boolean init_ttycolor_completed;
 #ifdef PORT_DEBUG
 static boolean display_cursor_info = FALSE;
 #endif
+#ifdef CHANGE_COLOR
+static void NDECL(adjust_palette);
+static int FDECL(match_color_name, (const char *));
+typedef HWND(WINAPI *GETCONSOLEWINDOW)();
+static HWND GetConsoleHandle(void);
+static HWND GetConsoleHwnd(void);
+static boolean altered_palette;
+static COLORREF UserDefinedColors[CLR_MAX];
+static COLORREF NetHackColors[CLR_MAX] = {
+    0x00000000, 0x00c80000, 0x0000c850, 0x00b4b432, 0x000000d2, 0x00800080,
+    0x000064b4, 0x00c0c0c0, 0x00646464, 0x00f06464, 0x0000ff00, 0x00ffff00,
+    0x000000ff, 0x00ff00ff, 0x0000ffff, 0x00ffffff
+};
+static COLORREF DefaultColors[CLR_MAX] = {
+    0x00000000, 0x00800000, 0x00008000, 0x00808000, 0x00000080, 0x00800080,
+    0x00008080, 0x00c0c0c0, 0x00808080, 0x00ff0000, 0x0000ff00, 0x00ffff00,
+    0x000000ff, 0x00ff00ff, 0x0000ffff, 0x00ffffff
+};
+#endif
+struct console_t {
+    WORD background;
+    WORD foreground;
+    WORD attr;
+    int current_nhcolor;
+    int current_nhattr[ATR_INVERSE+1];
+    COORD cursor;
+} console = {
+    0,
+    (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED),
+    (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED),
+    NO_COLOR,
+    {FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE},
+    {0, 0}
+};
+static DWORD ccount, acount;
+#ifndef CLR_MAX
+#define CLR_MAX 16
+#endif
 
-extern boolean getreturn_enabled; /* from sys/share/pcsys.c */
+int ttycolors[CLR_MAX];
+int ttycolors_inv[CLR_MAX];
+
+#define MAX_OVERRIDES 256
+unsigned char key_overrides[MAX_OVERRIDES];
+static char nullstr[] = "";
+char erase_char, kill_char;
+#define DEFTEXTCOLOR ttycolors[7]
 
 /* dynamic keystroke handling .DLL support */
 typedef int(__stdcall *PROCESS_KEYSTROKE)(HANDLE, INPUT_RECORD *, boolean *,
@@ -93,55 +151,16 @@ SOURCEWHERE pSourceWhere;
 SOURCEAUTHOR pSourceAuthor;
 KEYHANDLERNAME pKeyHandlerName;
 
-#ifdef CHANGE_COLOR
-static void NDECL(adjust_palette);
-static int FDECL(match_color_name, (const char *));
-typedef HWND(WINAPI *GETCONSOLEWINDOW)();
-static HWND GetConsoleHandle(void);
-static HWND GetConsoleHwnd(void);
-static boolean altered_palette;
-static COLORREF UserDefinedColors[CLR_MAX];
-static COLORREF NetHackColors[CLR_MAX] = {
-    0x00000000, 0x00c80000, 0x0000c850, 0x00b4b432, 0x000000d2, 0x00800080,
-    0x000064b4, 0x00c0c0c0, 0x00646464, 0x00f06464, 0x0000ff00, 0x00ffff00,
-    0x000000ff, 0x00ff00ff, 0x0000ffff, 0x00ffffff
-};
-static COLORREF DefaultColors[CLR_MAX] = {
-    0x00000000, 0x00800000, 0x00008000, 0x00808000, 0x00000080, 0x00800080,
-    0x00008080, 0x00c0c0c0, 0x00808080, 0x00ff0000, 0x0000ff00, 0x00ffff00,
-    0x000000ff, 0x00ff00ff, 0x0000ffff, 0x00ffffff
-};
-#endif
-
-#ifndef CLR_MAX
-#define CLR_MAX 16
-#endif
-int ttycolors[CLR_MAX];
-#ifdef TEXTCOLOR
-static void NDECL(init_ttycolor);
-#endif
-static void NDECL(really_move_cursor);
-
-#define MAX_OVERRIDES 256
-unsigned char key_overrides[MAX_OVERRIDES];
-
-static char nullstr[] = "";
-char erase_char, kill_char;
-
-#define DEFTEXTCOLOR ttycolors[7]
-static WORD background = 0;
-static WORD foreground =
-    (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
-static WORD attr = (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
-static DWORD ccount, acount;
-static COORD cursor = { 0, 0 };
-
 /*
  * Called after returning from ! or ^Z
  */
 void
 gettty()
 {
+    console_font_changed = FALSE;
+
+    check_and_set_font();
+
 #ifndef TEXTCOLOR
     int k;
 #endif
@@ -152,7 +171,7 @@ gettty()
     init_ttycolor();
 #else
     for (k = 0; k < CLR_MAX; ++k)
-        ttycolors[k] = 7;
+        ttycolors[k] = NO_COLOR;
 #endif
 }
 
@@ -165,6 +184,8 @@ const char *s;
     end_screen();
     if (s)
         raw_print(s);
+
+    restore_original_console_font();
 }
 
 /* called by init_nhwindows() and resume_nhwindows() */
@@ -258,6 +279,8 @@ int mode;
     DWORD cmode;
     long mask;
 
+    GUILaunched = 0;
+
     try :
         /* The following lines of code were suggested by
          * Bob Landau of Microsoft WIN32 Developer support,
@@ -265,14 +288,10 @@ int mode;
          * we were launched from the command prompt, or from
          * the NT program manager. M. Allison
          */
-        hStdOut
-        = GetStdHandle(STD_OUTPUT_HANDLE);
+    hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
     if (hStdOut) {
         GetConsoleScreenBufferInfo(hStdOut, &origcsbi);
-        GUILaunched = ((origcsbi.dwCursorPosition.X == 0)
-                       && (origcsbi.dwCursorPosition.Y == 0));
-        if ((origcsbi.dwSize.X <= 0) || (origcsbi.dwSize.Y <= 0))
-            GUILaunched = 0;
     } else if (mode) {
         HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
         HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
@@ -286,30 +305,20 @@ int mode;
             freopen("CON", "r", stdin);
         }
         mode = 0;
-        goto try
-            ;
-    } else
+        goto try;
+    } else {
         return;
+    }
+
+    /* Obtain handles for the standard Console I/O devices */
+    hConIn = GetStdHandle(STD_INPUT_HANDLE);
+    hConOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
     load_keyboard_handler();
     /* Initialize the function pointer that points to
     * the kbhit() equivalent, in this TTY case nttty_kbhit()
     */
     nt_kbhit = nttty_kbhit;
-
-    /* Obtain handles for the standard Console I/O devices */
-    hConIn = GetStdHandle(STD_INPUT_HANDLE);
-    hConOut = GetStdHandle(STD_OUTPUT_HANDLE);
-#if 0
-	hConIn = CreateFile("CONIN$",
-			GENERIC_READ |GENERIC_WRITE,
-			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			0, OPEN_EXISTING, 0, 0);					
-	hConOut = CreateFile("CONOUT$",
-			GENERIC_READ |GENERIC_WRITE,
-			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);
-#endif
 
     GetConsoleMode(hConIn, &cmode);
 #ifdef NO_MOUSE_ALLOWED
@@ -330,7 +339,7 @@ int mode;
         cmode = 0; /* just to have a statement to break on for debugger */
     }
     get_scr_size();
-    cursor.X = cursor.Y = 0;
+    console.cursor.X = console.cursor.Y = 0;
     really_move_cursor();
 }
 
@@ -357,11 +366,16 @@ nttty_kbhit()
 void
 get_scr_size()
 {
+    int lines, cols;
+    
     GetConsoleScreenBufferInfo(hConOut, &csbi);
+    
+    lines = csbi.srWindow.Bottom - (csbi.srWindow.Top + 1);
+    cols = csbi.srWindow.Right - (csbi.srWindow.Left + 1);
 
-    LI = csbi.srWindow.Bottom - (csbi.srWindow.Top + 1);
-    CO = csbi.srWindow.Right - (csbi.srWindow.Left + 1);
-
+    LI = lines;
+    CO = min(cols, 80);
+    
     if ((LI < 25) || (CO < 80)) {
         COORD newcoord;
 
@@ -417,15 +431,15 @@ really_move_cursor()
             oldtitle[39] = '\0';
         }
         Sprintf(newtitle, "%-55s tty=(%02d,%02d) nttty=(%02d,%02d)", oldtitle,
-                ttyDisplay->curx, ttyDisplay->cury, cursor.X, cursor.Y);
+                ttyDisplay->curx, ttyDisplay->cury, console.cursor.X, console.cursor.Y);
         (void) SetConsoleTitle(newtitle);
     }
 #endif
     if (ttyDisplay) {
-        cursor.X = ttyDisplay->curx;
-        cursor.Y = ttyDisplay->cury;
+        console.cursor.X = ttyDisplay->curx;
+        console.cursor.Y = ttyDisplay->cury;
     }
-    SetConsoleCursorPosition(hConOut, cursor);
+    SetConsoleCursorPosition(hConOut, console.cursor);
 }
 
 void
@@ -434,55 +448,26 @@ register int x, y;
 {
     ttyDisplay->cury = y;
     ttyDisplay->curx = x;
-    cursor.X = x;
-    cursor.Y = y;
+    console.cursor.X = x;
+    console.cursor.Y = y;
 }
 
 void
 nocmov(x, y)
 int x, y;
 {
-    cursor.X = x;
-    cursor.Y = y;
+    console.cursor.X = x;
+    console.cursor.Y = y;
     ttyDisplay->curx = x;
     ttyDisplay->cury = y;
-}
-
-void
-xputc_core(ch)
-char ch;
-{
-    switch (ch) {
-    case '\n':
-        cursor.Y++;
-    /* fall through */
-    case '\r':
-        cursor.X = 1;
-        break;
-    case '\b':
-        cursor.X--;
-        break;
-    default:
-        WriteConsoleOutputAttribute(hConOut, &attr, 1, cursor, &acount);
-        if (has_unicode) {
-            /* Avoid bug in ANSI API on WinNT */
-            WCHAR c2[2];
-            int rc;
-            rc = MultiByteToWideChar(GetConsoleOutputCP(), 0, &ch, 1, c2, 2);
-            WriteConsoleOutputCharacterW(hConOut, c2, rc, cursor, &ccount);
-        } else {
-            WriteConsoleOutputCharacterA(hConOut, &ch, 1, cursor, &ccount);
-        }
-        cursor.X++;
-    }
 }
 
 void
 xputc(ch)
 char ch;
 {
-    cursor.X = ttyDisplay->curx;
-    cursor.Y = ttyDisplay->cury;
+    console.cursor.X = ttyDisplay->curx;
+    console.cursor.Y = ttyDisplay->cury;
     xputc_core(ch);
 }
 
@@ -494,8 +479,8 @@ const char *s;
     int slen = strlen(s);
 
     if (ttyDisplay) {
-        cursor.X = ttyDisplay->curx;
-        cursor.Y = ttyDisplay->cury;
+        console.cursor.X = ttyDisplay->curx;
+        console.cursor.Y = ttyDisplay->cury;
     }
 
     if (s) {
@@ -504,69 +489,121 @@ const char *s;
     }
 }
 
+/* xputc_core() and g_putch() are the only
+ * two routines that actually place output
+ * on the display.
+ */
+void
+xputc_core(ch)
+char ch;
+{
+    boolean inverse = FALSE;
+    switch (ch) {
+    case '\n':
+        console.cursor.Y++;
+    /* fall through */
+    case '\r':
+        console.cursor.X = 1;
+        break;
+    case '\b':
+        console.cursor.X--;
+        break;
+    default:
+        inverse = (console.current_nhattr[ATR_INVERSE] && iflags.wc_inverse);
+        console.attr = (inverse) ?
+                        ttycolors_inv[console.current_nhcolor] :
+                        ttycolors[console.current_nhcolor];
+        if (console.current_nhattr[ATR_BOLD])
+                console.attr |= (inverse) ?
+                                BACKGROUND_INTENSITY : FOREGROUND_INTENSITY;
+        WriteConsoleOutputAttribute(hConOut, &console.attr, 1, console.cursor, &acount);
+        if (has_unicode) {
+            /* Avoid bug in ANSI API on WinNT */
+            WCHAR c2[2];
+            int rc;
+            rc = MultiByteToWideChar(GetConsoleOutputCP(), 0, &ch, 1, c2, 2);
+            WriteConsoleOutputCharacterW(hConOut, c2, rc, console.cursor, &ccount);
+        } else {
+            WriteConsoleOutputCharacterA(hConOut, &ch, 1, console.cursor, &ccount);
+        }
+        console.cursor.X++;
+    }
+}
+
 /*
  * Overrides wintty.c function of the same name
  * for win32. It is used for glyphs only, not text.
  */
+
+/* CP437 to Unicode mapping according to the Unicode Consortium */
+static const WCHAR cp437[] = {
+    0x0020, 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
+    0x25D8, 0x25CB, 0x25D9, 0x2642, 0x2640, 0x266A, 0x266B, 0x263C,
+    0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8,
+    0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
+    0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027,
+    0x0028, 0x0029, 0x002a, 0x002b, 0x002c, 0x002d, 0x002e, 0x002f,
+    0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037,
+    0x0038, 0x0039, 0x003a, 0x003b, 0x003c, 0x003d, 0x003e, 0x003f,
+    0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047,
+    0x0048, 0x0049, 0x004a, 0x004b, 0x004c, 0x004d, 0x004e, 0x004f,
+    0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057,
+    0x0058, 0x0059, 0x005a, 0x005b, 0x005c, 0x005d, 0x005e, 0x005f,
+    0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067,
+    0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
+    0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077,
+    0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007e, 0x2302,
+    0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7,
+    0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee, 0x00ec, 0x00c4, 0x00c5,
+    0x00c9, 0x00e6, 0x00c6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9,
+    0x00ff, 0x00d6, 0x00dc, 0x00a2, 0x00a3, 0x00a5, 0x20a7, 0x0192,
+    0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00d1, 0x00aa, 0x00ba,
+    0x00bf, 0x2310, 0x00ac, 0x00bd, 0x00bc, 0x00a1, 0x00ab, 0x00bb,
+    0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
+    0x2555, 0x2563, 0x2551, 0x2557, 0x255d, 0x255c, 0x255b, 0x2510,
+    0x2514, 0x2534, 0x252c, 0x251c, 0x2500, 0x253c, 0x255e, 0x255f,
+    0x255a, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256c, 0x2567,
+    0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256b,
+    0x256a, 0x2518, 0x250c, 0x2588, 0x2584, 0x258c, 0x2590, 0x2580,
+    0x03b1, 0x00df, 0x0393, 0x03c0, 0x03a3, 0x03c3, 0x00b5, 0x03c4,
+    0x03a6, 0x0398, 0x03a9, 0x03b4, 0x221e, 0x03c6, 0x03b5, 0x2229,
+    0x2261, 0x00b1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00f7, 0x2248,
+    0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0
+};
+
 void
 g_putch(in_ch)
 int in_ch;
 {
-    /* CP437 to Unicode mapping according to the Unicode Consortium */
-    static const WCHAR cp437[] = {
-        0x0020, 0x263A, 0x263B, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
-        0x25D8, 0x25CB, 0x25D9, 0x2642, 0x2640, 0x266A, 0x266B, 0x263C,
-        0x25BA, 0x25C4, 0x2195, 0x203C, 0x00B6, 0x00A7, 0x25AC, 0x21A8,
-        0x2191, 0x2193, 0x2192, 0x2190, 0x221F, 0x2194, 0x25B2, 0x25BC,
-        0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027,
-        0x0028, 0x0029, 0x002a, 0x002b, 0x002c, 0x002d, 0x002e, 0x002f,
-        0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037,
-        0x0038, 0x0039, 0x003a, 0x003b, 0x003c, 0x003d, 0x003e, 0x003f,
-        0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047,
-        0x0048, 0x0049, 0x004a, 0x004b, 0x004c, 0x004d, 0x004e, 0x004f,
-        0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057,
-        0x0058, 0x0059, 0x005a, 0x005b, 0x005c, 0x005d, 0x005e, 0x005f,
-        0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067,
-        0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
-        0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077,
-        0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007e, 0x2302,
-        0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7,
-        0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee, 0x00ec, 0x00c4, 0x00c5,
-        0x00c9, 0x00e6, 0x00c6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9,
-        0x00ff, 0x00d6, 0x00dc, 0x00a2, 0x00a3, 0x00a5, 0x20a7, 0x0192,
-        0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00d1, 0x00aa, 0x00ba,
-        0x00bf, 0x2310, 0x00ac, 0x00bd, 0x00bc, 0x00a1, 0x00ab, 0x00bb,
-        0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
-        0x2555, 0x2563, 0x2551, 0x2557, 0x255d, 0x255c, 0x255b, 0x2510,
-        0x2514, 0x2534, 0x252c, 0x251c, 0x2500, 0x253c, 0x255e, 0x255f,
-        0x255a, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256c, 0x2567,
-        0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256b,
-        0x256a, 0x2518, 0x250c, 0x2588, 0x2584, 0x258c, 0x2590, 0x2580,
-        0x03b1, 0x00df, 0x0393, 0x03c0, 0x03a3, 0x03c3, 0x00b5, 0x03c4,
-        0x03a6, 0x0398, 0x03a9, 0x03b4, 0x221e, 0x03c6, 0x03b5, 0x2229,
-        0x2261, 0x00b1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00f7, 0x2248,
-        0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0
-    };
+    boolean inverse = FALSE;
     unsigned char ch = (unsigned char) in_ch;
 
-    cursor.X = ttyDisplay->curx;
-    cursor.Y = ttyDisplay->cury;
-    WriteConsoleOutputAttribute(hConOut, &attr, 1, cursor, &acount);
+    console.cursor.X = ttyDisplay->curx;
+    console.cursor.Y = ttyDisplay->cury;
+
+    inverse = (console.current_nhattr[ATR_INVERSE] && iflags.wc_inverse);
+    console.attr = (console.current_nhattr[ATR_INVERSE] && iflags.wc_inverse) ?
+                    ttycolors_inv[console.current_nhcolor] :
+                    ttycolors[console.current_nhcolor];
+    if (console.current_nhattr[ATR_BOLD])
+        console.attr |= (inverse) ? BACKGROUND_INTENSITY : FOREGROUND_INTENSITY;
+    WriteConsoleOutputAttribute(hConOut, &console.attr, 1, console.cursor, &acount);
+
     if (has_unicode)
-        WriteConsoleOutputCharacterW(hConOut, &cp437[ch], 1, cursor, &ccount);
+        WriteConsoleOutputCharacterW(hConOut, &cp437[ch], 1, console.cursor, &ccount);
     else
-        WriteConsoleOutputCharacterA(hConOut, &ch, 1, cursor, &ccount);
+        WriteConsoleOutputCharacterA(hConOut, &ch, 1, console.cursor, &ccount);
 }
 
 void
 cl_end()
 {
     int cx;
-    cursor.X = ttyDisplay->curx;
-    cursor.Y = ttyDisplay->cury;
-    cx = CO - cursor.X;
-    FillConsoleOutputAttribute(hConOut, DEFTEXTCOLOR, cx, cursor, &acount);
-    FillConsoleOutputCharacter(hConOut, ' ', cx, cursor, &ccount);
+    console.cursor.X = ttyDisplay->curx;
+    console.cursor.Y = ttyDisplay->cury;
+    cx = CO - console.cursor.X;
+    FillConsoleOutputAttribute(hConOut, DEFTEXTCOLOR, cx, console.cursor, &acount);
+    FillConsoleOutputCharacter(hConOut, ' ', cx, console.cursor, &ccount);
     tty_curs(BASE_WINDOW, (int) ttyDisplay->curx + 1, (int) ttyDisplay->cury);
 }
 
@@ -597,15 +634,15 @@ clear_screen()
 void
 home()
 {
-    cursor.X = cursor.Y = 0;
+    console.cursor.X = console.cursor.Y = 0;
     ttyDisplay->curx = ttyDisplay->cury = 0;
 }
 
 void
 backsp()
 {
-    cursor.X = ttyDisplay->curx;
-    cursor.Y = ttyDisplay->cury;
+    console.cursor.X = ttyDisplay->curx;
+    console.cursor.Y = ttyDisplay->cury;
     xputc_core('\b');
 }
 
@@ -677,27 +714,53 @@ tty_delay_output()
 static void
 init_ttycolor()
 {
-    ttycolors[CLR_BLACK] = FOREGROUND_INTENSITY; /* fix by Quietust */
-    ttycolors[CLR_RED] = FOREGROUND_RED;
-    ttycolors[CLR_GREEN] = FOREGROUND_GREEN;
-    ttycolors[CLR_BROWN] = FOREGROUND_GREEN | FOREGROUND_RED;
-    ttycolors[CLR_BLUE] = FOREGROUND_BLUE;
-    ttycolors[CLR_MAGENTA] = FOREGROUND_BLUE | FOREGROUND_RED;
-    ttycolors[CLR_CYAN] = FOREGROUND_GREEN | FOREGROUND_BLUE;
-    ttycolors[CLR_GRAY] = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
-    ttycolors[BRIGHT] = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED
-                        | FOREGROUND_INTENSITY;
-    ttycolors[CLR_ORANGE] = FOREGROUND_RED | FOREGROUND_INTENSITY;
+#ifdef TEXTCOLOR
+    ttycolors[CLR_BLACK]        = FOREGROUND_INTENSITY; /* fix by Quietust */
+    ttycolors[CLR_RED]          = FOREGROUND_RED;
+    ttycolors[CLR_GREEN]        = FOREGROUND_GREEN;
+    ttycolors[CLR_BROWN]        = FOREGROUND_GREEN | FOREGROUND_RED;
+    ttycolors[CLR_BLUE]         = FOREGROUND_BLUE;
+    ttycolors[CLR_MAGENTA]      = FOREGROUND_BLUE | FOREGROUND_RED;
+    ttycolors[CLR_CYAN]         = FOREGROUND_GREEN | FOREGROUND_BLUE;
+    ttycolors[CLR_GRAY]         = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE;
+    ttycolors[NO_COLOR]         = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED;
+    ttycolors[CLR_ORANGE]       = FOREGROUND_RED | FOREGROUND_INTENSITY;
     ttycolors[CLR_BRIGHT_GREEN] = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
-    ttycolors[CLR_YELLOW] =
-        FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY;
-    ttycolors[CLR_BRIGHT_BLUE] = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
-    ttycolors[CLR_BRIGHT_MAGENTA] =
-        FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_INTENSITY;
-    ttycolors[CLR_BRIGHT_CYAN] =
-        FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
-    ttycolors[CLR_WHITE] = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED
-                           | FOREGROUND_INTENSITY;
+    ttycolors[CLR_YELLOW]       = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY;
+    ttycolors[CLR_BRIGHT_BLUE]  = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+    ttycolors[CLR_BRIGHT_MAGENTA]=FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_INTENSITY;
+    ttycolors[CLR_BRIGHT_CYAN]  = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+    ttycolors[CLR_WHITE]        = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED
+                                    | FOREGROUND_INTENSITY;
+
+    ttycolors_inv[CLR_BLACK]       = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_RED
+                                        | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_RED]         = BACKGROUND_RED | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_GREEN]       = BACKGROUND_GREEN;
+    ttycolors_inv[CLR_BROWN]       = BACKGROUND_GREEN | BACKGROUND_RED;
+    ttycolors_inv[CLR_BLUE]        = BACKGROUND_BLUE | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_MAGENTA]     = BACKGROUND_BLUE | BACKGROUND_RED;
+    ttycolors_inv[CLR_CYAN]        = BACKGROUND_GREEN | BACKGROUND_BLUE;
+    ttycolors_inv[CLR_GRAY]        = BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_BLUE;
+    ttycolors_inv[NO_COLOR]        = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_RED;
+    ttycolors_inv[CLR_ORANGE]      = BACKGROUND_RED | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_BRIGHT_GREEN]= BACKGROUND_GREEN | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_YELLOW]      = BACKGROUND_GREEN | BACKGROUND_RED | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_BRIGHT_BLUE] = BACKGROUND_BLUE | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_BRIGHT_MAGENTA] =BACKGROUND_BLUE | BACKGROUND_RED | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_BRIGHT_CYAN] = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
+    ttycolors_inv[CLR_WHITE]       = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_RED
+                                       | BACKGROUND_INTENSITY;
+#else
+    int k;
+    ttycolors[0] = FOREGROUND_INTENSITY;
+    ttycolors_inv[0] = BACKGROUND_INTENSITY;
+    for (k = 1; k < SIZE(ttycolors); ++k) {
+        ttycolors[k] = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED;
+        ttycolors_inv[k] = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_RED;
+    }
+#endif
+    init_ttycolor_completed = TRUE;
 }
 #endif /* TEXTCOLOR */
 
@@ -705,64 +768,42 @@ int
 has_color(int color)
 {
 #ifdef TEXTCOLOR
-    return 1;
+    if ((color >= 0) && (color < CLR_MAX))
+        return 1;
 #else
-    if (color == CLR_BLACK)
+    if ((color == CLR_BLACK) || (color == CLR_WHITE) || (color == NO_COLOR))
         return 1;
-    else if (color == CLR_WHITE)
-        return 1;
+#endif
     else
         return 0;
-#endif
 }
 
 void
 term_start_attr(int attrib)
 {
-    switch (attrib) {
-    case ATR_INVERSE:
-        if (iflags.wc_inverse) {
-            /* Suggestion by Lee Berger */
-            if ((foreground
-                 & (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED))
-                == (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED))
-                foreground &=
-                    ~(FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
-            background =
-                (BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN);
-            break;
-        }
-    /*FALLTHRU*/
-    case ATR_ULINE:
-    case ATR_BLINK:
-    case ATR_BOLD:
-        foreground |= FOREGROUND_INTENSITY;
-        break;
-    default:
-        foreground &= ~FOREGROUND_INTENSITY;
-        break;
-    }
-    attr = (foreground | background);
+    console.current_nhattr[attrib] = TRUE;
+    if (attrib) console.current_nhattr[ATR_NONE] = FALSE;
 }
 
 void
 term_end_attr(int attrib)
 {
+    int k;
+
     switch (attrib) {
     case ATR_INVERSE:
-        if ((foreground
-             & (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED)) == 0)
-            foreground |=
-                (FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_RED);
-        background = 0;
-        break;
     case ATR_ULINE:
     case ATR_BLINK:
     case ATR_BOLD:
-        foreground &= ~FOREGROUND_INTENSITY;
         break;
     }
-    attr = (foreground | background);
+    console.current_nhattr[attrib] = FALSE;
+    console.current_nhattr[ATR_NONE] = TRUE;
+    /* re-evaluate all attr now for performance at output time */
+    for (k=ATR_NONE; k <= ATR_INVERSE; ++k) {
+        if (console.current_nhattr[k])
+            console.current_nhattr[ATR_NONE] = FALSE;
+    }
 }
 
 void
@@ -782,24 +823,20 @@ term_start_color(int color)
 {
 #ifdef TEXTCOLOR
     if (color >= 0 && color < CLR_MAX) {
-        foreground =
-            (background != 0 && (color == CLR_GRAY || color == CLR_WHITE))
-                ? ttycolors[0]
-                : ttycolors[color];
-    }
-#else
-    foreground = DEFTEXTCOLOR;
+        console.current_nhcolor = color;
+    } else
 #endif
-    attr = (foreground | background);
+    console.current_nhcolor = NO_COLOR;
 }
 
 void
 term_end_color(void)
 {
 #ifdef TEXTCOLOR
-    foreground = DEFTEXTCOLOR;
+    console.foreground = DEFTEXTCOLOR;
 #endif
-    attr = (foreground | background);
+    console.attr = (console.foreground | console.background);
+    console.current_nhcolor = NO_COLOR;
 }
 
 void
@@ -838,6 +875,8 @@ const char *pref;
         toggle_mouse_support();
 #endif
     }
+    if (stricmp(pref, "symset") == 0)
+        check_and_set_font();
     return;
 }
 
@@ -1022,9 +1061,12 @@ VA_DECL(const char *, fmt)
     if (redirect_stdout)
         fprintf(stdout, "%s", buf);
     else {
+        if(!init_ttycolor_completed)
+            init_ttycolor();
+
         xputs(buf);
         if (ttyDisplay)
-            curs(BASE_WINDOW, cursor.X + 1, cursor.Y);
+            curs(BASE_WINDOW, console.cursor.X + 1, console.cursor.Y);
     }
     VA_END();
     return;
@@ -1448,4 +1490,179 @@ GetConsoleHwnd(void)
     return hwndFound;
 }
 #endif /*CHANGE_COLOR*/
+
+static int CALLBACK EnumFontCallback(
+    const LOGFONTW * lf, const TEXTMETRICW * tm, DWORD fontType, LPARAM lParam)
+{
+    LOGFONTW * lf_ptr = (LOGFONTW *) lParam;
+    *lf_ptr = *lf;
+    return 0;
+}
+
+/* check_and_set_font ensures that the current font will render the symbols
+ * that are currently being used correctly.  If they will not be rendered
+ * correctly, then it will change the font to a known good font.
+ */
+void
+check_and_set_font()
+{
+    if (!check_font_widths()) {
+        raw_print("WARNING: glyphs too wide in console font."
+                  "  Changing code page to 437 and font to Consolas\n");
+        set_known_good_console_font();
+    }
+}
+
+/* check_font_widths returns TRUE if all glyphs in current console font
+ * fit within the width of a single console cell.
+ */
+boolean
+check_font_widths()
+{
+    CONSOLE_FONT_INFOEX console_font_info;
+    console_font_info.cbSize = sizeof(console_font_info);
+    BOOL success = GetCurrentConsoleFontEx(hConOut, FALSE,
+                                            &console_font_info);
+
+    /* get console window and DC
+     * NOTE: the DC from the console window does not have the correct
+     *       font selected at this point.
+     */
+    HWND hWnd = GetConsoleWindow();
+    HDC hDC = GetDC(hWnd);
+
+    LOGFONTW logical_font;
+    logical_font.lfCharSet = DEFAULT_CHARSET;
+    wcscpy(logical_font.lfFaceName, console_font_info.FaceName);
+    logical_font.lfPitchAndFamily = 0;
+
+    /* getting matching console font */
+    LOGFONTW matching_log_font = { 0 };
+    EnumFontFamiliesExW(hDC, &logical_font, EnumFontCallback,
+                                        (LPARAM) &matching_log_font, 0);
+
+    if (matching_log_font.lfHeight == 0) {
+        raw_print("Unable to enumerate system fonts\n");
+        return FALSE;
+    }
+
+    /* create font matching console font */
+    LOGFONTW console_font_log_font = matching_log_font;
+    console_font_log_font.lfWeight = console_font_info.FontWeight;
+    console_font_log_font.lfHeight = console_font_info.dwFontSize.Y;
+    console_font_log_font.lfWidth = 0;
+    HFONT console_font = CreateFontIndirectW(&console_font_log_font);
+
+    if (console_font == NULL) {
+        raw_print("Unable to create console font\n");
+        return FALSE;
+    }
+
+    /* select font */
+    HGDIOBJ saved_font = SelectObject(hDC, console_font);
+
+    /* determine whether it is a true type font */
+    TEXTMETRICA tm;
+    success = GetTextMetricsA(hDC, &tm);
+
+    if (!success) {
+        raw_print("Unable to get console font text metrics\n");
+        goto clean_up;
+    }
+
+    boolean isTrueType = (tm.tmPitchAndFamily & TMPF_TRUETYPE) != 0;
+
+    /* determine which glyphs are used */
+    boolean used[256];
+    memset(used, 0, sizeof(used));
+    for (int i = 0; i < SYM_MAX; i++) {
+        used[l_syms[i]] = TRUE;
+        used[r_syms[i]] = TRUE;
+    }
+
+    int wcUsedCount = 0;
+    wchar_t wcUsed[256];
+    for (int i = 0; i < sizeof(used); i++)
+        if (used[i])
+            wcUsed[wcUsedCount++] = cp437[i];
+
+    /* measure the set of used glyphs to ensure they fit */
+    boolean all_glyphs_fit = TRUE;
+
+    for (int i = 0; i < wcUsedCount; i++) {
+        int width;
+        if (isTrueType) {
+            ABC abc;
+            success = GetCharABCWidthsW(hDC, wcUsed[i], wcUsed[i], &abc);
+            width = abc.abcA + abc.abcB + abc.abcC;
+        } else {
+            success = GetCharWidthW(hDC, wcUsed[i], wcUsed[i], &width);
+        }
+
+        if (success && width > console_font_info.dwFontSize.X) {
+            all_glyphs_fit = FALSE;
+            break;
+        }
+    }
+
+clean_up:
+
+    SelectObject(hDC, saved_font);
+    DeleteObject(console_font);
+
+    return all_glyphs_fit;
+}
+
+/* set_known_good_console_font sets the code page and font used by the console
+ * to settings know to work well with NetHack.  It also saves the original
+ * settings so that they can be restored prior to NetHack exit.
+ */
+void
+set_known_good_console_font()
+{
+    CONSOLE_FONT_INFOEX console_font_info;
+    console_font_info.cbSize = sizeof(console_font_info);
+    BOOL success = GetCurrentConsoleFontEx(hConOut, FALSE,
+                                            &console_font_info);
+
+    console_font_changed = TRUE;
+    original_console_font_info = console_font_info;
+    original_console_code_page = GetConsoleOutputCP();
+
+    wcscpy_s(console_font_info.FaceName,
+        sizeof(console_font_info.FaceName)
+            / sizeof(console_font_info.FaceName[0]),
+        L"Consolas");
+
+    success = SetConsoleOutputCP(437);
+    if (!success)
+        raw_print("Unable to set console code page to 437\n");
+
+    success = SetCurrentConsoleFontEx(hConOut, FALSE, &console_font_info);
+    if (!success)
+        raw_print("Unable to set console font to Consolas\n");
+}
+
+/* restore_original_console_font will restore the console font and code page
+ * settings to what they were when NetHack was launched.
+ */
+void
+restore_original_console_font()
+{
+    if (console_font_changed) {
+        BOOL success;
+        raw_print("Restoring original font and code page\n");
+        success = SetConsoleOutputCP(original_console_code_page);
+        if (!success)
+            raw_print("Unable to restore original code page\n");
+
+        success = SetCurrentConsoleFontEx(hConOut, FALSE,
+                                            &original_console_font_info);
+        if (!success)
+            raw_print("Unable to restore original font\n");
+
+        console_font_changed = FALSE;
+    }
+}
+
 #endif /* WIN32 */

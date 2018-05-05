@@ -1,11 +1,11 @@
 #!/bin/sh
-# NetHack 3.6  nethack.sh	$NHDT-Date: 1432512789 2015/05/25 00:13:09 $  $NHDT-Branch: master $:$NHDT-Revision: 1.17 $
+# NetHack 3.6  nethack.sh	$NHDT-Date: 1524689450 2018/04/25 20:50:50 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.19 $
+# Copyright (c) 2015 by Kenneth Lorber, Kensington, Maryland
+# NetHack may be freely redistributed.  See license for details.
 
 HACKDIR=/usr/games/lib/nethackdir
 export HACKDIR
 HACK=$HACKDIR/nethack
-# NB: MAXNROFPLAYERS is deprecated in favor of MAXPLAYERS in SYSCF.
-MAXNROFPLAYERS=4
 
 # Since Nethack.ad is installed in HACKDIR, add it to XUSERFILESEARCHPATH
 case "x$XUSERFILESEARCHPATH" in
@@ -65,11 +65,4 @@ fi
 
 
 cd $HACKDIR
-case $1 in
-	-s*)
-		exec $HACK "$@"
-		;;
-	*)
-		exec $HACK "$@" $MAXNROFPLAYERS
-		;;
-esac
+exec $HACK "$@"

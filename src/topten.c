@@ -1,5 +1,6 @@
-/* NetHack 3.6	topten.c	$NHDT-Date: 1448117546 2015/11/21 14:52:26 $  $NHDT-Branch: master $:$NHDT-Revision: 1.40 $ */
+/* NetHack 3.6	topten.c	$NHDT-Date: 1450451497 2015/12/18 15:11:37 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.44 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -30,7 +31,10 @@ static long final_fpos;
 
 #define newttentry() (struct toptenentry *) alloc(sizeof (struct toptenentry))
 #define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
+#ifndef NAMSZ
+/* Changing NAMSZ can break your existing record/logfile */
 #define NAMSZ 10
+#endif
 #define DTHSZ 100
 #define ROLESZ 3
 
@@ -64,10 +68,12 @@ STATIC_DCL void FDECL(outentry, (int, struct toptenentry *, BOOLEAN_P));
 STATIC_DCL void FDECL(discardexcess, (FILE *));
 STATIC_DCL void FDECL(readentry, (FILE *, struct toptenentry *));
 STATIC_DCL void FDECL(writeentry, (FILE *, struct toptenentry *));
-STATIC_DCL void FDECL(writexlentry, (FILE *, struct toptenentry *));
+#ifdef XLOGFILE
+STATIC_DCL void FDECL(writexlentry, (FILE *, struct toptenentry *, int));
 STATIC_DCL long NDECL(encodexlogflags);
 STATIC_DCL long NDECL(encodeconduct);
 STATIC_DCL long NDECL(encodeachieve);
+#endif
 STATIC_DCL void FDECL(free_ttlist, (struct toptenentry *));
 STATIC_DCL int FDECL(classmon, (char *, BOOLEAN_P));
 STATIC_DCL int FDECL(score_wanted, (BOOLEAN_P, int, struct toptenentry *, int,
@@ -81,10 +87,11 @@ static winid toptenwin = WIN_ERR;
 
 /* "killed by",&c ["an"] 'killer.name' */
 void
-formatkiller(buf, siz, how)
+formatkiller(buf, siz, how, incl_helpless)
 char *buf;
 unsigned siz;
 int how;
+boolean incl_helpless;
 {
     static NEARDATA const char *const killed_by_prefix[] = {
         /* DIED, CHOKING, POISONING, STARVING, */
@@ -97,9 +104,9 @@ int how;
         "", "", "", "", ""
     };
     unsigned l;
-    char *kname = killer.name;
+    char c, *kname = killer.name;
 
-    buf[0] = '\0'; /* so strncat() can find the end */
+    buf[0] = '\0'; /* lint suppression */
     switch (killer.format) {
     default:
         impossible("bad killer format? (%d)", killer.format);
@@ -115,9 +122,38 @@ int how;
         buf += l, siz -= l;
         break;
     }
-    /* we're writing into buf[0] (after possibly advancing buf) rather than
-       appending, but strncat() appends a terminator and strncpy() doesn't */
-    (void) strncat(buf, kname, siz - 1);
+    /* Copy kname into buf[].
+     * Object names and named fruit have already been sanitized, but
+     * monsters can have "called 'arbitrary text'" attached to them,
+     * so make sure that that text can't confuse field splitting when
+     * record, logfile, or xlogfile is re-read at some later point.
+     */
+    while (--siz > 0) {
+        c = *kname++;
+        if (c == ',')
+            c = ';';
+        /* 'xlogfile' doesn't really need protection for '=', but
+           fixrecord.awk for corrupted 3.6.0 'record' does (only
+           if using xlogfile rather than logfile to repair record) */
+        else if (c == '=')
+            c = '_';
+        /* tab is not possible due to use of mungspaces() when naming;
+           it would disrupt xlogfile parsing if it were present */
+        else if (c == '\t')
+            c = ' ';
+        *buf++ = c;
+    }
+    *buf = '\0';
+
+    if (incl_helpless && multi) {
+        /* X <= siz: 'sizeof "string"' includes 1 for '\0' terminator */
+        if (multi_reason && strlen(multi_reason) + sizeof ", while " <= siz)
+            Sprintf(buf, ", while %s", multi_reason);
+        /* either multi_reason wasn't specified or wouldn't fit */
+        else if (sizeof ", while helpless" <= siz)
+            Strcpy(buf, ", while helpless");
+        /* else extra death info won't fit, so leave it out */
+    }
 }
 
 STATIC_OVL void
@@ -269,10 +305,10 @@ struct toptenentry *tt;
     static const char fmt33[] = "%s %s %s %s "; /* role,race,gndr,algn */
 #ifndef NO_SCAN_BRACK
     static const char fmt0[] = "%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d ";
-    static const char fmtX[] = "%s,%s%s%s\n";
+    static const char fmtX[] = "%s,%s\n";
 #else /* NO_SCAN_BRACK */
     static const char fmt0[] = "%d %d %d %ld %d %d %d %d %d %d %ld %ld %d ";
-    static const char fmtX[] = "%s %s%s%s\n";
+    static const char fmtX[] = "%s %s\n";
 
     nsb_mung_line(tt->name);
     nsb_mung_line(tt->death);
@@ -288,9 +324,7 @@ struct toptenentry *tt;
         (void) fprintf(rfile, fmt33, tt->plrole, tt->plrace, tt->plgend,
                        tt->plalign);
     (void) fprintf(rfile, fmtX, onlyspace(tt->name) ? "_" : tt->name,
-                   tt->death,
-                   (multi ? ", while " : ""),
-                   (multi ? (multi_reason ? multi_reason : "helpless") : ""));
+                   tt->death);
 
 #ifdef NO_SCAN_BRACK
     nsb_unmung_line(tt->name);
@@ -298,15 +332,18 @@ struct toptenentry *tt;
 #endif
 }
 
+#ifdef XLOGFILE
+
 /* as tab is never used in eg. plname or death, no need to mangle those. */
 STATIC_OVL void
-writexlentry(rfile, tt)
+writexlentry(rfile, tt, how)
 FILE *rfile;
 struct toptenentry *tt;
+int how;
 {
 #define Fprintf (void) fprintf
 #define XLOG_SEP '\t' /* xlogfile field separator. */
-    char buf[BUFSZ];
+    char buf[BUFSZ], tmpbuf[DTHSZ + 1];
 
     Sprintf(buf, "version=%d.%d.%d", tt->ver_major, tt->ver_minor,
             tt->patchlevel);
@@ -321,17 +358,19 @@ struct toptenentry *tt;
     Sprintf(buf, "%crole=%s%crace=%s%cgender=%s%calign=%s", XLOG_SEP,
             tt->plrole, XLOG_SEP, tt->plrace, XLOG_SEP, tt->plgend, XLOG_SEP,
             tt->plalign);
+    /* make a copy of death reason that doesn't include ", while helpless" */
+    formatkiller(tmpbuf, sizeof tmpbuf, how, FALSE);
     Fprintf(rfile, "%s%cname=%s%cdeath=%s",
             buf, /* (already includes separator) */
-            XLOG_SEP, plname, XLOG_SEP, tt->death);
+            XLOG_SEP, plname, XLOG_SEP, tmpbuf);
     if (multi)
         Fprintf(rfile, "%cwhile=%s", XLOG_SEP,
                 multi_reason ? multi_reason : "helpless");
     Fprintf(rfile, "%cconduct=0x%lx%cturns=%ld%cachieve=0x%lx", XLOG_SEP,
             encodeconduct(), XLOG_SEP, moves, XLOG_SEP, encodeachieve());
     Fprintf(rfile, "%crealtime=%ld%cstarttime=%ld%cendtime=%ld", XLOG_SEP,
-            (long) urealtime.realtime, XLOG_SEP, (long) ubirthday, XLOG_SEP,
-            (long) urealtime.endtime);
+            (long) urealtime.realtime, XLOG_SEP,
+            (long) ubirthday, XLOG_SEP, (long) urealtime.finish_time);
     Fprintf(rfile, "%cgender0=%s%calign0=%s", XLOG_SEP,
             genders[flags.initgend].filecode, XLOG_SEP,
             aligns[1 - u.ualignbase[A_ORIGINAL]].filecode);
@@ -425,6 +464,8 @@ encodeachieve()
     return r;
 }
 
+#endif /* XLOGFILE */
+
 STATIC_OVL void
 free_ttlist(tt)
 struct toptenentry *tt;
@@ -512,11 +553,10 @@ time_t when;
     copynchars(t0->plgend, genders[flags.female].filecode, ROLESZ);
     copynchars(t0->plalign, aligns[1 - u.ualign.type].filecode, ROLESZ);
     copynchars(t0->name, plname, NAMSZ);
-    formatkiller(t0->death, sizeof t0->death, how);
+    formatkiller(t0->death, sizeof t0->death, how, TRUE);
     t0->birthdate = yyyymmdd(ubirthday);
     t0->deathdate = yyyymmdd(when);
     t0->tt_next = 0;
-    urealtime.endtime = when;
 #ifdef UPDATE_RECORD_IN_PLACE
     t0->fpos = -1L;
 #endif
@@ -537,7 +577,7 @@ time_t when;
         if (!(xlfile = fopen_datafile(XLOGFILE, "a", SCOREPREFIX))) {
             HUP raw_print("Cannot open extended log file!");
         } else {
-            writexlentry(xlfile, t0);
+            writexlentry(xlfile, t0, how);
             (void) fclose(xlfile);
         }
         unlock_file(XLOGFILE);
@@ -548,17 +588,12 @@ time_t when;
         if (how != PANICKED)
             HUP {
                 char pbuf[BUFSZ];
+
                 topten_print("");
                 Sprintf(pbuf,
              "Since you were in %s mode, the score list will not be checked.",
                         wizard ? "wizard" : "discover");
                 topten_print(pbuf);
-#ifdef DUMP_LOG
-		if (dump_fn[0]) {
-		  dump("", pbuf);
-		  dump("", "");
-		}
-#endif
             }
         goto showwin;
     }
@@ -579,9 +614,6 @@ time_t when;
     }
 
     HUP topten_print("");
-#ifdef DUMP_LOG
-	dump("", "");
-#endif
 
     /* assure minimum number of points */
     if (t0->points < sysopt.pointsmin)
@@ -626,10 +658,6 @@ time_t when;
                             t1->points);
                     topten_print(pbuf);
                     topten_print("");
-#ifdef DUMP_LOG
-			    dump("", pbuf);
-			    dump("", "");
-#endif
                 }
             }
             if (occ_cnt < 0) {
@@ -664,9 +692,6 @@ time_t when;
             if (rank0 > 0) {
                 if (rank0 <= 10) {
                     topten_print("You made the top ten list!");
-#ifdef DUMP_LOG
-			dump("", "You made the top ten list!");
-#endif
                 } else {
                     char pbuf[BUFSZ];
 
@@ -674,19 +699,10 @@ time_t when;
                             "You reached the %d%s place on the top %d list.",
                             rank0, ordin(rank0), sysopt.entrymax);
                     topten_print(pbuf);
-#ifdef DUMP_LOG
-			dump("", pbuf);
-#endif
                 }
                 topten_print("");
-#ifdef DUMP_LOG
-		    dump("", "");
-#endif
             }
     }
-#ifdef DUMP_LOG
-	dump_html("<pre>", "");
-#endif
     if (rank0 == 0)
         rank0 = rank1;
     if (rank0 <= 0)
@@ -711,12 +727,8 @@ time_t when;
                         : strncmp(t1->name, t0->name, NAMSZ) == 0)))
             continue;
         if (rank == rank0 - flags.end_around
-            && rank0 > flags.end_top + flags.end_around + 1 && !flags.end_own) {
+            && rank0 > flags.end_top + flags.end_around + 1 && !flags.end_own)
             topten_print("");
-#ifdef DUMP_LOG
-		dump("", "");
-#endif
-		}
         if (rank != rank0)
             outentry(rank, t1, FALSE);
         else if (!rank1)
@@ -729,9 +741,6 @@ time_t when;
     if (rank0 >= rank)
         if (!done_stopprint)
             outentry(0, t0, TRUE);
-#ifdef DUMP_LOG
-	dump_html("</pre>", "");
-#endif
 #ifdef UPDATE_RECORD_IN_PLACE
     if (flg) {
 #ifdef TRUNCATE_FILE
@@ -781,9 +790,6 @@ outheader()
         *bp++ = ' ';
     Strcpy(bp, "Hp [max]");
     topten_print(linebuf);
-#ifdef DUMP_LOG
-	dump("", linebuf);
-#endif
 }
 
 /* so>0: standout line; so=0: ordinary line */
@@ -919,15 +925,8 @@ boolean so;
                 *bp++ = ' ';
             *bp = 0;
             topten_print_bold(linebuf);
-#ifdef DUMP_LOG
-		dump("*", linebuf[0]==' '? linebuf+1: linebuf);
-#endif
-        } else {
+        } else
             topten_print(linebuf);
-#ifdef DUMP_LOG
-		dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
-#endif
-        }
         Sprintf(linebuf, "%15s %s", "", linebuf3);
         lngr = strlen(linebuf);
     }
@@ -955,9 +954,6 @@ boolean so;
         topten_print_bold(linebuf);
     } else
         topten_print(linebuf);
-#ifdef DUMP_LOG
-	dump(" ", linebuf[0]==' '? linebuf+1: linebuf);
-#endif
 }
 
 STATIC_OVL int
@@ -1179,25 +1175,19 @@ boolean fem;
 
 /*
  * Get a random player name and class from the high score list,
- * and attach them to an object (for statues or morgue corpses).
  */
-struct obj *
-tt_oname(otmp)
-struct obj *otmp;
+struct toptenentry *
+get_rnd_toptenentry()
 {
-    int rank;
-    register int i;
-    register struct toptenentry *tt;
+    int rank, i;
     FILE *rfile;
-    struct toptenentry tt_buf;
-
-    if (!otmp)
-        return (struct obj *) 0;
+    register struct toptenentry *tt;
+    static struct toptenentry tt_buf;
 
     rfile = fopen_datafile(RECORD, "r", SCOREPREFIX);
     if (!rfile) {
         impossible("Cannot open record file!");
-        return (struct obj *) 0;
+        return NULL;
     }
 
     tt = &tt_buf;
@@ -1215,13 +1205,34 @@ pickentry:
             rewind(rfile);
             goto pickentry;
         }
-        otmp = (struct obj *) 0;
-    } else {
-        set_corpsenm(otmp, classmon(tt->plrole, (tt->plgend[0] == 'F')));
-        otmp = oname(otmp, tt->name);
+        tt = NULL;
     }
 
     (void) fclose(rfile);
+    return tt;
+}
+
+
+/*
+ * Attach random player name and class from high score list
+ * to an object (for statues or morgue corpses).
+ */
+struct obj *
+tt_oname(otmp)
+struct obj *otmp;
+{
+    struct toptenentry *tt;
+    if (!otmp)
+        return (struct obj *) 0;
+
+    tt = get_rnd_toptenentry();
+
+    if (!tt)
+        return (struct obj *) 0;
+
+    set_corpsenm(otmp, classmon(tt->plrole, (tt->plgend[0] == 'F')));
+    otmp = oname(otmp, tt->name);
+
     return otmp;
 }
 

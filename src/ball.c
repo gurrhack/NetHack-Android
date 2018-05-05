@@ -1,5 +1,6 @@
-/* NetHack 3.6	ball.c	$NHDT-Date: 1446808438 2015/11/06 11:13:58 $  $NHDT-Branch: master $:$NHDT-Revision: 1.28 $ */
+/* NetHack 3.6	ball.c	$NHDT-Date: 1450402033 2015/12/18 01:27:13 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.29 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) David Cohrs, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* Ball & Chain
@@ -610,11 +611,13 @@ drag:
             You("are jerked back by the iron ball!");
             if ((victim = m_at(uchain->ox, uchain->oy)) != 0) {
                 int tmp;
+                int dieroll = rnd(20);
 
                 tmp = -2 + Luck + find_mac(victim);
                 tmp += omon_adj(victim, uball, TRUE);
-                if (tmp >= rnd(20))
-                    (void) hmon(victim, uball, HMON_DRAGGED);
+
+                if (tmp >= dieroll)
+                    (void) hmon(victim, uball, HMON_DRAGGED, dieroll);
                 else
                     miss(xname(uball), victim);
 
@@ -716,7 +719,7 @@ xchar x, y;
                 deltrap(t_at(u.ux, u.uy));
                 break;
             case TT_LAVA:
-                pline(pullmsg, "lava");
+                pline(pullmsg, hliquid("lava"));
                 break;
             case TT_BEARTRAP: {
                 register long side = rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
@@ -808,6 +811,9 @@ drag_down()
 
     if (carried(uball))
         You("lose your grip on the iron ball.");
+
+    cls();  /* previous level is still displayed although you
+               went down the stairs. Avoids bug C343-20 */
 
     if (forward) {
         if (rn2(6)) {

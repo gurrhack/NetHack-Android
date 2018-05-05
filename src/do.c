@@ -1,5 +1,6 @@
-/* NetHack 3.6	do.c	$NHDT-Date: 1446975464 2015/11/08 09:37:44 $  $NHDT-Branch: master $:$NHDT-Revision: 1.149 $ */
+/* NetHack 3.6	do.c	$NHDT-Date: 1472809073 2016/09/02 09:37:53 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.158 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Derek S. Ray, 2015. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) */
@@ -34,7 +35,8 @@ dodrop()
     result = drop(getobj(&drop_types[i], "drop"));
     if (*u.ushops)
         sellobj_state(SELL_NORMAL);
-    reset_occupations();
+    if (result)
+        reset_occupations();
 
     return result;
 }
@@ -103,7 +105,8 @@ boolean pushing;
                 You("find yourself on dry land again!");
             } else if (lava && distu(rx, ry) <= 2) {
                 int dmg;
-                You("are hit by molten lava%c", Fire_resistance ? '.' : '!');
+                You("are hit by molten %s%c",
+                    hliquid("lava"), Fire_resistance ? '.' : '!');
                 burn_away_slime();
                 dmg = d((Fire_resistance ? 1 : 3), 6);
                 losehp(Maybe_Half_Phys(dmg), /* lava damage */
@@ -156,7 +159,10 @@ const char *verb;
                           (mtmp) ? "" : " with you");
             if (mtmp) {
                 if (!passes_walls(mtmp->data) && !throws_rocks(mtmp->data)) {
-                    if (hmon(mtmp, obj, TRUE) && !is_whirly(mtmp->data))
+                    int dieroll = rnd(20);
+
+                    if (hmon(mtmp, obj, HMON_THROWN, dieroll)
+                        && !is_whirly(mtmp->data))
                         return FALSE; /* still alive */
                 }
                 mtmp->mtrapped = 0;
@@ -188,7 +194,7 @@ const char *verb;
         newsym(x, y);
         return TRUE;
     } else if (is_lava(x, y)) {
-        return fire_damage(obj, FALSE, x, y);
+        return lava_damage(obj, x, y);
     } else if (is_pool(x, y)) {
         /* Reasonably bulky objects (arbitrary) splash when dropped.
          * If you're floating above the water even small things make
@@ -215,15 +221,13 @@ const char *verb;
                   otense(obj, "tumble"), the_your[t->madeby_u]);
     } else if (obj->globby) {
         /* Globby things like puddings might stick together */
-        while (obj
-               && (otmp = obj_nexto_xy(obj->otyp, x, y, obj->o_id))
-                      != (struct obj *) 0) {
+        while (obj && (otmp = obj_nexto_xy(obj, x, y, TRUE)) != 0) {
             pudding_merge_message(obj, otmp);
             /* intentionally not getting the melded object; obj_meld may set
              * obj to null. */
             (void) obj_meld(&obj, &otmp);
         }
-        return (boolean) (obj == NULL);
+        return (boolean) !obj;
     }
     return FALSE;
 }
@@ -270,6 +274,8 @@ register struct obj *obj;
 STATIC_DCL void
 polymorph_sink()
 {
+    uchar sym = S_sink;
+
     if (levl[u.ux][u.uy].typ != SINK)
         return;
 
@@ -278,24 +284,33 @@ polymorph_sink()
     switch (rn2(4)) {
     default:
     case 0:
+        sym = S_fountain;
         levl[u.ux][u.uy].typ = FOUNTAIN;
         level.flags.nfountains++;
         break;
     case 1:
+        sym = S_throne;
         levl[u.ux][u.uy].typ = THRONE;
         break;
     case 2:
+        sym = S_altar;
         levl[u.ux][u.uy].typ = ALTAR;
         levl[u.ux][u.uy].altarmask = Align2amask(rn2((int) A_LAWFUL + 2) - 1);
         break;
     case 3:
+        sym = S_room;
         levl[u.ux][u.uy].typ = ROOM;
         make_grave(u.ux, u.uy, (char *) 0);
+        if (levl[u.ux][u.uy].typ == GRAVE)
+            sym = S_grave;
         break;
     }
-    pline_The("sink transforms into %s!", (levl[u.ux][u.uy].typ == THRONE)
-                                              ? "a throne"
-                                              : an(surface(u.ux, u.uy)));
+    /* give message even if blind; we know we're not levitating,
+       so can feel the outcome even if we can't directly see it */
+    if (levl[u.ux][u.uy].typ != ROOM)
+        pline_The("sink transforms into %s!", an(defsyms[sym].explanation));
+    else
+        pline_The("sink vanishes.");
     newsym(u.ux, u.uy);
 }
 
@@ -370,18 +385,21 @@ register struct obj *obj;
         You_hear("loud noises coming from the drain.");
         break;
     case RIN_SUSTAIN_ABILITY: /* KMH */
-        pline_The("water flow seems fixed.");
+        pline_The("%s flow seems fixed.", hliquid("water"));
         break;
     case RIN_GAIN_STRENGTH:
-        pline_The("water flow seems %ser now.",
+        pline_The("%s flow seems %ser now.",
+                  hliquid("water"),
                   (obj->spe < 0) ? "weak" : "strong");
         break;
     case RIN_GAIN_CONSTITUTION:
-        pline_The("water flow seems %ser now.",
+        pline_The("%s flow seems %ser now.",
+                  hliquid("water"),
                   (obj->spe < 0) ? "less" : "great");
         break;
     case RIN_INCREASE_ACCURACY: /* KMH */
-        pline_The("water flow %s the drain.",
+        pline_The("%s flow %s the drain.",
+                  hliquid("water"),
                   (obj->spe < 0) ? "misses" : "hits");
         break;
     case RIN_INCREASE_DAMAGE:
@@ -407,11 +425,24 @@ register struct obj *obj;
         /* Not the same as aggravate monster; besides, it's obvious. */
         pline("Several flies buzz around the sink.");
         break;
+    case RIN_TELEPORTATION:
+        nosink = teleport_sink();
+        /* give message even if blind; we know we're not levitating,
+           so can feel the outcome even if we can't directly see it */
+        pline_The("sink %svanishes.", nosink ? "" : "momentarily ");
+        ideed = FALSE;
+        break;
+    case RIN_POLYMORPH:
+        polymorph_sink();
+        nosink = TRUE;
+        /* for S_room case, same message as for teleportation is given */
+        ideed = (levl[u.ux][u.uy].typ != ROOM);
+        break;
     default:
         ideed = FALSE;
         break;
     }
-    if (!Blind && !ideed && obj->otyp != RIN_HUNGER) {
+    if (!Blind && !ideed) {
         ideed = TRUE;
         switch (obj->otyp) { /* effects that need eyes */
         case RIN_ADORNMENT:
@@ -434,10 +465,12 @@ register struct obj *obj;
             pline_The("sink seems to blend into the floor for a moment.");
             break;
         case RIN_FIRE_RESISTANCE:
-            pline_The("hot water faucet flashes brightly for a moment.");
+            pline_The("hot %s faucet flashes brightly for a moment.",
+                      hliquid("water"));
             break;
         case RIN_COLD_RESISTANCE:
-            pline_The("cold water faucet flashes brightly for a moment.");
+            pline_The("cold %s faucet flashes brightly for a moment.",
+                      hliquid("water"));
             break;
         case RIN_PROTECTION_FROM_SHAPE_CHAN:
             pline_The("sink looks nothing like a fountain.");
@@ -449,20 +482,14 @@ register struct obj *obj;
         case RIN_WARNING:
             pline_The("sink glows %s for a moment.", hcolor(NH_WHITE));
             break;
-        case RIN_TELEPORTATION:
-            nosink = teleport_sink();
-            pline_The("sink %svanishes.", nosink ? "" : "momentarily ");
-            break;
         case RIN_TELEPORT_CONTROL:
             pline_The("sink looks like it is being beamed aboard somewhere.");
             break;
-        case RIN_POLYMORPH:
-            polymorph_sink();
-            nosink = TRUE;
-            break;
         case RIN_POLYMORPH_CONTROL:
             pline_The(
-                "sink momentarily looks like a regularly erupting geyser.");
+                  "sink momentarily looks like a regularly erupting geyser.");
+            break;
+        default:
             break;
         }
     }
@@ -475,6 +502,12 @@ register struct obj *obj;
         pline_The("sink backs up, leaving %s.", doname(obj));
         obj->in_use = FALSE;
         dropx(obj);
+    } else if (!rn2(5)) {
+        freeinv(obj);
+        obj->in_use = FALSE;
+        obj->ox = u.ux;
+        obj->oy = u.uy;
+        add_to_buried(obj);
     } else
         useup(obj);
 }
@@ -717,6 +750,10 @@ doddrop()
 {
     int result = 0;
 
+    if (!invent) {
+        You("have nothing to drop.");
+        return 0;
+    }
     add_valid_menu_class(0); /* clear any classes already there */
     if (*u.ushops)
         sellobj_state(SELL_DELIBERATE);
@@ -725,7 +762,8 @@ doddrop()
         result = menu_drop(result);
     if (*u.ushops)
         sellobj_state(SELL_NORMAL);
-    reset_occupations();
+    if (result)
+        reset_occupations();
 
     return result;
 }
@@ -763,6 +801,7 @@ int retry;
         free((genericptr_t) pick_list);
     } else if (flags.menu_style == MENU_COMBINATION) {
         unsigned ggoresults = 0;
+
         all_categories = FALSE;
         /* Gather valid classes via traditional NetHack method */
         i = ggetobj("drop", drop, 0, TRUE, &ggoresults);
@@ -797,8 +836,8 @@ int retry;
         bypass_objlist(invent, FALSE);
     } else {
         /* should coordinate with perm invent, maybe not show worn items */
-        n = query_objlist("What would you like to drop?", invent,
-                          USE_INVLET | INVORDER_SORT, &pick_list, PICK_ANY,
+        n = query_objlist("What would you like to drop?", &invent,
+                          (USE_INVLET | INVORDER_SORT), &pick_list, PICK_ANY,
                           all_categories ? allow_all : allow_category);
         if (n > 0) {
             /*
@@ -901,7 +940,13 @@ dodown()
                 ladder_down =
                     (glyph_to_cmap(levl[u.ux][u.uy].glyph) == S_dnladder);
         }
-        floating_above(stairs_down ? "stairs" : ladder_down
+        if (Is_airlevel(&u.uz))
+            You("are floating in the %s.", surface(u.ux, u.uy));
+        else if (Is_waterlevel(&u.uz))
+            You("are floating in %s.",
+                is_pool(u.ux, u.uy) ? "the water" : "a bubble of air");
+        else
+            floating_above(stairs_down ? "stairs" : ladder_down
                                                     ? "ladder"
                                                     : surface(u.ux, u.uy));
         return 0; /* didn't move */
@@ -1085,11 +1130,12 @@ boolean at_stairs, falling, portal;
 {
     int fd, l_idx;
     xchar new_ledger;
-    boolean cant_go_back, up = (depth(newlevel) < depth(&u.uz)),
-                          newdungeon = (u.uz.dnum != newlevel->dnum),
-                          was_in_W_tower = In_W_tower(u.ux, u.uy, &u.uz),
-                          familiar = FALSE;
-    boolean new = FALSE; /* made a new level? */
+    boolean cant_go_back, great_effort,
+            up = (depth(newlevel) < depth(&u.uz)),
+            newdungeon = (u.uz.dnum != newlevel->dnum),
+            was_in_W_tower = In_W_tower(u.ux, u.uy, &u.uz),
+            familiar = FALSE,
+            new = FALSE; /* made a new level? */
     struct monst *mtmp;
     char whynot[BUFSZ];
     char *annotation;
@@ -1218,6 +1264,7 @@ boolean at_stairs, falling, portal;
 #ifdef USE_TILES
     substitute_tiles(newlevel);
 #endif
+    check_gold_symbol();
     /* record this level transition as a potential seen branch unless using
      * some non-standard means of transportation (level teleport).
      */
@@ -1290,11 +1337,13 @@ boolean at_stairs, falling, portal;
                 u_on_dnstairs();
             /* you climb up the {stairs|ladder};
                fly up the stairs; fly up along the ladder */
-            pline("%s %s up%s the %s.",
-                  (Punished && !Levitation) ? "With great effort you" : "You",
-                  Flying ? "fly" : "climb",
-                  (Flying && at_ladder) ? " along" : "",
-                  at_ladder ? "ladder" : "stairs");
+            great_effort = (Punished && !Levitation);
+            if (flags.verbose || great_effort)
+                pline("%s %s up%s the %s.",
+                      great_effort ? "With great effort, you" : "You",
+                      Levitation ? "float" : Flying ? "fly" : "climb",
+                      (Flying && at_ladder) ? " along" : "",
+                      at_ladder ? "ladder" : "stairs");
         } else { /* down */
             if (at_ladder)
                 u_on_newpos(xupladder, yupladder);
@@ -1308,8 +1357,8 @@ boolean at_stairs, falling, portal;
                 if (flags.verbose)
                     You("fly down %s.",
                         at_ladder ? "along the ladder" : "the stairs");
-            } else if (near_capacity() > UNENCUMBERED || Punished
-                       || Fumbling) {
+            } else if (near_capacity() > UNENCUMBERED
+                       || Punished || Fumbling) {
                 You("fall down the %s.", at_ladder ? "ladder" : "stairs");
                 if (Punished) {
                     drag_down();
@@ -1498,13 +1547,20 @@ boolean at_stairs, falling, portal;
     save_currentstate();
 #endif
 
-    if ((annotation = get_annotation(&u.uz)))
+    if ((annotation = get_annotation(&u.uz)) != 0)
         You("remember this level as %s.", annotation);
 
     /* assume this will always return TRUE when changing level */
     (void) in_out_region(u.ux, u.uy);
     (void) pickup(1);
-    context.polearm.hitmon = NULL;
+
+    /* discard context which applied to previous level */
+    maybe_reset_pick(); /* for door or for box not accompanying hero */
+    reset_trapset(); /* even if to-be-armed trap obj is accompanying hero */
+    iflags.travelcc.x = iflags.travelcc.y = -1; /* travel destination cache */
+    context.polearm.hitmon = (struct monst *) 0; /* polearm target */
+    /* digging context is level-aware and can actually be resumed if
+       hero returns to the previous level without any intervening dig */
 }
 
 STATIC_OVL void

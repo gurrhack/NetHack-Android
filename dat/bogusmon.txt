@@ -1,3 +1,7 @@
+# NetHack 3.6  bogusmon.txt       $NHDT-Date: 1524689579 2018/04/25 20:52:59 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.7 $
+# Copyright (c) 2016 by Pasi Kallinen
+# NetHack may be freely redistributed.  See license for details.
+#
 # Hallucinatory monsters
 #
 #
@@ -73,6 +77,9 @@ small megabat
 uberhulk
 tofurkey
 +Dudley
+shrinking violet
+shallow one
+spherical cow
 
 # Quendor (Zork, &c.)
 grue
@@ -119,6 +126,7 @@ were-rabbit
 
 # Discworld
 Luggage
+vampiric watermelon
 
 # Lord of the Rings
 Ent
@@ -230,6 +238,7 @@ velociraptor
 corpulent porpoise
 quokka
 potoo
+lemming
 
 # european cryptids
 wolpertinger
@@ -297,6 +306,7 @@ gazebo
 gray goo
 magnetic monopole
 first category perpetual motion device
+big dumb object
 
 # Ultima
 +Lord British

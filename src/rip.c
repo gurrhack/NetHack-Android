@@ -1,5 +1,6 @@
-/* NetHack 3.6	rip.c	$NHDT-Date: 1436753522 2015/07/13 02:12:02 $  $NHDT-Branch: master $:$NHDT-Revision: 1.18 $ */
+/* NetHack 3.6	rip.c	$NHDT-Date: 1488788514 2017/03/06 08:21:54 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.23 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2017. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -7,7 +8,7 @@
 STATIC_DCL void FDECL(center, (int, char *));
 
 #if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(GEM_GRAPHICS) \
-    || defined(MSWIN_GRAPHICS) || defined(ANDROID_GRAPHICS)
+    || defined(MSWIN_GRAPHICS) || defined(ANDROID_GRAPHICS) || defined(DUMPLOG)
 #define TEXT_TOMBSTONE
 #endif
 #if defined(mac) || defined(__BEOS__) || defined(WIN32_GRAPHICS)
@@ -112,7 +113,7 @@ time_t when;
     center(GOLD_LINE, buf);
 
     /* Put together death description */
-    formatkiller(buf, sizeof buf, how);
+    formatkiller(buf, sizeof buf, how, FALSE);
 
     /* Put death type on stone */
     for (line = DEATH_LINE, dpx = buf; line < YEAR_LINE; line++) {
@@ -141,12 +142,21 @@ time_t when;
     Sprintf(buf, "%4ld", year);
     center(YEAR_LINE, buf);
 
-    putstr(tmpwin, 0, "");
+#ifdef DUMPLOG
+    if (tmpwin == 0)
+        dump_forward_putstr(0, 0, "Game over:", TRUE);
+    else
+#endif
+        putstr(tmpwin, 0, "");
+
     for (; *dp; dp++)
         putstr(tmpwin, 0, *dp);
 
     putstr(tmpwin, 0, "");
-    putstr(tmpwin, 0, "");
+#ifdef DUMPLOG
+    if (tmpwin != 0)
+#endif
+        putstr(tmpwin, 0, "");
 
     for (x = 0; rip_txt[x]; x++) {
         free((genericptr_t) rip[x]);

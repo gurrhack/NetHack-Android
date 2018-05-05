@@ -1,5 +1,6 @@
 /* NetHack 3.6	dungeon.h	$NHDT-Date: 1447755969 2015/11/17 10:26:09 $  $NHDT-Branch: master $:$NHDT-Revision: 1.24 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef DUNGEON_H
@@ -35,13 +36,15 @@ typedef struct stairway { /* basic stairway identifier */
 } stairway;
 
 /* level region types */
-#define LR_DOWNSTAIR 0
-#define LR_UPSTAIR 1
-#define LR_PORTAL 2
-#define LR_BRANCH 3
-#define LR_TELE 4
-#define LR_UPTELE 5
-#define LR_DOWNTELE 6
+enum level_region_types {
+    LR_DOWNSTAIR = 0,
+    LR_UPSTAIR,
+    LR_PORTAL,
+    LR_BRANCH,
+    LR_TELE,
+    LR_UPTELE,
+    LR_DOWNTELE
+};
 
 typedef struct dest_area { /* non-stairway level change identifier */
     xchar lx, ly;          /* "lower" left corner (near [0,0]) */

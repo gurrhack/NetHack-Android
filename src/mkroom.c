@@ -1,5 +1,6 @@
 /* NetHack 3.6	mkroom.c	$NHDT-Date: 1446887530 2015/11/07 09:12:10 $  $NHDT-Branch: master $:$NHDT-Revision: 1.24 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -240,6 +241,26 @@ int type;
 }
 
 void
+mk_zoo_thronemon(x,y)
+int x,y;
+{
+    int i = rnd(level_difficulty());
+    int pm = (i > 9) ? PM_OGRE_KING
+        : (i > 5) ? PM_ELVENKING
+        : (i > 2) ? PM_DWARF_KING
+        : PM_GNOME_KING;
+    struct monst *mon = makemon(&mons[pm], x, y, NO_MM_FLAGS);
+
+    if (mon) {
+        mon->msleeping = 1;
+        mon->mpeaceful = 0;
+        set_malign(mon);
+        /* Give him a sceptre to pound in judgment */
+        (void) mongets(mon, MACE);
+    }
+}
+
+void
 fill_zoo(sroom)
 struct mkroom *sroom;
 {
@@ -265,7 +286,7 @@ struct mkroom *sroom;
             ty = mm.y;
         } while (occupied((xchar) tx, (xchar) ty) && --i > 0);
     throne_placed:
-        /* TODO: try to ensure the enthroned monster is an M2_PRINCE */
+        mk_zoo_thronemon(tx, ty);
         break;
     case BEEHIVE:
         tx = sroom->lx + (sroom->hx - sroom->lx + 1) / 2;
@@ -380,12 +401,16 @@ struct mkroom *sroom;
         }
     switch (type) {
     case COURT: {
-        struct obj *chest;
+        struct obj *chest, *gold;
         levl[tx][ty].typ = THRONE;
         (void) somexy(sroom, &mm);
-        (void) mkgold((long) rn1(50 * level_difficulty(), 10), mm.x, mm.y);
+        gold = mksobj(GOLD_PIECE, TRUE, FALSE);
+        gold->quan = (long) rn1(50 * level_difficulty(), 10);
+        gold->owt = weight(gold);
         /* the royal coffers */
         chest = mksobj_at(CHEST, mm.x, mm.y, TRUE, FALSE);
+        add_to_container(chest, gold);
+        chest->owt = weight(chest);
         chest->spe = 2; /* so it can be found later */
         level.flags.has_court = 1;
         break;
@@ -684,9 +709,9 @@ coord *c;
 
 /*
  * Search for a special room given its type (zoo, court, etc...)
- *	Special values :
- *		- ANY_SHOP
- *		- ANY_TYPE
+ *      Special values :
+ *              - ANY_SHOP
+ *              - ANY_TYPE
  */
 struct mkroom *
 search_special(type)

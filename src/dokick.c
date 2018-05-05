@@ -1,4 +1,4 @@
-/* NetHack 3.6	dokick.c	$NHDT-Date: 1446955295 2015/11/08 04:01:35 $  $NHDT-Branch: master $:$NHDT-Revision: 1.104 $ */
+/* NetHack 3.6	dokick.c	$NHDT-Date: 1517128663 2018/01/28 08:37:43 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.113 $ */
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,9 +20,9 @@ STATIC_DCL void FDECL(kickdmg, (struct monst *, BOOLEAN_P));
 STATIC_DCL boolean FDECL(maybe_kick_monster, (struct monst *,
                                               XCHAR_P, XCHAR_P));
 STATIC_DCL void FDECL(kick_monster, (struct monst *, XCHAR_P, XCHAR_P));
-STATIC_DCL int FDECL(kick_object, (XCHAR_P, XCHAR_P));
+STATIC_DCL int FDECL(kick_object, (XCHAR_P, XCHAR_P, char *));
 STATIC_DCL int FDECL(really_kick_object, (XCHAR_P, XCHAR_P));
-STATIC_DCL char *FDECL(kickstr, (char *));
+STATIC_DCL char *FDECL(kickstr, (char *, const char *));
 STATIC_DCL void FDECL(otransit_msg, (struct obj *, BOOLEAN_P, long));
 STATIC_DCL void FDECL(drop_to, (coord *, SCHAR_P));
 
@@ -116,7 +116,7 @@ register boolean clumsy;
         }
     }
 
-    (void) passive(mon, TRUE, mon->mhp > 0, AT_KICK, FALSE);
+    (void) passive(mon, uarmf, TRUE, mon->mhp > 0, AT_KICK, FALSE);
     if (mon->mhp <= 0 && !trapkilled)
         killed(mon);
 
@@ -156,13 +156,13 @@ xchar x, y;
     int i, j;
 
     /* anger target even if wild miss will occur */
-    setmangry(mon);
+    setmangry(mon, TRUE);
 
     if (Levitation && !rn2(3) && verysmall(mon->data)
         && !is_flyer(mon->data)) {
         pline("Floating in the air, you miss wildly!");
         exercise(A_DEX, FALSE);
-        (void) passive(mon, FALSE, 1, AT_KICK, FALSE);
+        (void) passive(mon, uarmf, FALSE, 1, AT_KICK, FALSE);
         return;
     }
 
@@ -213,13 +213,13 @@ xchar x, y;
             } else if (tmp > (kickdieroll = rnd(20))) {
                 You("kick %s.", mon_nam(mon));
                 sum = damageum(mon, uattk);
-                (void) passive(mon, (boolean) (sum > 0), (sum != 2), AT_KICK,
-                               FALSE);
+                (void) passive(mon, uarmf, (boolean) (sum > 0),
+                               (sum != 2), AT_KICK, FALSE);
                 if (sum == 2)
                     break; /* Defender died */
             } else {
                 missum(mon, uattk, (tmp + armorpenalty > kickdieroll));
-                (void) passive(mon, FALSE, 1, AT_KICK, FALSE);
+                (void) passive(mon, uarmf, FALSE, 1, AT_KICK, FALSE);
             }
         }
         return;
@@ -233,7 +233,7 @@ xchar x, y;
             if (martial() && !rn2(2))
                 goto doit;
             Your("clumsy kick does no damage.");
-            (void) passive(mon, FALSE, 1, AT_KICK, FALSE);
+            (void) passive(mon, uarmf, FALSE, 1, AT_KICK, FALSE);
             return;
         }
         if (i < j / 10)
@@ -257,15 +257,12 @@ doit:
         if (!nohands(mon->data) && !rn2(martial() ? 5 : 3)) {
             pline("%s blocks your %skick.", Monnam(mon),
                   clumsy ? "clumsy " : "");
-            (void) passive(mon, FALSE, 1, AT_KICK, FALSE);
+            (void) passive(mon, uarmf, FALSE, 1, AT_KICK, FALSE);
             return;
         } else {
             maybe_mnexto(mon);
             if (mon->mx != x || mon->my != y) {
-                if (glyph_is_invisible(levl[x][y].glyph)) {
-                    unmap_object(x, y);
-                    newsym(x, y);
-                }
+                (void) unmap_invisible(x, y);
                 pline("%s %s, %s evading your %skick.", Monnam(mon),
                       (!level.flags.noteleport && can_teleport(mon->data))
                           ? "teleports"
@@ -277,7 +274,7 @@ doit:
                                                             ? "slides"
                                                             : "jumps",
                       clumsy ? "easily" : "nimbly", clumsy ? "clumsy " : "");
-                (void) passive(mon, FALSE, 1, AT_KICK, FALSE);
+                (void) passive(mon, uarmf, FALSE, 1, AT_KICK, FALSE);
                 return;
             }
         }
@@ -298,7 +295,7 @@ register struct obj *gold;
 
     if (!likes_gold(mtmp->data) && !mtmp->isshk && !mtmp->ispriest
         && !mtmp->isgd && !is_mercenary(mtmp->data)) {
-        wakeup(mtmp);
+        wakeup(mtmp, TRUE);
     } else if (!mtmp->mcanmove) {
         /* too light to do real damage */
         if (canseemon(mtmp)) {
@@ -312,7 +309,7 @@ register struct obj *gold;
         mtmp->msleeping = 0;
         finish_meating(mtmp);
         if (!mtmp->isgd && !rn2(4)) /* not always pleasing */
-            setmangry(mtmp);
+            setmangry(mtmp, TRUE);
         /* greedy monsters catch gold */
         if (cansee(mtmp->mx, mtmp->my))
             pline("%s catches the gold.", Monnam(mtmp));
@@ -463,15 +460,18 @@ xchar x, y; /* coordinates where object was before the impact, not after */
 
 /* jacket around really_kick_object */
 STATIC_OVL int
-kick_object(x, y)
+kick_object(x, y, kickobjnam)
 xchar x, y;
+char *kickobjnam;
 {
     int res = 0;
 
+    *kickobjnam = '\0';
     /* if a pile, the "top" object gets kicked */
     kickedobj = level.objects[x][y];
     if (kickedobj) {
         /* kick object; if doing is fatal, done() will clean up kickedobj */
+        Strcpy(kickobjnam, killer_xname(kickedobj)); /* matters iff res==0 */
         res = really_kick_object(x, y);
         kickedobj = (struct obj *) 0;
     }
@@ -494,15 +494,20 @@ xchar x, y;
         || kickedobj == uchain)
         return 0;
 
-    if ((trap = t_at(x, y)) != 0
-        && (((trap->ttyp == PIT || trap->ttyp == SPIKED_PIT) && !Passes_walls)
-            || trap->ttyp == WEB)) {
-        if (!trap->tseen)
-            find_trap(trap);
-        You_cant("kick %s that's in a %s!", something,
-                 Hallucination ? "tizzy" : (trap->ttyp == WEB) ? "web"
-                                                               : "pit");
-        return 1;
+    if ((trap = t_at(x, y)) != 0) {
+        if (((trap->ttyp == PIT || trap->ttyp == SPIKED_PIT) && !Passes_walls)
+            || trap->ttyp == WEB) {
+            if (!trap->tseen)
+                find_trap(trap);
+            You_cant("kick %s that's in a %s!", something,
+                     Hallucination ? "tizzy" :
+                     (trap->ttyp == WEB) ? "web" : "pit");
+            return 1;
+        }
+        if (trap->ttyp == STATUE_TRAP) {
+            activate_statue_trap(trap, x,y, FALSE);
+            return 1;
+        }
     }
 
     if (Fumbling && !rn2(3)) {
@@ -707,13 +712,14 @@ xchar x, y;
 
 /* cause of death if kicking kills kicker */
 STATIC_OVL char *
-kickstr(buf)
+kickstr(buf, kickobjnam)
 char *buf;
+const char *kickobjnam;
 {
     const char *what;
 
-    if (kickedobj)
-        what = killer_xname(kickedobj);
+    if (*kickobjnam)
+        what = kickobjnam;
     else if (maploc == &nowhere)
         what = "nothing";
     else if (IS_DOOR(maploc->typ))
@@ -788,8 +794,9 @@ dokick() {
     int dmg = 0, glyph, oldglyph = -1;
     register struct monst *mtmp;
     boolean no_kick = FALSE;
-    char buf[BUFSZ];
+    char buf[BUFSZ], kickobjnam[BUFSZ];
 
+    kickobjnam[0] = '\0';
     if (nolimbs(youmonst.data) || slithy(youmonst.data)) {
         You("have no legs to kick with.");
         no_kick = TRUE;
@@ -878,6 +885,7 @@ dokick() {
                 pline("%s burps loudly.", Monnam(u.ustuck));
                 break;
             }
+            /*FALLTHRU*/
         default:
             Your("feeble kick has no effect.");
             break;
@@ -975,19 +983,16 @@ dokick() {
         }
         return 1;
     }
-    if (glyph_is_invisible(levl[x][y].glyph)) {
-        unmap_object(x, y);
-        newsym(x, y);
-    }
+    (void) unmap_invisible(x, y);
     if (is_pool(x, y) ^ !!u.uinwater) {
         /* objects normally can't be removed from water by kicking */
-        You("splash some water around.");
+        You("splash some %s around.", hliquid("water"));
         return 1;
     }
 
     if (OBJ_AT(x, y) && (!Levitation || Is_airlevel(&u.uz)
                          || Is_waterlevel(&u.uz) || sobj_at(BOULDER, x, y))) {
-        if (kick_object(x, y)) {
+        if (kick_object(x, y, kickobjnam)) {
             if (Is_airlevel(&u.uz))
                 hurtle(-u.dx, -u.dy, 1, TRUE); /* assume it's light */
             return 1;
@@ -1125,6 +1130,7 @@ dokick() {
             goto ouch;
         if (IS_TREE(maploc->typ)) {
             struct obj *treefruit;
+
             /* nothing, fruit or trouble? 75:23.5:1.5% */
             if (rn2(3)) {
                 if (!rn2(6) && !(mvitals[PM_KILLER_BEE].mvflags & G_GONE))
@@ -1135,7 +1141,9 @@ dokick() {
                 && (treefruit = rnd_treefruit_at(x, y))) {
                 long nfruit = 8L - rnl(7), nfall;
                 short frtype = treefruit->otyp;
+
                 treefruit->quan = nfruit;
+                treefruit->owt = weight(treefruit);
                 if (is_plural(treefruit))
                     pline("Some %s fall from the tree!", xname(treefruit));
                 else
@@ -1159,6 +1167,7 @@ dokick() {
                 int cnt = rnl(4) + 2;
                 int made = 0;
                 coord mm;
+
                 mm.x = x;
                 mm.y = y;
                 while (cnt--) {
@@ -1250,7 +1259,7 @@ dokick() {
             if (!rn2(3))
                 set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
             dmg = rnd(ACURR(A_CON) > 15 ? 3 : 5);
-            losehp(Maybe_Half_Phys(dmg), kickstr(buf), KILLED_BY);
+            losehp(Maybe_Half_Phys(dmg), kickstr(buf, kickobjnam), KILLED_BY);
             if (Is_airlevel(&u.uz) || Levitation)
                 hurtle(-u.dx, -u.dy, rn1(2, 4), TRUE); /* assume it's heavy */
             return 1;
@@ -1303,7 +1312,7 @@ dokick() {
         feel_newsym(x, y); /* we know we broke it */
         unblock_point(x, y); /* vision */
         if (shopdoor) {
-            add_damage(x, y, 400L);
+            add_damage(x, y, SHOP_DOOR_COST);
             pay_for_damage("break", FALSE);
         }
         if (in_town(x, y))
@@ -1358,7 +1367,8 @@ schar loc;
         } else if (In_endgame(&u.uz) || Is_botlevel(&u.uz)) {
             cc->y = cc->x = 0;
             break;
-        } /* else fall to the next cases */
+        }
+        /*FALLTHRU*/
     case MIGR_STAIRS_UP:
     case MIGR_LADDER_UP:
         cc->x = u.uz.dnum;

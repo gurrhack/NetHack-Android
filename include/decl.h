@@ -1,5 +1,6 @@
-/* NetHack 3.6  decl.h  $NHDT-Date: 1432512782 2015/05/25 00:13:02 $  $NHDT-Branch: master $:$NHDT-Revision: 1.76 $ */
+/* NetHack 3.6  decl.h  $NHDT-Date: 1496531104 2017/06/03 23:05:04 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.82 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2007. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef DECL_H
@@ -185,15 +186,6 @@ E NEARDATA struct kinfo {
 } killer;
 
 E long done_money;
-#ifdef DUMP_LOG
-E char dump_fn[];		/* dumpfile name (dump patch) */
-E int dump_format;		/* dumpfile format */
-#define DUMP_FORMAT_HTML 1
-#define DUMP_FORMAT_TEXT 2
-#define DUMP_FORMAT_BOTH 3
-#endif
-E const char *configfile;
-E char lastconfigfile[BUFSZ]; /* used for messaging */
 E NEARDATA char plname[PL_NSIZ];
 E NEARDATA char dogname[];
 E NEARDATA char catname[];
@@ -250,7 +242,8 @@ E NEARDATA struct obj *migrating_objs;
 E NEARDATA struct obj *billobjs;
 E NEARDATA struct obj *current_wand, *thrownobj, *kickedobj;
 
-E NEARDATA struct obj zeroobj; /* init'd and defined in decl.c */
+E NEARDATA struct obj zeroobj; /* for init; &zeroobj used as special value */
+
 E NEARDATA anything zeroany;   /* init'd and defined in decl.c */
 
 #include "you.h"
@@ -263,7 +256,8 @@ E NEARDATA struct u_realtime urealtime;
 #include "pm.h"
 #endif
 
-E NEARDATA struct monst youmonst; /* init'd and defined in decl.c */
+E NEARDATA struct monst zeromonst; /* for init of new or temp monsters */
+E NEARDATA struct monst youmonst; /* monster details when hero is poly'd */
 E NEARDATA struct monst *mydogs, *migrating_mons;
 
 E NEARDATA struct mvitals {
@@ -324,6 +318,7 @@ E const char *materialnm[];
 #define SUPPRESS_HALLUCINATION 0x04
 #define SUPPRESS_SADDLE 0x08
 #define EXACT_NAME 0x0F
+#define SUPPRESS_NAME 0x10
 
 /* Vision */
 E NEARDATA boolean vision_full_recalc; /* TRUE if need vision recalc */
@@ -331,9 +326,7 @@ E NEARDATA char **viz_array;           /* could see/in sight row pointers */
 
 /* Window system stuff */
 E NEARDATA winid WIN_MESSAGE;
-#ifndef STATUS_VIA_WINDOWPORT
 E NEARDATA winid WIN_STATUS;
-#endif
 E NEARDATA winid WIN_MAP, WIN_INVEN;
 
 /* pline (et al) for a single string argument (suppress compiler warning) */
@@ -395,6 +388,14 @@ E char *fqn_prefix_names[PREFIX_COUNT];
 
 E NEARDATA struct savefile_info sfcap, sfrestinfo, sfsaveinfo;
 
+struct opvar {
+    xchar spovartyp; /* one of SPOVAR_foo */
+    union {
+        char *str;
+        long l;
+    } vardata;
+};
+
 struct autopickup_exception {
     struct nhregex *regex;
     char *pattern;
@@ -413,12 +414,23 @@ struct plinemsg_type {
 #define MSGTYP_NOREP    1
 #define MSGTYP_NOSHOW   2
 #define MSGTYP_STOP     3
+/* bitmask for callers of hide_unhide_msgtypes() */
+#define MSGTYP_MASK_REP_SHOW ((1 << MSGTYP_NOREP) | (1 << MSGTYP_NOSHOW))
 
 E struct plinemsg_type *plinemsg_types;
 
 #ifdef PANICTRACE
-E char *ARGV0;
+E const char *ARGV0;
 #endif
+
+enum earlyarg {ARG_DEBUG, ARG_VERSION};
+
+struct early_opt {
+    enum earlyarg e;
+    const char *name;
+    int minlength;
+    boolean valallowed;
+};
 
 #undef E
 

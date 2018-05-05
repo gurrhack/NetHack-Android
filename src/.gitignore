@@ -1,0 +1,9 @@
+config.h-t
+vis_tab.c
+monstr.c
+hack.h-t
+tile.c
+Sysunix
+nethack
+*.o
+tiles.bmp

@@ -1,5 +1,6 @@
-/* NetHack 3.6	unixconf.h	$NHDT-Date: 1447755973 2015/11/17 10:26:13 $  $NHDT-Branch: master $:$NHDT-Revision: 1.24 $ */
+/* NetHack 3.6	unixconf.h	$NHDT-Date: 1520099325 2018/03/03 17:48:45 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.30 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Pasi Kallinen, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifdef UNIX
@@ -36,7 +37,9 @@
 /* #define NETWORK */       /* if running on a networked system */
                        /* e.g. Suns sharing a playground through NFS */
 /* #define SUNOS4 */   /* SunOS 4.x */
+#ifdef __linux__
 #define LINUX    /* Another Unix clone */
+#endif
 /* #define CYGWIN32 */ /* Unix on Win32 -- use with case sensitive defines */
 /* #define GENIX */    /* Yet Another Unix Clone */
 /* #define HISX */     /* Bull Unix for XPS Machines */
@@ -130,6 +133,11 @@
  */
 /* #define TIMED_DELAY */ /* usleep() */
 #endif
+#if defined(MACOSX) && !defined(TIMED_DELAY)
+#define TIMED_DELAY
+#endif
+
+/* #define AVOID_WIN_IOCTL */ /* ensure USE_WIN_IOCTL remains undefined */
 
 /*
  * If you define MAIL, then the player will be notified of new mail
@@ -188,8 +196,29 @@
 #endif
 #endif
 
+/* If SIMPLE_MAIL is defined, the mail spool file format is
+   "sender:message", one mail per line, and mails are
+   read within game, from demon-delivered mail scrolls.
+   The mail spool file will be deleted once the player
+   has read the message. */
+/* #define SIMPLE_MAIL */
+
+#ifndef MAILCKFREQ
+/* How often mail spool file is checked for new messages, in turns */
 #define MAILCKFREQ 50
+#endif
+
 #endif /* MAIL */
+
+/* If SERVER_ADMIN_MSG is defined and the file exists, players get
+   a message from the user defined in the file.  The file format
+   is "sender:message" all in one line. */
+/* #define SERVER_ADMIN_MSG "adminmsg" */
+#ifndef SERVER_ADMIN_MSG_CKFREQ
+/* How often admin message file is checked for new messages, in turns */
+#define SERVER_ADMIN_MSG_CKFREQ 25
+#endif
+
 
 /*
  * Some terminals or terminal emulators send two character sequence "ESC c"
@@ -207,7 +236,9 @@
 /* #define COMPRESS_OPTIONS "-q" */
 #endif
 
+#ifndef FCMASK
 #define FCMASK 0660 /* file creation mask */
+#endif
 
 /* fcntl(2) is a POSIX-portable call for manipulating file descriptors.
  * Comment out the USE_FCNTL if for some reason you have a strange
@@ -360,6 +391,10 @@
 #endif /* BSD || SVR4 */
 #endif /* LINUX */
 #endif /* GNOME_GRAPHICS */
+
+#ifdef __APPLE__
+# define RUNTIME_PASTEBUF_SUPPORT
+#endif
 
 #endif /* UNIXCONF_H */
 #endif /* UNIX */

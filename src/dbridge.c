@@ -1,4 +1,4 @@
-/* NetHack 3.6	dbridge.c	$NHDT-Date: 1449269914 2015/12/04 22:58:34 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.35 $ */
+/* NetHack 3.6	dbridge.c	$NHDT-Date: 1503355815 2017/08/21 22:50:15 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.39 $ */
 /*      Copyright (c) 1989 by Jean-Christophe Collet              */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -115,16 +115,12 @@ int mask;
     switch (mask & DB_UNDER) {
     case DB_ICE:
         return ICE;
-        break;
     case DB_LAVA:
         return LAVAPOOL;
-        break;
     case DB_MOAT:
         return MOAT;
-        break;
     default:
         return STONE;
-        break;
     }
 }
 
@@ -234,7 +230,6 @@ int *x, *y;
  *     dir is the direction.
  *     flag must be put to TRUE if we want the drawbridge to be opened.
  */
-
 boolean
 create_drawbridge(x, y, dir, flag)
 int x, y, dir;
@@ -379,7 +374,6 @@ struct entity *etmp;
  * Generates capitalized entity name, makes 2nd -> 3rd person conversion on
  * verb, where necessary.
  */
-
 STATIC_OVL const char *
 E_phrase(etmp, verb)
 struct entity *etmp;
@@ -401,7 +395,6 @@ const char *verb;
 /*
  * Simple-minded "can it be here?" routine
  */
-
 STATIC_OVL boolean
 e_survives_at(etmp, x, y)
 struct entity *etmp;
@@ -427,9 +420,9 @@ int x, y;
 }
 
 STATIC_OVL void
-e_died(etmp, dest, how)
+e_died(etmp, xkill_flags, how)
 struct entity *etmp;
-int dest, how;
+int xkill_flags, how;
 {
     if (is_u(etmp)) {
         if (how == DROWNING) {
@@ -466,13 +459,14 @@ int dest, how;
 
         killer.name[0] = 0;
 /* fake "digested to death" damage-type suppresses corpse */
-#define mk_message(dest) ((dest & 1) ? "" : (char *) 0)
-#define mk_corpse(dest) ((dest & 2) ? AD_DGST : AD_PHYS)
+#define mk_message(dest) (((dest & XKILL_NOMSG) != 0) ? (char *) 0 : "")
+#define mk_corpse(dest) (((dest & XKILL_NOCORPSE) != 0) ? AD_DGST : AD_PHYS)
         /* if monsters are moving, one of them caused the destruction */
         if (context.mon_moving)
-            monkilled(etmp->emon, mk_message(dest), mk_corpse(dest));
+            monkilled(etmp->emon,
+                      mk_message(xkill_flags), mk_corpse(xkill_flags));
         else /* you caused it */
-            xkilled(etmp->emon, dest);
+            xkilled(etmp->emon, xkill_flags);
         etmp->edata = (struct permonst *) 0;
 
         /* dead long worm handling */
@@ -489,7 +483,6 @@ int dest, how;
 /*
  * These are never directly affected by a bridge or portcullis.
  */
-
 STATIC_OVL boolean
 automiss(etmp)
 struct entity *etmp;
@@ -501,7 +494,6 @@ struct entity *etmp;
 /*
  * Does falling drawbridge or portcullis miss etmp?
  */
-
 STATIC_OVL boolean
 e_missed(etmp, chunks)
 struct entity *etmp;
@@ -539,7 +531,6 @@ boolean chunks;
 /*
  * Can etmp jump from death?
  */
-
 STATIC_OVL boolean
 e_jumps(etmp)
 struct entity *etmp;
@@ -607,9 +598,16 @@ struct entity *etmp;
         }
     } else {
         if (crm->typ == DRAWBRIDGE_DOWN) {
+            if (is_u(etmp)) {
+                killer.format = NO_KILLER_PREFIX;
+                Strcpy(killer.name,
+                       "crushed to death underneath a drawbridge");
+            }
             pline("%s crushed underneath the drawbridge.",
                   E_phrase(etmp, "are"));             /* no jump */
-            e_died(etmp, e_inview ? 3 : 2, CRUSHING); /* no corpse */
+            e_died(etmp,
+                   XKILL_NOCORPSE | (e_inview ? XKILL_GIVEMSG : XKILL_NOMSG),
+                   CRUSHING); /* no corpse */
             return;       /* Note: Beyond this point, we know we're  */
         }                 /* not at an opened drawbridge, since all  */
         must_jump = TRUE; /* *missable* creatures survive on the     */
@@ -625,7 +623,10 @@ struct entity *etmp;
                           E_phrase(etmp, "are"));
                 else if (!Deaf)
                     You_hear("a crushing sound.");
-                e_died(etmp, e_inview ? 3 : 2, CRUSHING);
+                e_died(etmp,
+                       XKILL_NOCORPSE | (e_inview ? XKILL_GIVEMSG
+                                                  : XKILL_NOMSG),
+                       CRUSHING);
                 /* no corpse */
                 return;
             }
@@ -637,11 +638,10 @@ struct entity *etmp;
 
     /*
      * Here's where we try to do relocation.  Assumes that etmp is not
-     * arriving
-     * at the portcullis square while the drawbridge is falling, since this
-     * square
-     * would be inaccessible (i.e. etmp started on drawbridge square) or
-     * unnecessary (i.e. etmp started here) in such a situation.
+     * arriving at the portcullis square while the drawbridge is
+     * falling, since this square would be inaccessible (i.e. etmp
+     * started on drawbridge square) or unnecessary (i.e. etmp started
+     * here) in such a situation.
      */
     debugpline0("Doing relocation.");
     newx = oldx;
@@ -652,12 +652,10 @@ struct entity *etmp;
     debugpline0("Checking new square for occupancy.");
     if (relocates && (e_at(newx, newy))) {
         /*
-         * Standoff problem:  one or both entities must die, and/or both
-         * switch
-         * places.  Avoid infinite recursion by checking first whether the
-         * other
-         * entity is staying put.  Clean up if we happen to move/die in
-         * recursion.
+         * Standoff problem: one or both entities must die, and/or
+         * both switch places.  Avoid infinite recursion by checking
+         * first whether the other entity is staying put.  Clean up if
+         * we happen to move/die in recursion.
          */
         struct entity *other;
 
@@ -721,7 +719,7 @@ struct entity *etmp;
         if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
             killer.format = KILLED_BY_AN;
             Strcpy(killer.name, "closing drawbridge");
-            e_died(etmp, 0, CRUSHING); /* no message */
+            e_died(etmp, XKILL_NOMSG, CRUSHING);
             return;
         }
         debugpline1("%s in here", E_phrase(etmp, "survive"));
@@ -748,23 +746,25 @@ struct entity *etmp;
                           E_phrase(etmp, "drink"), lava ? "lava" : "moat");
                 else
                     pline("%s into the %s.", E_phrase(etmp, "fall"),
-                          lava ? "lava" : "moat");
+                          lava ? hliquid("lava") : "moat");
             }
         killer.format = NO_KILLER_PREFIX;
         Strcpy(killer.name, "fell from a drawbridge");
-        e_died(etmp, e_inview ? 3 : 2, /* CRUSHING is arbitrary */
-               (is_pool(etmp->ex, etmp->ey))
-                   ? DROWNING
-                   : (is_lava(etmp->ex, etmp->ey)) ? BURNING
-                                                   : CRUSHING); /*no corpse*/
+        e_died(etmp, /* CRUSHING is arbitrary */
+               XKILL_NOCORPSE | (e_inview ? XKILL_GIVEMSG : XKILL_NOMSG),
+               is_pool(etmp->ex, etmp->ey) ? DROWNING
+                 : is_lava(etmp->ex, etmp->ey) ? BURNING
+                   : CRUSHING); /*no corpse*/
         return;
     }
 }
 
+/* clear stale reason for death before returning */
+#define nokiller() (killer.name[0] = '\0', killer.format = 0)
+
 /*
  * Close the drawbridge located at x,y
  */
-
 void
 close_drawbridge(x, y)
 int x, y;
@@ -821,12 +821,12 @@ int x, y;
     newsym(x, y);
     newsym(x2, y2);
     block_point(x2, y2); /* vision */
+    nokiller();
 }
 
 /*
  * Open the drawbridge located at x,y
  */
-
 void
 open_drawbridge(x, y)
 int x, y;
@@ -868,12 +868,12 @@ int x, y;
     unblock_point(x2, y2); /* vision */
     if (Is_stronghold(&u.uz))
         u.uevent.uopened_dbridge = TRUE;
+    nokiller();
 }
 
 /*
  * Let's destroy the drawbridge located at x,y
  */
-
 void
 destroy_drawbridge(x, y)
 int x, y;
@@ -896,16 +896,17 @@ int x, y;
         || (lev1->drawbridgemask & DB_UNDER) == DB_LAVA) {
         struct obj *otmp2;
         boolean lava = (lev1->drawbridgemask & DB_UNDER) == DB_LAVA;
+
         if (lev1->typ == DRAWBRIDGE_UP) {
             if (cansee(x2, y2))
                 pline_The("portcullis of the drawbridge falls into the %s!",
-                          lava ? "lava" : "moat");
+                          lava ? hliquid("lava") : "moat");
             else if (!Deaf)
                 You_hear("a loud *SPLASH*!");
         } else {
             if (cansee(x, y))
                 pline_The("drawbridge collapses into the %s!",
-                          lava ? "lava" : "moat");
+                          lava ? hliquid("lava") : "moat");
             else if (!Deaf)
                 You_hear("a loud *SPLASH*!");
         }
@@ -958,7 +959,9 @@ int x, y;
                       E_phrase(etmp2, "are"));
             killer.format = KILLED_BY_AN;
             Strcpy(killer.name, "exploding drawbridge");
-            e_died(etmp2, e_inview ? 3 : 2, CRUSHING); /*no corpse*/
+            e_died(etmp2,
+                   XKILL_NOCORPSE | (e_inview ? XKILL_GIVEMSG : XKILL_NOMSG),
+                   CRUSHING); /*no corpse*/
         } /* nothing which is vulnerable can survive this */
     }
     set_entity(x, y, etmp1);
@@ -988,11 +991,14 @@ int x, y;
             }
             killer.format = KILLED_BY_AN;
             Strcpy(killer.name, "collapsing drawbridge");
-            e_died(etmp1, e_inview ? 3 : 2, CRUSHING); /*no corpse*/
+            e_died(etmp1,
+                   XKILL_NOCORPSE | (e_inview ? XKILL_GIVEMSG : XKILL_NOMSG),
+                   CRUSHING); /*no corpse*/
             if (levl[etmp1->ex][etmp1->ey].typ == MOAT)
                 do_entity(etmp1);
         }
     }
+    nokiller();
 }
 
 /*dbridge.c*/

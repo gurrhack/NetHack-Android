@@ -1,5 +1,6 @@
-/* NetHack 3.6	save.c	$NHDT-Date: 1448241784 2015/11/23 01:23:04 $  $NHDT-Branch: master $:$NHDT-Revision: 1.95 $ */
+/* NetHack 3.6	save.c	$NHDT-Date: 1489192905 2017/03/11 00:41:45 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.101 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2009. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -64,18 +65,10 @@ static struct save_procs {
 #endif
 };
 
-static long nulls[sizeof(struct trap) + sizeof(struct fruit)];
-
 #if defined(UNIX) || defined(VMS) || defined(__EMX__) || defined(WIN32)
 #define HUP if (!program_state.done_hup)
 #else
 #define HUP
-#endif
-
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-extern const struct percent_color_option *hp_colors;
-extern const struct percent_color_option *pw_colors;
-extern const struct text_color_option *text_colors;
 #endif
 
 /* need to preserve these during save to avoid accessing freed memory */
@@ -100,7 +93,7 @@ dosave()
             /* make sure they see the Saving message */
             display_nhwindow(WIN_MESSAGE, TRUE);
             exit_nhwindows("Be seeing you...");
-            terminate(EXIT_SUCCESS);
+            nh_terminate(EXIT_SUCCESS);
         } else
             (void) doredraw();
     }
@@ -121,6 +114,8 @@ dosave0()
        a few of things before saving so that they won't be restored in
        an improper state; these will be no-ops for normal save sequence */
     u.uinvulnerable = 0;
+    if (iflags.save_uswallow)
+        u.uswallow = 1, iflags.save_uswallow = 0;
     if (iflags.save_uinwater)
         u.uinwater = 1, iflags.save_uinwater = 0;
     if (iflags.save_uburied)
@@ -299,12 +294,15 @@ register int fd, mode;
 #ifdef SYSFLAGS
     bwrite(fd, (genericptr_t) &sysflags, sizeof(struct sysflag));
 #endif
-    urealtime.realtime += (long) (getnow() - urealtime.restored);
+    urealtime.finish_time = getnow();
+    urealtime.realtime += (long) (urealtime.finish_time
+                                  - urealtime.start_timing);
     bwrite(fd, (genericptr_t) &u, sizeof(struct you));
     bwrite(fd, yyyymmddhhmmss(ubirthday), 14);
-    bwrite(fd, (genericptr_t) &urealtime.realtime,
-           sizeof(urealtime.realtime));
-    bwrite(fd, yyyymmddhhmmss(urealtime.restored), 14);
+    bwrite(fd, (genericptr_t) &urealtime.realtime, sizeof urealtime.realtime);
+    bwrite(fd, yyyymmddhhmmss(urealtime.start_timing), 14);  /** Why? **/
+    /* this is the value to use for the next update of urealtime.realtime */
+    urealtime.start_timing = urealtime.finish_time;
     save_killers(fd, mode);
 
     /* must come before migrating_objs and migrating_mons are freed */
@@ -730,7 +728,7 @@ register unsigned num;
     if (failed) {
 #if defined(UNIX) || defined(VMS) || defined(__EMX__)
         if (program_state.done_hup)
-            terminate(EXIT_FAILURE);
+            nh_terminate(EXIT_FAILURE);
         else
 #endif
             panic("cannot write %u bytes to file #%d", num, fd);
@@ -836,7 +834,7 @@ register int fd;
         if (write(fd, outbuf, outbufp) != outbufp) {
 #if defined(UNIX) || defined(VMS) || defined(__EMX__)
             if (program_state.done_hup)
-                terminate(EXIT_FAILURE);
+                nh_terminate(EXIT_FAILURE);
             else
 #endif
                 zerocomp_bclose(fd); /* panic (outbufp != 0) */
@@ -862,7 +860,7 @@ register unsigned num;
         if ((unsigned) write(fd, loc, num) != num) {
 #if defined(UNIX) || defined(VMS) || defined(__EMX__)
             if (program_state.done_hup)
-                terminate(EXIT_FAILURE);
+                nh_terminate(EXIT_FAILURE);
             else
 #endif
                 panic("cannot write %u bytes to file #%d", num, fd);
@@ -1177,23 +1175,26 @@ register struct monst *mtmp;
         bwrite(fd, (genericptr_t) &minusone, sizeof(int));
 }
 
+/* save traps; ftrap is the only trap chain so the 2nd arg is superfluous */
 STATIC_OVL void
 savetrapchn(fd, trap, mode)
-register int fd, mode;
+int fd;
 register struct trap *trap;
+int mode;
 {
+    static struct trap zerotrap;
     register struct trap *trap2;
 
     while (trap) {
         trap2 = trap->ntrap;
         if (perform_bwrite(mode))
-            bwrite(fd, (genericptr_t) trap, sizeof(struct trap));
+            bwrite(fd, (genericptr_t) trap, sizeof (struct trap));
         if (release_data(mode))
             dealloc_trap(trap);
         trap = trap2;
     }
     if (perform_bwrite(mode))
-        bwrite(fd, (genericptr_t) nulls, sizeof(struct trap));
+        bwrite(fd, (genericptr_t) &zerotrap, sizeof zerotrap);
 }
 
 /* save all the fruit names and ID's; this is used only in saving whole games
@@ -1203,21 +1204,22 @@ register struct trap *trap;
  */
 void
 savefruitchn(fd, mode)
-register int fd, mode;
+int fd, mode;
 {
+    static struct fruit zerofruit;
     register struct fruit *f2, *f1;
 
     f1 = ffruit;
     while (f1) {
         f2 = f1->nextf;
         if (f1->fid >= 0 && perform_bwrite(mode))
-            bwrite(fd, (genericptr_t) f1, sizeof(struct fruit));
+            bwrite(fd, (genericptr_t) f1, sizeof (struct fruit));
         if (release_data(mode))
             dealloc_fruit(f1);
         f1 = f2;
     }
     if (perform_bwrite(mode))
-        bwrite(fd, (genericptr_t) nulls, sizeof(struct fruit));
+        bwrite(fd, (genericptr_t) &zerofruit, sizeof zerofruit);
     if (release_data(mode))
         ffruit = 0;
 }
@@ -1227,6 +1229,7 @@ store_plname_in_file(fd)
 int fd;
 {
     int plsiztmp = PL_NSIZ;
+
     bufoff(fd);
     /* bwrite() before bufon() uses plain write() */
     bwrite(fd, (genericptr_t) &plsiztmp, sizeof(plsiztmp));
@@ -1322,36 +1325,6 @@ const char *suitename;
 #endif
 }
 
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-
-void
-free_percent_color_options(list_head)
-const struct percent_color_option *list_head;
-{
-	if (list_head == NULL) return;
-	free_percent_color_options(list_head->next);
-	free((struct percent_color_option *)list_head);
-}
-
-void
-free_text_color_options(list_head)
-const struct text_color_option *list_head;
-{
-	if (list_head == NULL) return;
-	free_text_color_options(list_head->next);
-	free((char*)list_head->text);
-	free((struct percent_color_option *)list_head);
-}
-
-void
-free_status_colors()
-{
-	free_percent_color_options(hp_colors); hp_colors = NULL;
-	free_percent_color_options(pw_colors); pw_colors = NULL;
-	free_text_color_options(text_colors); text_colors = NULL;
-}
-#endif
-
 /* also called by prscore(); this probably belongs in dungeon.c... */
 void
 free_dungeons()
@@ -1366,8 +1339,8 @@ free_dungeons()
 void
 freedynamicdata()
 {
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-    free_status_colors();
+#if defined(UNIX) && defined(MAIL)
+    free_maildata();
 #endif
     unload_qtlist();
     free_menu_coloring();
@@ -1442,8 +1415,11 @@ freedynamicdata()
     /* free_pickinv_cache();  --  now done from really_done()... */
     free_symsets();
 #endif /* FREE_ALL_MEMORY */
-#ifdef STATUS_VIA_WINDOWPORT
+#ifdef STATUS_HILITES
     status_finish();
+#endif
+#ifdef DUMPLOG
+    dumplogfreemessages();
 #endif
 
     /* last, because it frees data that might be used by panic() to provide

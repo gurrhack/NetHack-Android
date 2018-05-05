@@ -1,5 +1,6 @@
-/* NetHack 3.6	global.h	$NHDT-Date: 1449116298 2015/12/03 04:18:18 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.46 $ */
+/* NetHack 3.6	global.h	$NHDT-Date: 1524690661 2018/04/25 21:11:01 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.51 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef GLOBAL_H
@@ -7,9 +8,11 @@
 
 #include <stdio.h>
 
-/* #define BETA */ /* development or beta testing [MRS] */
+/* #define BETA  */ /* development or beta testing [MRS] */
 
-/* #define DEBUG */
+#ifndef DEBUG
+#define DEBUG 
+#endif
 
 /*
  * Files expected to exist in the playground directory.
@@ -18,6 +21,7 @@
 #define RECORD "record"         /* file containing list of topscorers */
 #define HELP "help"             /* file containing command descriptions */
 #define SHELP "hh"              /* abbreviated form of the same */
+#define KEYHELP "keyhelp"       /* explanatory text for 'whatdoes' command */
 #define DEBUGHELP "wizhelp"     /* file containing debug mode cmds */
 #define RUMORFILE "rumors"      /* file with fortune cookies */
 #define ORACLEFILE "oracles"    /* file with oracular information */
@@ -322,9 +326,7 @@ struct savefile_info {
 #define PL_NSIZ 32 /* name of player, ghost, shopkeeper */
 #define PL_CSIZ 32 /* sizeof pl_character */
 #define PL_FSIZ 32 /* fruit name */
-#define PL_PSIZ                              \
-    63 /* player-given names for pets, other \
-        * monsters, objects */
+#define PL_PSIZ 63 /* player-given names for pets, other monsters, objects */
 
 #define MAXDUNGEON 16 /* current maximum number of dungeons */
 #define MAXLEVEL 32   /* max number of levels in one dungeon */

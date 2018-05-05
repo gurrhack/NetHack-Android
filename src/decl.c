@@ -1,5 +1,6 @@
 /* NetHack 3.6	decl.c	$NHDT-Date: 1446975463 2015/11/08 09:37:43 $  $NHDT-Branch: master $:$NHDT-Revision: 1.62 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Michael Allison, 2009. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -194,8 +195,9 @@ NEARDATA struct obj *migrating_objs = (struct obj *) 0;
 /* objects not yet paid for */
 NEARDATA struct obj *billobjs = (struct obj *) 0;
 
-/* used to zero all elements of a struct obj */
+/* used to zero all elements of a struct obj and a struct monst */
 NEARDATA struct obj zeroobj = DUMMY;
+NEARDATA struct monst zeromonst = DUMMY;
 /* used to zero out union any; initializer deliberately omitted */
 NEARDATA anything zeroany;
 
@@ -210,22 +212,6 @@ NEARDATA struct monst *mydogs = (struct monst *) 0;
 NEARDATA struct monst *migrating_mons = (struct monst *) 0;
 
 NEARDATA struct mvitals mvitals[NUMMONS];
-
-#ifdef DUMP_LOG
-#ifdef DUMP_FN
-char dump_fn[] = DUMP_FN;
-#else
-char dump_fn[PL_PSIZ] = DUMMY;
-#endif
-int dump_format =
-	#if defined(DUMP_HTML_LOG) && defined(DUMP_TEXT_LOG)
-		DUMP_FORMAT_BOTH;
-	#elif defined(DUMP_HTML_LOG)
-		DUMP_FORMAT_HTML;
-	#else
-		DUMP_FORMAT_TEXT;
-	#endif
-#endif /* DUMP_LOG */
 
 NEARDATA struct c_color_names c_color_names = {
     "black",  "amber", "golden", "light blue", "red",   "green",
@@ -279,9 +265,7 @@ NEARDATA char **viz_array = 0; /* used in cansee() and couldsee() macros */
 
 /* Global windowing data, defined here for multi-window-system support */
 NEARDATA winid WIN_MESSAGE = WIN_ERR;
-#ifndef STATUS_VIA_WINDOWPORT
 NEARDATA winid WIN_STATUS = WIN_ERR;
-#endif
 NEARDATA winid WIN_MAP = WIN_ERR, WIN_INVEN = WIN_ERR;
 char toplines[TBUFSZ];
 /* Windowing stuff that's really tty oriented, but present for all ports */
@@ -348,7 +332,7 @@ NEARDATA struct savefile_info sfrestinfo, sfsaveinfo = {
 struct plinemsg_type *plinemsg_types = (struct plinemsg_type *) 0;
 
 #ifdef PANICTRACE
-char *ARGV0;
+const char *ARGV0;
 #endif
 
 /* support for lint.h */

@@ -1,4 +1,4 @@
-/* NetHack 3.6  botl.h  $NHDT-Date: 1433105378 2015/05/31 20:49:38 $  $NHDT-Branch: status_hilite $:$NHDT-Revision: 1.14 $ */
+/* NetHack 3.6  botl.h  $NHDT-Date: 1452660165 2016/01/13 04:42:45 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.15 $ */
 /* Copyright (c) Michael Allison, 2003                            */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,71 +9,61 @@
  * than COLNO
  *
  * longest practical second status line at the moment is
- *	Astral Plane $:12345 HP:700(700) Pw:111(111) AC:-127 Xp:30/123456789
- *	T:123456 Satiated Conf FoodPois Ill Blind Stun Hallu Overloaded
- * -- or somewhat over 130 characters
+Astral Plane \GXXXXNNNN:123456 HP:1234(1234) Pw:1234(1234) AC:-127
+ Xp:30/123456789 T:123456  Stone Slime Strngl FoodPois TermIll
+ Satiated Overloaded Blind Deaf Stun Conf Hallu Lev Ride
+ * -- or about 185 characters.  '$' gets encoded even when it
+ * could be used as-is.  The first five status conditions are fatal
+ * so it's rare to have more than one at a time.
+ *
+ * When the full line is wider than the map, the basic status line
+ * formatting will move less important fields to the end, so if/when
+ * truncation is necessary, it will chop off the least significant
+ * information.
  */
-#if COLNO <= 140
-#define MAXCO 160
+#if COLNO <= 160
+#define MAXCO 200
 #else
-#define MAXCO (COLNO + 20)
+#define MAXCO (COLNO + 40)
 #endif
 
-#ifdef STATUS_VIA_WINDOWPORT
-#if 0
-/* clang-format off */
-#define BL_FLUSH        -1
-#define BL_TITLE        0
-#define BL_STR          1
-#define BL_DX           2
-#define BL_CO           3
-#define BL_IN           4
-#define BL_WI           5
-#define BL_CH           6
-#define BL_ALIGN        7
-#define BL_SCORE        8
-#define BL_CAP          9
-#define BL_GOLD         10
-#define BL_ENE          11
-#define BL_ENEMAX       12
-#define BL_XP           13
-#define BL_AC           14
-#define BL_HD           15
-#define BL_TIME         16
-#define BL_HUNGER       17
-#define BL_HP           18
-#define BL_HPMAX        19
-#define BL_LEVELDESC    20
-#define BL_EXP          21
-#define BL_CONDITION    22
-/* clang-format on */
+enum statusfields {
+    BL_CHARACTERISTICS = -2, /* alias for BL_STR..BL_CH */
+    BL_FLUSH = -1, BL_TITLE = 0,
+    BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH,  /* 1..6 */
+    BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX, /* 7..12 */
+    BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX, BL_LEVELDESC, /* 13..20 */
+    BL_EXP, BL_CONDITION
+};
 
-#else
-enum statusfields { BL_FLUSH = -1, BL_TITLE = 0, BL_STR, BL_DX, BL_CO, BL_IN,
-BL_WI, BL_CH, BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX,
-BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX, BL_LEVELDESC,
-BL_EXP, BL_CONDITION };
-#define MAXBLSTATS      BL_CONDITION+1
+enum relationships { LT_VALUE = -1, EQ_VALUE, GT_VALUE, TXT_VALUE };
+
+#define MAXBLSTATS      (BL_CONDITION + 1)
 
 #define BEFORE  0
 #define NOW     1
-#endif
 
 /* Boolean condition bits for the condition mask */
 
 /* clang-format off */
-#define BL_MASK_BLIND           0x00000001L
-#define BL_MASK_CONF            0x00000002L
-#define BL_MASK_FOODPOIS        0x00000004L
-#define BL_MASK_ILL             0x00000008L
-#define BL_MASK_HALLU           0x00000010L
-#define BL_MASK_STUNNED         0x00000020L
-#define BL_MASK_SLIMED          0x00000040L
+#define BL_MASK_STONE           0x00000001L
+#define BL_MASK_SLIME           0x00000002L
+#define BL_MASK_STRNGL          0x00000004L
+#define BL_MASK_FOODPOIS        0x00000008L
+#define BL_MASK_TERMILL         0x00000010L
+#define BL_MASK_BLIND           0x00000020L
+#define BL_MASK_DEAF            0x00000040L
+#define BL_MASK_STUN            0x00000080L
+#define BL_MASK_CONF            0x00000100L
+#define BL_MASK_HALLU           0x00000200L
+#define BL_MASK_LEV             0x00000400L
+#define BL_MASK_FLY             0x00000800L
+#define BL_MASK_RIDE            0x00001000L
 /* clang-format on */
 
 #define REASSESS_ONLY TRUE
 
-#ifdef STATUS_HILITES
+/* #ifdef STATUS_HILITES */
 /* hilite status field behavior - coloridx values */
 #define BL_HILITE_NONE -1    /* no hilite of this field */
 #define BL_HILITE_INVERSE -2 /* inverse hilite */
@@ -84,9 +74,26 @@ BL_EXP, BL_CONDITION };
 #define BL_TH_VAL_ABSOLUTE 101   /* threshold is particular value */
 #define BL_TH_UPDOWN 102         /* threshold is up or down change */
 #define BL_TH_CONDITION 103      /* threshold is bitmask of conditions */
-#endif
+#define BL_TH_TEXTMATCH 104      /* threshold text value to match against */
+#define BL_TH_ALWAYS_HILITE 105  /* highlight regardless of value */
+
+
+#define HL_ATTCLR_DIM     CLR_MAX + 0
+#define HL_ATTCLR_BLINK   CLR_MAX + 1
+#define HL_ATTCLR_ULINE   CLR_MAX + 2
+#define HL_ATTCLR_INVERSE CLR_MAX + 3
+#define HL_ATTCLR_BOLD    CLR_MAX + 4
+#define BL_ATTCLR_MAX     CLR_MAX + 5
+
+enum hlattribs { HL_UNDEF   = 0x00,
+                 HL_NONE    = 0x01,
+                 HL_BOLD    = 0x02,
+                 HL_INVERSE = 0x04,
+                 HL_ULINE   = 0x08,
+                 HL_BLINK   = 0x10,
+                 HL_DIM     = 0x20 };
+/* #endif STATUS_HILITES */
 
 extern const char *status_fieldnames[]; /* in botl.c */
-#endif
 
 #endif /* BOTL_H */

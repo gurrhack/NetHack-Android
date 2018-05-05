@@ -1,4 +1,4 @@
-/* NetHack 3.6	wingem.c	$NHDT-Date: 1433806613 2015/06/08 23:36:53 $  $NHDT-Branch: master $:$NHDT-Revision: 1.25 $ */
+/* NetHack 3.6	wingem.c	$NHDT-Date: 1450453304 2015/12/18 15:41:44 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.26 $ */
 /* Copyright (c) Christian Bressler, 1999 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -70,13 +70,8 @@ struct window_procs Gem_procs = {
     /* other defs that really should go away (they're tty specific) */
     Gem_start_screen, Gem_end_screen, Gem_outrip, Gem_preference_update,
     genl_getmsghistory, genl_putmsghistory
-#ifdef STATUS_VIA_WINDOWPORT
                             genl_status_init,
     genl_status_finish, genl_status_enablefield, genl_status_update,
-#ifdef STATUS_HILITES
-    genl_status_threshold,
-#endif
-#endif
     genl_can_suspend_no,
 };
 
@@ -129,7 +124,7 @@ const char *mesg;
 {
     clearlocks();
     Gem_exit_nhwindows(mesg);
-    terminate(EXIT_SUCCESS);
+    nh_terminate(EXIT_SUCCESS);
     /*NOTREACHED*/
 }
 
@@ -1083,7 +1078,7 @@ time_t when;
     /* Put $ on stone */
     Sprintf(rip_line[GOLD_LINE], "%ld Au", done_money);
     /* Put together death description */
-    formatkiller(buf, sizeof buf, how);
+    formatkiller(buf, sizeof buf, how, FALSE);
 
     /* Put death type on stone */
     for (line = DEATH_LINE, dpx = buf; line < YEAR_LINE; line++) {

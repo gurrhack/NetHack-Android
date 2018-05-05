@@ -1,5 +1,6 @@
-/* NetHack 3.6	u_init.c	$NHDT-Date: 1446861772 2015/11/07 02:02:52 $  $NHDT-Branch: master $:$NHDT-Revision: 1.35 $ */
+/* NetHack 3.6	u_init.c	$NHDT-Date: 1503960969 2017/08/28 22:56:09 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.40 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2017. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -124,7 +125,7 @@ static struct trobj Rogue[] = {
     { DAGGER, 0, WEAPON_CLASS, 10, 0 }, /* quan is variable */
     { LEATHER_ARMOR, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
     { POT_SICKNESS, 0, POTION_CLASS, 1, 0 },
-    { LOCK_PICK, 9, TOOL_CLASS, 1, 0 },
+    { LOCK_PICK, 0, TOOL_CLASS, 1, 0 },
     { SACK, 0, TOOL_CLASS, 1, 0 },
     { 0, 0, 0, 0, 0 }
 };
@@ -270,7 +271,8 @@ static const struct def_skill Skill_B[] = {
     { P_SPEAR, P_SKILLED },
     { P_TRIDENT, P_SKILLED },
     { P_BOW, P_BASIC },
-    { P_ATTACK_SPELL, P_SKILLED },
+    { P_ATTACK_SPELL, P_BASIC },
+    { P_ESCAPE_SPELL, P_BASIC }, /* special spell is haste self */
     { P_RIDING, P_BASIC },
     { P_TWO_WEAPON_COMBAT, P_BASIC },
     { P_BARE_HANDED_COMBAT, P_MASTER },
@@ -458,7 +460,8 @@ static const struct def_skill Skill_S[] = {
     { P_LANCE, P_SKILLED },
     { P_BOW, P_EXPERT },
     { P_SHURIKEN, P_EXPERT },
-    { P_ATTACK_SPELL, P_SKILLED },
+    { P_ATTACK_SPELL, P_BASIC },
+    { P_DIVINATION_SPELL, P_BASIC }, /* special spell is clairvoyance */
     { P_CLERIC_SPELL, P_SKILLED },
     { P_RIDING, P_SKILLED },
     { P_TWO_WEAPON_COMBAT, P_EXPERT },
@@ -699,31 +702,25 @@ u_init()
         ini_inv(Knight);
         knows_class(WEAPON_CLASS);
         knows_class(ARMOR_CLASS);
-        /* give knights chess-like mobility
-         * -- idea from wooledge@skybridge.scl.cwru.edu */
+        /* give knights chess-like mobility--idea from wooledge@..cwru.edu */
         HJumping |= FROMOUTSIDE;
         skill_init(Skill_K);
         break;
-    case PM_MONK:
-        switch (rn2(90) / 30) {
-        case 0:
-            Monk[M_BOOK].trotyp = SPE_HEALING;
-            break;
-        case 1:
-            Monk[M_BOOK].trotyp = SPE_PROTECTION;
-            break;
-        case 2:
-            Monk[M_BOOK].trotyp = SPE_SLEEP;
-            break;
-        }
+    case PM_MONK: {
+        static short M_spell[] = { SPE_HEALING, SPE_PROTECTION, SPE_SLEEP };
+
+        Monk[M_BOOK].trotyp = M_spell[rn2(90) / 30]; /* [0..2] */
         ini_inv(Monk);
         if (!rn2(5))
             ini_inv(Magicmarker);
         else if (!rn2(10))
             ini_inv(Lamp);
         knows_class(ARMOR_CLASS);
+        /* sufficiently martial-arts oriented item to ignore language issue */
+        knows_object(SHURIKEN);
         skill_init(Skill_Mon);
         break;
+    }
     case PM_PRIEST:
         ini_inv(Priest);
         if (!rn2(10))
@@ -1017,6 +1014,8 @@ register struct trobj *trop;
                    || otyp == RIN_AGGRAVATE_MONSTER
                    || otyp == RIN_HUNGER
                    || otyp == WAN_NOTHING
+                   /* orcs start with poison resistance */
+                   || (otyp == RIN_POISON_RESISTANCE && Race_if(PM_ORC))
                    /* Monks don't use weapons */
                    || (otyp == SCR_ENCHANT_WEAPON && Role_if(PM_MONK))
                    /* wizard patch -- they already have one */

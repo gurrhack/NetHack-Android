@@ -171,7 +171,6 @@ int NetHackMain(int argc, char** argv)
 			iflags.news = FALSE; /* in case dorecover() fails */
 		}
 #endif
-		raw_print("restore save");
 		pline("Restoring save file...");
 		mark_synch(); /* flush output */
 		if(!dorecover(fd))

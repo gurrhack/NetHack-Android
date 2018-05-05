@@ -1,4 +1,4 @@
-/* NetHack 3.6	spell.c	$NHDT-Date: 1447653429 2015/11/16 05:57:09 $  $NHDT-Branch: master $:$NHDT-Revision: 1.72 $ */
+/* NetHack 3.6	spell.c	$NHDT-Date: 1508479722 2017/10/20 06:08:42 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.84 $ */
 /*      Copyright (c) M. Stephenson 1988                          */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -43,6 +43,7 @@ STATIC_DCL int NDECL(throwspell);
 STATIC_DCL void NDECL(cast_protection);
 STATIC_DCL void FDECL(spell_backfire, (int));
 STATIC_DCL const char *FDECL(spelltypemnemonic, (int));
+STATIC_DCL boolean FDECL(spell_aim_step, (genericptr_t, int, int));
 
 /* The roles[] table lists the role-specific values for tuning
  * percent_success().
@@ -120,6 +121,7 @@ STATIC_OVL boolean
 cursed_book(bp)
 struct obj *bp;
 {
+    boolean was_in_use;
     int lev = objects[bp->otyp].oc_level;
     int dmg = 0;
 
@@ -149,11 +151,12 @@ struct obj *bp;
             break;
         }
         /* temp disable in_use; death should not destroy the book */
+        was_in_use = bp->in_use;
         bp->in_use = FALSE;
         losestr(Poison_resistance ? rn1(2, 1) : rn1(4, 3));
         losehp(rnd(Poison_resistance ? 6 : 10), "contact-poisoned spellbook",
                KILLED_BY_AN);
-        bp->in_use = TRUE;
+        bp->in_use = was_in_use;
         break;
     case 6:
         if (Antimagic) {
@@ -322,6 +325,17 @@ struct obj *book2;
     return;
 }
 
+/* 'book' has just become cursed; if we're reading it and realize it is
+   now cursed, interrupt */
+void
+book_cursed(book)
+struct obj *book;
+{
+    if (occupation == learn && context.spbook.book == book
+        && book->cursed && book->bknown && multi >= 0)
+        stop_occupation();
+}
+
 STATIC_PTR int
 learn(VOID_ARGS)
 {
@@ -344,9 +358,8 @@ learn(VOID_ARGS)
         context.spbook.delay = 0;
         return 0;
     }
-    if (context
-            .spbook.delay) { /* not if (context.spbook.delay++), so at end
-                                delay == 0 */
+    if (context.spbook.delay) {
+        /* not if (context.spbook.delay++), so at end delay == 0 */
         context.spbook.delay++;
         return 1; /* still busy */
     }
@@ -430,7 +443,7 @@ register struct obj *spellbook;
     boolean too_hard = FALSE;
 
     /* attempting to read dull book may make hero fall asleep */
-    if (!confused && booktype != SPE_BLANK_PAPER
+    if (!confused && !Sleep_resistance
         && !strcmp(OBJ_DESCR(objects[booktype]), "dull")) {
         const char *eyes;
         int dullbook = rnd(25) - ACURR(A_WIS);
@@ -465,7 +478,7 @@ register struct obj *spellbook;
             return 1;
         }
 
-        /* 3.6.0 tribute */
+        /* 3.6 tribute */
         if (booktype == SPE_NOVEL) {
             /* Obtain current Terry Pratchett book title */
             const char *tribtitle = noveltitle(&spellbook->novelidx);
@@ -474,6 +487,7 @@ register struct obj *spellbook;
                              spellbook->o_id)) {
                 u.uconduct.literate++;
                 check_unpaid(spellbook);
+                makeknown(booktype);
                 if (!u.uevent.read_tribute) {
                     /* give bonus of 20 xp and 4*20+0 pts */
                     more_experienced(20, 0);
@@ -515,15 +529,16 @@ register struct obj *spellbook;
                 too_hard = TRUE;
             } else {
                 /* uncursed - chance to fail */
-                int read_ability =
-                    ACURR(A_INT) + 4 + u.ulevel / 2
-                    - 2 * objects[booktype].oc_level
-                    + ((ublindf && ublindf->otyp == LENSES) ? 2 : 0);
+                int read_ability = ACURR(A_INT) + 4 + u.ulevel / 2
+                                   - 2 * objects[booktype].oc_level
+                             + ((ublindf && ublindf->otyp == LENSES) ? 2 : 0);
+
                 /* only wizards know if a spell is too difficult */
                 if (Role_if(PM_WIZARD) && read_ability < 20 && !confused) {
                     char qbuf[QBUFSZ];
+
                     Sprintf(qbuf,
-                     "This spellbook is %sdifficult to comprehend. Continue?",
+                    "This spellbook is %sdifficult to comprehend.  Continue?",
                             (read_ability < 12 ? "very " : ""));
                     if (yn(qbuf) != 'y') {
                         spellbook->in_use = FALSE;
@@ -628,6 +643,9 @@ rejectcasting()
     /* rejections which take place before selecting a particular spell */
     if (Stunned) {
         You("are too impaired to cast a spell.");
+        return TRUE;
+    } else if (!can_chant(&youmonst)) {
+        You("are unable to chant the incantation.");
         return TRUE;
     } else if (!freehand()) {
         /* Note: !freehand() occurs when weapon and shield (or two-handed
@@ -798,11 +816,11 @@ cast_protection()
                                          ? "maw"
                                          : "ooze")
                                 : (u.uinwater
-                                   ? "water"
+                                   ? hliquid("water")
                                    : (rmtyp == CLOUD)
                                       ? "cloud"
                                       : IS_TREE(rmtyp)
-                                         ? "vegitation"
+                                         ? "vegetation"
                                          : IS_STWALL(rmtyp)
                                             ? "stone"
                                             : "air");
@@ -852,8 +870,8 @@ int spell;
         break;
     case 7:
     case 8:
-        make_stunned(old_conf + 2L * duration / 3L, FALSE); /* 20% */
-        make_confused(old_stun + duration / 3L, FALSE);
+        make_stunned(old_stun + 2L * duration / 3L, FALSE); /* 20% */
+        make_confused(old_conf + duration / 3L, FALSE);
         break;
     case 9:
         make_stunned(old_stun + duration, FALSE); /* 10% */
@@ -868,7 +886,7 @@ int spell;
 boolean atme;
 {
     int energy, damage, chance, n, intell;
-    int skill, role_skill;
+    int skill, role_skill, res = 0;
     boolean confused = (Confusion != 0);
     boolean physical_damage = FALSE;
     struct obj *pseudo;
@@ -918,13 +936,29 @@ boolean atme;
         return 1;
     }
 
-    if (u.uhave.amulet) {
+    /* if the cast attempt is already going to fail due to insufficient
+       energy (ie, u.uen < energy), the Amulet's drain effect won't kick
+       in and no turn will be consumed; however, when it does kick in,
+       the attempt may fail due to lack of energy after the draining, in
+       which case a turn will be used up in addition to the energy loss */
+    if (u.uhave.amulet && u.uen >= energy) {
         You_feel("the amulet draining your energy away.");
-        energy += rnd(2 * energy);
+        /* this used to be 'energy += rnd(2 * energy)' (without 'res'),
+           so if amulet-induced cost was more than u.uen, nothing
+           (except the "don't have enough energy" message) happened
+           and player could just try again (and again and again...);
+           now we drain some energy immediately, which has a
+           side-effect of not increasing the hunger aspect of casting */
+        u.uen -= rnd(2 * energy);
+        if (u.uen < 0)
+            u.uen = 0;
+        context.botl = 1;
+        res = 1; /* time is going to elapse even if spell doesn't get cast */
     }
+
     if (energy > u.uen) {
         You("don't have enough energy to cast that spell.");
-        return 0;
+        return res;
     } else {
         if (spellid(spell) != SPE_DETECT_FOOD) {
             int hungr = energy * 2;
@@ -1122,6 +1156,7 @@ boolean atme;
     case SPE_INVISIBILITY:
         (void) peffects(pseudo);
         break;
+    /* end of potion-like spells */
 
     case SPE_CURE_BLINDNESS:
         healup(0, 0, FALSE, TRUE);
@@ -1137,10 +1172,12 @@ boolean atme;
         (void) make_familiar((struct obj *) 0, u.ux, u.uy, FALSE);
         break;
     case SPE_CLAIRVOYANCE:
-        if (!BClairvoyant)
-            do_vicinity_map();
+        if (!BClairvoyant) {
+            if (role_skill >= P_SKILLED)
+                pseudo->blessed = 1; /* detect monsters as well as map */
+            do_vicinity_map(pseudo);
         /* at present, only one thing blocks clairvoyance */
-        else if (uarmh && uarmh->otyp == CORNUTHAUM)
+        } else if (uarmh && uarmh->otyp == CORNUTHAUM)
             You("sense a pointy hat on top of your %s.", body_part(HEAD));
         break;
     case SPE_PROTECTION:
@@ -1163,11 +1200,25 @@ boolean atme;
     return 1;
 }
 
+/*ARGSUSED*/
+STATIC_OVL boolean
+spell_aim_step(arg, x, y)
+genericptr_t arg UNUSED;
+int x, y;
+{
+    if (!isok(x,y))
+        return FALSE;
+    if (!ZAP_POS(levl[x][y].typ)
+        && !(IS_DOOR(levl[x][y].typ) && (levl[x][y].doormask & D_ISOPEN)))
+        return FALSE;
+    return TRUE;
+}
+
 /* Choose location where spell takes effect. */
 STATIC_OVL int
 throwspell()
 {
-    coord cc;
+    coord cc, uc;
     struct monst *mtmp;
 
     if (u.uinwater) {
@@ -1199,6 +1250,11 @@ throwspell()
         Your("mind fails to lock onto that location!");
         return 0;
     }
+
+    uc.x = u.ux;
+    uc.y = u.uy;
+
+    walk_path(&uc, &cc, spell_aim_step, (genericptr_t) 0);
 
     u.dx = cc.x;
     u.dy = cc.y;
@@ -1287,26 +1343,31 @@ losespells()
  *      are learned, they get inserted into sorted order rather than be
  *      appended to the end of the list?
  */
-static const char *spl_sortchoices[] = {
+enum spl_sort_types {
+    SORTBY_LETTER = 0,
+    SORTBY_ALPHA,
+    SORTBY_LVL_LO,
+    SORTBY_LVL_HI,
+    SORTBY_SKL_AL,
+    SORTBY_SKL_LO,
+    SORTBY_SKL_HI,
+    SORTBY_CURRENT,
+    SORTRETAINORDER,
+
+    NUM_SPELL_SORTBY
+};
+
+static const char *spl_sortchoices[NUM_SPELL_SORTBY] = {
     "by casting letter",
-#define SORTBY_LETTER 0
     "alphabetically",
-#define SORTBY_ALPHA 1
     "by level, low to high",
-#define SORTBY_LVL_LO 2
     "by level, high to low",
-#define SORTBY_LVL_HI 3
     "by skill group, alphabetized within each group",
-#define SORTBY_SKL_AL 4
     "by skill group, low to high level within group",
-#define SORTBY_SKL_LO 5
     "by skill group, high to low level within group",
-#define SORTBY_SKL_HI 6
     "maintain current ordering",
-#define SORTBY_CURRENT 7
     /* a menu choice rather than a sort choice */
     "reassign casting letters to retain current order",
-#define SORTRETAINORDER 8
 };
 static int spl_sortmode = 0;   /* index into spl_sortchoices[] */
 static int *spl_orderindx = 0; /* array of spl_book[] indices */
@@ -1579,45 +1640,6 @@ int *spell_no;
     }
     return FALSE;
 }
-
-/** Dump the currently known spells. */
-void
-dump_spells()
-{
-	int i;
-	char buf[BUFSZ];
-
-	if (spellid(0) == NO_SPELL) {
-	    dump("", "You didn't know any spells.");
-	    dump("", "");
-	    return;
-	}
-	dump_title("Spells known in the end");
-
-	Sprintf(buf, "%-20s   Level    %-12s Fail  Memory", "    Name", "Category");
-	dump_text("  %s\n",buf);
-	dump_html("<table class=\"nh_spells\">\n", "");
-	dump_html("<tr><th>Name</th><th>Level</th><th>Category</th><th>Fail</th><th>Memory</th></tr>\n", "");
-	for (i = 0; i < MAXSPELL && spellid(i) != NO_SPELL; i++) {
-		Sprintf(buf, "%c - %-20s  %2d%s   %-12s %3d%%" "   %3d%%",
-			spellet(i), spellname(i), spellev(i),
-			(spellknow(i) > 1000) ? " " : (spellknow(i) ? "!" : "*"),
-			spelltypemnemonic(spell_skilltype(spellid(i))),
-			100 - percent_success(i),
-			(spellknow(i) * 100 + (KEEN-1)) / KEEN);
-		dump_text("  %s\n", buf);
-		Sprintf(buf, "<tr><td>%s</td><td align=\"right\">%d%s</td><td>%s</td><td align=\"right\">%d%%</td><td align=\"right\">%d%%</td></tr>\n",
-			spellname(i), spellev(i),
-			(spellknow(i) > 1000) ? "&nbsp;" : (spellknow(i) ? "!" : "*"),
-			spelltypemnemonic(spell_skilltype(spellid(i))),
-			100 - percent_success(i),
-			(spellknow(i) * 100 + (KEEN-1)) / KEEN);
-		dump_html(buf,"");
-	}
-	dump_html("</table>\n", "");
-	dump("","");
-
-} /* dump_spells */
 
 STATIC_OVL int
 percent_success(spell)

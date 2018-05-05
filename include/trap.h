@@ -1,5 +1,6 @@
 /* NetHack 3.6	trap.h	$NHDT-Date: 1432512776 2015/05/25 00:12:56 $  $NHDT-Branch: master $:$NHDT-Revision: 1.12 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Pasi Kallinen, 2016. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* note for 3.1.0 and later: no longer manipulated by 'makedefs' */
@@ -53,30 +54,33 @@ extern struct trap *ftrap;
 /* Note: if adding/removing a trap, adjust trap_engravings[] in mklev.c */
 
 /* unconditional traps */
-#define NO_TRAP 0
-#define ARROW_TRAP 1
-#define DART_TRAP 2
-#define ROCKTRAP 3
-#define SQKY_BOARD 4
-#define BEAR_TRAP 5
-#define LANDMINE 6
-#define ROLLING_BOULDER_TRAP 7
-#define SLP_GAS_TRAP 8
-#define RUST_TRAP 9
-#define FIRE_TRAP 10
-#define PIT 11
-#define SPIKED_PIT 12
-#define HOLE 13
-#define TRAPDOOR 14
-#define TELEP_TRAP 15
-#define LEVEL_TELEP 16
-#define MAGIC_PORTAL 17
-#define WEB 18
-#define STATUE_TRAP 19
-#define MAGIC_TRAP 20
-#define ANTI_MAGIC 21
-#define POLY_TRAP 22
-#define VIBRATING_SQUARE 23
-#define TRAPNUM 24
+enum trap_types {
+    NO_TRAP = 0,
+    ARROW_TRAP,
+    DART_TRAP,
+    ROCKTRAP,
+    SQKY_BOARD,
+    BEAR_TRAP,
+    LANDMINE,
+    ROLLING_BOULDER_TRAP,
+    SLP_GAS_TRAP,
+    RUST_TRAP,
+    FIRE_TRAP,
+    PIT,
+    SPIKED_PIT,
+    HOLE,
+    TRAPDOOR,
+    TELEP_TRAP,
+    LEVEL_TELEP,
+    MAGIC_PORTAL,
+    WEB,
+    STATUE_TRAP,
+    MAGIC_TRAP,
+    ANTI_MAGIC,
+    POLY_TRAP,
+    VIBRATING_SQUARE,
+
+    TRAPNUM
+};
 
 #endif /* TRAP_H */

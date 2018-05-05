@@ -1,5 +1,5 @@
 #!/bin/sh
-# NetHack 3.6  macosx.sh $NHDT-Date: 1432512814 2015/05/25 00:13:34 $  $NHDT-Branch: master $:$NHDT-Revision: 1.11 $
+# NetHack 3.6  macosx.sh $NHDT-Date: 1517231957 2018/01/29 13:19:17 $  $NHDT-Branch: githash $:$NHDT-Revision: 1.20 $
 # Copyright (c) Kenneth Lorber, Kensington, Maryland, 2007.
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -88,6 +88,45 @@ xgroup2)
 			echo "Unable to create group $group."
 			exit 1
 		fi
+	fi
+	;;
+
+xeditsysconf)
+	src=$2
+	dest=$3
+	ptg=1
+	# We don't need an LLDB module because any MacOSX new enough to
+	# have no Apple supported gdb is also new enough to get good
+	# stack traces through libc.
+	# NB: xcrun will check $PATH
+	if [[ -x /usr/bin/xcrun && `/usr/bin/xcrun -f gdb 2>/dev/null` ]] ; then
+            gdbpath="GDBPATH="`/usr/bin/xcrun -f gdb`
+	elif [ -f /usr/bin/gdb ]; then
+	    gdbpath='GDBPATH=/usr/bin/gdb' #traditional location
+	elif [ -f /opt/local/bin/ggdb ]; then
+	    gdbpath='GDBPATH=/opt/local/bin/ggdb' #macports gdb
+	elif [ -f /Developer/usr/bin/gdb ]; then
+	    # this one seems to be broken with Xcode 5.1.1 on Mountain Lion
+	    gdbpath='GDBPATH=/Developer/usr/bin/gdb' #older Xcode tools
+	else
+	    gdbpath='#GDBPATH' #none of the above
+	    ptg=0
+	fi
+	if [ -f /bin/grep ]; then
+	    greppath='GREPPATH=/bin/grep'
+	elif [ -f /usr/bin/grep ]; then
+	    greppath='GREPPATH=/usr/bin/grep'
+	else
+	    greppath='#GREPPATH'
+	fi
+	# PANICTRACE_GDB value should only be replaced if gdbpath is '#GDBPATH'
+	if ! [ -e $dest ]; then
+		sed -e "s:^GDBPATH=.*:$gdbpath:" \
+		    -e "s:^GREPPATH=.*:$greppath:" \
+		    -e "s/^PANICTRACE_GDB=./PANICTRACE_GDB=$ptg/" \
+		    -e 's/^#OPTIONS=.*/&\
+OPTIONS=!use_darkgray/' \
+		    $src > $dest
 	fi
 	;;
 

@@ -1,5 +1,6 @@
-/* NetHack 3.6	weapon.c	$NHDT-Date: 1446078767 2015/10/29 00:32:47 $  $NHDT-Branch: master $:$NHDT-Revision: 1.55 $ */
+/* NetHack 3.6	weapon.c	$NHDT-Date: 1454660575 2016/02/05 08:22:55 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.57 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -306,12 +307,12 @@ struct monst *mon;
     if (ptr == &mons[PM_SHADE] && !shade_glare(otmp))
         tmp = 0;
 
-    /* "very heavy iron ball"; weight increase is in increments of 160 */
+    /* "very heavy iron ball"; weight increase is in increments */
     if (otyp == HEAVY_IRON_BALL && tmp > 0) {
         int wt = (int) objects[HEAVY_IRON_BALL].oc_weight;
 
         if ((int) otmp->owt > wt) {
-            wt = ((int) otmp->owt - wt) / 160;
+            wt = ((int) otmp->owt - wt) / IRON_BALL_W_INCR;
             tmp += rnd(4 * wt);
             if (tmp > 25)
                 tmp = 25; /* objects[].oc_wldam */
@@ -1011,23 +1012,6 @@ static const struct skill_range {
 int
 enhance_weapon_skill()
 {
-	return enhance_skill(FALSE);
-}
-
-/* Dump the weapon skills. */
-void
-dump_weapon_skill()
-{
-	enhance_skill(TRUE);
-}
-
-int enhance_skill(boolean want_dump)
-/* This is the original enhance_weapon_skill() function slightly modified
- * to write the skills to the dump file. I added the wrapper functions just
- * because it looked like the easiest way to add a parameter to the
- * function call. - Jukka Lahtinen, August 2001
- */
-{
     int pass, i, n, len, longest, to_advance, eventually_advance, maxxed_cnt;
     char buf[BUFSZ], sklnambuf[BUFSZ];
     const char *prefix;
@@ -1035,12 +1019,9 @@ int enhance_skill(boolean want_dump)
     anything any;
     winid win;
     boolean speedy = FALSE;
-    char buf2[BUFSZ];
-    boolean logged = FALSE;
 
-	if (!want_dump)
-		if (wizard && yn("Advance skills without practice?") == 'y')
-			speedy = TRUE;
+    if (wizard && yn("Advance skills without practice?") == 'y')
+        speedy = TRUE;
 
     do {
         /* find longest available skill name, count those that can advance */
@@ -1058,37 +1039,32 @@ int enhance_skill(boolean want_dump)
                 maxxed_cnt++;
         }
 
-		if (want_dump) {
-			dump_title("Your skills at the end");
-			dump_html("<table class=\"nh_skills\">\n", "");
-		} else {
-			win = create_nhwindow(NHW_MENU);
-			start_menu(win);
+        win = create_nhwindow(NHW_MENU);
+        start_menu(win);
 
-			/* start with a legend if any entries will be annotated
-			   with "*" or "#" below */
-			if (eventually_advance > 0 || maxxed_cnt > 0) {
-				any = zeroany;
-				if (eventually_advance > 0) {
-					Sprintf(buf, "(Skill%s flagged by \"*\" may be enhanced %s.)",
-							plur(eventually_advance),
-							(u.ulevel < MAXULEV)
-								? "when you're more experienced"
-								: "if skill slots become available");
-					add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
-							 MENU_UNSELECTED);
-				}
-				if (maxxed_cnt > 0) {
-					Sprintf(buf,
-					 "(Skill%s flagged by \"#\" cannot be enhanced any further.)",
-							plur(maxxed_cnt));
-					add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
-							 MENU_UNSELECTED);
-				}
-				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
+		/* start with a legend if any entries will be annotated
+		   with "*" or "#" below */
+		if (eventually_advance > 0 || maxxed_cnt > 0) {
+			any = zeroany;
+			if (eventually_advance > 0) {
+				Sprintf(buf, "(Skill%s flagged by \"*\" may be enhanced %s.)",
+						plur(eventually_advance),
+						(u.ulevel < MAXULEV)
+							? "when you're more experienced"
+							: "if skill slots become available");
+				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
 						 MENU_UNSELECTED);
 			}
-	    } /* want_dump or not */
+			if (maxxed_cnt > 0) {
+				Sprintf(buf,
+				 "(Skill%s flagged by \"#\" cannot be enhanced any further.)",
+						plur(maxxed_cnt));
+				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
+						 MENU_UNSELECTED);
+			}
+			add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "",
+					 MENU_UNSELECTED);
+		}
 
         /* List the skills, making ones that could be advanced
            selectable.  List the miscellaneous skills first.
@@ -1099,29 +1075,10 @@ int enhance_skill(boolean want_dump)
                  i++) {
                 /* Print headings for skill types */
                 any = zeroany;
-                if (i == skill_ranges[pass].first) {
-					if (want_dump) {
-						dump_text("  %s\n",(char *)skill_ranges[pass].name);
-						dump_html("<tr><th>%s</th></tr>\n",(char *)skill_ranges[pass].name);
-						logged=FALSE;
-					} else
+                if (i == skill_ranges[pass].first)
                     add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
                              skill_ranges[pass].name, MENU_UNSELECTED);
-				}
-				if (want_dump) {
-					if (P_SKILL(i) > P_UNSKILLED) {
-					Sprintf(buf2,"%-*s [%s]",
-						longest, P_NAME(i),skill_level_name(i, buf));
-					dump_text("    %s\n",buf2);
-					Sprintf(buf2,"<tr><td>%s</td><td>[%s]</td></tr>",
-						P_NAME(i),skill_level_name(i, buf));
-					dump_html("%s\n",buf2);
-					logged=TRUE;
-					} else if (i == skill_ranges[pass].last && !logged) {
-					dump_text("    %s\n","(none)");
-					dump_html("<tr><td>%s</td></tr>\n","(none)");
-					}
-               } else {
+
                 if (P_RESTRICTED(i))
                     continue;
                 /*
@@ -1176,7 +1133,6 @@ int enhance_skill(boolean want_dump)
                 any.a_int = can_advance(i, speedy) ? i + 1 : 0;
                 add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf,
                          MENU_UNSELECTED);
-				} /* !want_dump */
             }
 
         Strcpy(buf, (to_advance > 0) ? "Pick a skill to advance:"
@@ -1184,11 +1140,6 @@ int enhance_skill(boolean want_dump)
         if (wizard && !speedy)
             Sprintf(eos(buf), "  (%d slot%s available)", u.weapon_slots,
                     plur(u.weapon_slots));
-	    if (want_dump) {
-		dump_html("</table>\n", "");
-		dump("", "");
-		n=0;
-	    } else {
         end_menu(win, buf);
         n = select_menu(win, to_advance ? PICK_ONE : PICK_NONE, &selected);
         destroy_nhwindow(win);
@@ -1205,7 +1156,6 @@ int enhance_skill(boolean want_dump)
                     break;
                 }
             }
-	    }
         }
     } while (speedy && n > 0);
     return 0;
@@ -1213,7 +1163,7 @@ int enhance_skill(boolean want_dump)
 
 /*
  * Change from restricted to unrestricted, allowing P_BASIC as max.  This
- * function may be called with with P_NONE.  Used in pray.c.
+ * function may be called with with P_NONE.  Used in pray.c as well as below.
  */
 void
 unrestrict_weapon_skill(skill)
@@ -1567,6 +1517,10 @@ const struct def_skill *class_skill;
             P_ADVANCE(skill) = practice_needed_to_advance(P_SKILL(skill) - 1);
         }
     }
+
+    /* each role has a special spell; allow at least basic for its type
+       (despite the function name, this works for spell skills too) */
+    unrestrict_weapon_skill(spell_skilltype(urole.spelspec));
 }
 
 void

@@ -1,5 +1,6 @@
 /* NetHack 3.6	config.h	$NHDT-Date: 1447728911 2015/11/17 02:55:11 $  $NHDT-Branch: master $:$NHDT-Revision: 1.91 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2016. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef CONFIG_H /* make sure the compiler does not see the typedefs twice */
@@ -11,6 +12,7 @@
  *              For "UNIX" select BSD, ULTRIX, SYSV, or HPUX in unixconf.h.
  *              A "VMS" option is not needed since the VMS C-compilers
  *              provide it (no need to change sec#1, vmsconf.h handles it).
+ *              MacOSX uses the UNIX configuration, not the old MAC one.
  */
 
 #define UNIX /* delete if no fork(), exec() available */
@@ -219,6 +221,10 @@
 #define NEWS     "news"     /* the file containing the latest hack news */
 #define PANICLOG "paniclog" /* log of panic and impossible events */
 
+/* alternative paniclog format, better suited for public servers with
+   many players, as it saves the player name and the game start time */
+/* #define PANICLOG_FMT2 */
+
 /*
  *      PERSMAX, POINTSMIN, ENTRYMAX, PERS_IS_UID:
  *      These control the contents of 'record', the high-scores file.
@@ -314,6 +320,28 @@
 /* #define DLB */ /* not supported on all platforms */
 
 /*
+ *      Defining REPRODUCIBLE_BUILD causes 'util/makedefs -v' to construct
+ *      date+time in include/date.h (to be shown by nethack's 'v' command)
+ *      from SOURCE_DATE_EPOCH in the build environment rather than use
+ *      current date+time when makedefs is run.
+ *
+ *      [The version string will show "last revision <date><time>" instead
+ *      of "last build <date><time>" if SOURCE_DATE_EPOCH has a value
+ *      which seems valid at the time date.h is generated.  The person
+ *      building the program is responsible for setting it correctly,
+ *      and the value should be in UTC rather than local time.  NetHack
+ *      normally uses local time and doesn't display timezone so toggling
+ *      REPRODUCIBLE_BUILD on or off might yield a date+time that appears
+ *      to be incorrect relative to what the other setting produced.]
+ *
+ *      Intent is to be able to rebuild the program with the same value
+ *      and obtain an identical copy as was produced by a previous build.
+ *      Not necessary for normal game play....
+ */
+/* #define REPRODUCIBLE_BUILD */ /* use getenv("SOURCE_DATE_EPOCH") instead
+                                    of current time when creating date.h */
+
+/*
  *      Defining INSURANCE slows down level changes, but allows games that
  *      died due to program or system crashes to be resumed from the point
  *      of the last level change, after running a utility program.
@@ -349,11 +377,6 @@
  * #define MAX_NR_OF_PLAYERS 6
  */
 #endif /* CHDIR */
-
-/* If GENERIC_USERNAMES is defined, and the player's username is found
- * in the list, prompt for character name instead of using username.
- * A public server should probably disable this. */
-#define GENERIC_USERNAMES "play player game games nethack nethacker"
 
 /*
  * Section 3:   Definitions that may vary with system type.
@@ -440,6 +463,14 @@ typedef unsigned char uchar;
 
 #define DOAGAIN '\001' /* ^A, the "redo" key used in cmd.c and getline.c */
 
+/* CONFIG_ERROR_SECURE: If user makes NETHACKOPTIONS point to a file ...
+ *  TRUE: Show the first error, nothing else.
+ *  FALSE: Show all errors as normal, with line numbers and context.
+ */
+#ifndef CONFIG_ERROR_SECURE
+# define CONFIG_ERROR_SECURE TRUE
+#endif
+
 /*
  * Section 4:  EXPERIMENTAL STUFF
  *
@@ -448,11 +479,40 @@ typedef unsigned char uchar;
  * bugs left here.
  */
 
-#define STATUS_COLORS
+/* TTY_TILES_ESCCODES: Enable output of special console escape codes
+ * which act as hints for external programs such as EbonHack.
+ *
+ * Only for TTY_GRAPHICS.
+ *
+ * All of the escape codes are in the format ESC [ N z, where N can be
+ * one or more positive integer values, separated by semicolons.
+ * For example ESC [ 1 ; 0 ; 120 z
+ *
+ * Possible codes are:
+ *  ESC [ 1 ; 0 ; n ; m z   Start a glyph (aka a tile) number n, with flags m
+ *  ESC [ 1 ; 1 z           End a glyph.
+ *  ESC [ 1 ; 2 ; n z       Select a window n to output to.
+ *  ESC [ 1 ; 3 z           End of data. NetHack has finished sending data,
+ *                          and is waiting for input.
+ *
+ * Whenever NetHack outputs anything, it will first output the "select window"
+ * code. Whenever NetHack outputs a tile, it will first output the "start
+ * glyph" code, then the escape codes for color and the glyph character
+ * itself, and then the "end glyph" code.
+ *
+ * To compile NetHack with this, add tile.c to WINSRC and tile.o to WINOBJ
+ * in the hints file or Makefile.
+ * Set boolean option vt_tiledata in your config file to turn this on.
+ * Note that gnome-terminal at least doesn't work with this. */
+/* #define TTY_TILES_ESCCODES */
 
-/* #define STATUS_VIA_WINDOWPORT */ /* re-work of the status line
-                                       updating process */
-/* #define STATUS_HILITES */        /* support hilites of status fields */
+/* NetHack will execute an external program whenever a new message-window
+ * message is shown.  The program to execute is given in environment variable
+ * NETHACK_MSGHANDLER.  It will get the message as the only parameter.
+ * Only available with POSIX_TYPES or GNU C */
+/* #define MSGHANDLER */
+
+#define STATUS_HILITES         /* support hilites of status fields */
 
 /* #define WINCHAIN */              /* stacked window systems */
 
@@ -468,7 +528,44 @@ typedef unsigned char uchar;
    but it isn't necessary for successful operation of the program */
 #define FREE_ALL_MEMORY             /* free all memory at exit */
 
+/* EDIT_GETLIN makes the string input in TTY, Qt4, and X11
+   so some prompts will remember the previously input text
+   (within the same session) */
+/* #define EDIT_GETLIN */
+
+/* #define DUMPLOG */  /* End-of-game dump logs */
+#ifdef DUMPLOG
+
+#ifndef DUMPLOG_MSG_COUNT
+#define DUMPLOG_MSG_COUNT   50
+#endif
+
+#ifndef DUMPLOG_FILE
+#define DUMPLOG_FILE        "/tmp/nethack.%n.%d.log"
+/* DUMPLOG_FILE allows following placeholders:
+   %% literal '%'
+   %v version (eg. "3.6.1-0")
+   %u game UID
+   %t game start time, UNIX timestamp format
+   %T current time, UNIX timestamp format
+   %d game start time, YYYYMMDDhhmmss format
+   %D current time, YYYYMMDDhhmmss format
+   %n player name
+   %N first character of player name
+   DUMPLOG_FILE is not used if SYSCF is defined
+*/
+#endif
+
+#endif
+
+
 /* End of Section 4 */
+
+#ifdef TTY_TILES_ESCCODES
+# ifndef USE_TILES
+#  define USE_TILES
+# endif
+#endif
 
 #include "global.h" /* Define everything else according to choices above */
 

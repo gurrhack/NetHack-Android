@@ -1,5 +1,6 @@
-/* NetHack 3.6  makedefs.c  $NHDT-Date: 1447062431 2015/11/09 09:47:11 $  $NHDT-Branch: master $:$NHDT-Revision: 1.105 $ */
+/* NetHack 3.6  makedefs.c  $NHDT-Date: 1520022901 2018/03/02 20:35:01 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.121 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Kenneth Lorber, Kensington, Maryland, 2015. */
 /* Copyright (c) M. Stephenson, 1990, 1991.                       */
 /* Copyright (c) Dean Luick, 1990.                                */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -52,7 +53,7 @@
 #endif
 
 #if defined(UNIX) && !defined(LINT) && !defined(GCC_WARN)
-static const char SCCS_Id[] = "@(#)makedefs.c\t3.5\t2004/02/01";
+static const char SCCS_Id[] = "@(#)makedefs.c\t3.6\t2018/03/02";
 #endif
 
 /* names of files to be generated */
@@ -72,6 +73,7 @@ static const char SCCS_Id[] = "@(#)makedefs.c\t3.5\t2004/02/01";
 #define QTXT_O_FILE "quest.dat"
 #define VIS_TAB_H "vis_tab.h"
 #define VIS_TAB_C "vis_tab.c"
+#define GITINFO_FILE "gitinfo.txt"
 /* locations for those files */
 #ifdef AMIGA
 #define FILE_PREFIX
@@ -164,6 +166,12 @@ void NDECL(do_vision);
 extern void NDECL(monst_init);   /* monst.c */
 extern void NDECL(objects_init); /* objects.c */
 
+static void NDECL(link_sanity_check);
+static char *FDECL(name_file, (const char *, const char *));
+static void FDECL(delete_file, (const char *template, const char *));
+static FILE *FDECL(getfp, (const char *, const char *, const char *));
+static void FDECL(do_ext_makedefs, (int, char **));
+
 static void NDECL(make_version);
 static char *FDECL(version_string, (char *, const char *));
 static char *FDECL(version_id_string, (char *, const char *));
@@ -171,13 +179,13 @@ static char *FDECL(bannerc_string, (char *, const char *));
 static char *FDECL(xcrypt, (const char *));
 static unsigned long FDECL(read_rumors_file,
                            (const char *, int *, long *, unsigned long));
+static boolean FDECL(get_gitinfo, (char *, char *));
 static void FDECL(do_rnd_access_file, (const char *));
 static boolean FDECL(d_filter, (char *));
 static boolean FDECL(h_filter, (char *));
 static boolean FDECL(ranged_attk, (struct permonst *));
 static int FDECL(mstrength, (struct permonst *));
 static void NDECL(build_savebones_compat_string);
-static void FDECL(do_ext_makedefs, (int, char **));
 static void NDECL(windowing_sanity);
 
 static boolean FDECL(qt_comment, (char *));
@@ -204,6 +212,7 @@ static char *FDECL(fgetline, (FILE*));
 static char *FDECL(tmpdup, (const char *));
 static char *FDECL(limit, (char *, int));
 static char *FDECL(eos, (char *));
+static int FDECL(case_insensitive_comp, (const char *, const char *));
 
 /* input, output, tmp */
 static FILE *ifp, *ofp, *tfp;
@@ -251,11 +260,12 @@ main(argc, argv)
 int argc;
 char *argv[];
 {
-    if ((argc != 2)
+    if ((argc == 1) ||
+        ((argc != 2)
 #ifdef FILE_PREFIX
         && (argc != 3)
 #endif
-        && !(argv[1][0] == '-' && argv[1][1] == '-')) {
+        && !(argv[1][0] == '-' && argv[1][1] == '-'))) {
         Fprintf(stderr, "Bad arg count (%d).\n", argc - 1);
         (void) fflush(stderr);
         return 1;
@@ -368,10 +378,11 @@ char *options;
 }
 
 static char namebuf[1000];
+
 static char *
 name_file(template, tag)
-char *template;
-char *tag;
+const char *template;
+const char *tag;
 {
     Sprintf(namebuf, template, tag);
     return namebuf;
@@ -379,21 +390,23 @@ char *tag;
 
 static void
 delete_file(template, tag)
-char *template;
-char *tag;
+const char *template;
+const char *tag;
 {
     char *name = name_file(template, tag);
+
     Unlink(name);
 }
 
 static FILE *
 getfp(template, tag, mode)
-char *template;
-char *tag;
-char *mode;
+const char *template;
+const char *tag;
+const char *mode;
 {
     char *name = name_file(template, tag);
     FILE *rv = fopen(name, mode);
+
     if (!rv) {
         Fprintf(stderr, "Can't open '%s'.\n", name);
         exit(EXIT_FAILURE);
@@ -413,10 +426,26 @@ struct grep_var {
 /* struct grep_var grep_vars[] and TODO_* constants in include file: */
 #include "mdgrep.h"
 
-static void NDECL(do_grep);
 static void NDECL(do_grep_showvars);
-static struct grep_var *FDECL(grepsearch, (char *));
+static struct grep_var *FDECL(grepsearch, (const char *));
+static int FDECL(grep_check_id, (const char *));
+static void FDECL(grep_show_wstack, (const char *));
+static char *FDECL(do_grep_control, (char *));
+static void NDECL(do_grep);
+static void FDECL(grep0, (FILE *, FILE *));
+
 static int grep_trace = 0;
+
+#define IS_OPTION(str) if (!strcmp(&argv[0][2], str))
+#define CONTINUE    \
+    argv++, argc--; \
+    continue
+#define CONSUME                              \
+    argv++, argc--;                          \
+    if (argc == 0) {                         \
+        Fprintf(stderr, "missing option\n"); \
+        exit(EXIT_FAILURE);                  \
+    }
 
 static void
 do_ext_makedefs(int argc, char **argv)
@@ -435,22 +464,11 @@ do_ext_makedefs(int argc, char **argv)
             Fprintf(stderr, "Can't mix - and -- options.\n");
             exit(EXIT_FAILURE);
         }
-#define IS_OPTION(str) if (!strcmp(&argv[0][2], str))
-#define CONTINUE    \
-    argv++, argc--; \
-    continue
-#define CONSUME                              \
-    argv++, argc--;                          \
-    if (argc == 0) {                         \
-        Fprintf(stderr, "missing option\n"); \
-        exit(EXIT_FAILURE);                  \
-    }
-        IS_OPTION("svs")
-        {
-            /* short version string for packaging - note
-             * no \n */
+        IS_OPTION("svs") {
+            /* short version string for packaging - note no \n */
             char buf[100];
             char delim[10];
+
             argv++; /* not CONSUME */
             delim[0] = '\0';
             if (argv[0])
@@ -458,19 +476,16 @@ do_ext_makedefs(int argc, char **argv)
             Fprintf(stdout, "%s", version_string(buf, delim));
             exit(EXIT_SUCCESS);
         }
-        IS_OPTION("debug")
-        {
+        IS_OPTION("debug") {
             debug = TRUE;
             CONTINUE;
         }
-        IS_OPTION("make")
-        {
+        IS_OPTION("make") {
             CONSUME;
             do_makedefs(argv[0]);
             exit(EXIT_SUCCESS);
         }
-        IS_OPTION("input")
-        {
+        IS_OPTION("input") {
             CONSUME;
             if (!strcmp(argv[0], "-")) {
                 inputfp = stdin;
@@ -483,8 +498,7 @@ do_ext_makedefs(int argc, char **argv)
             }
             CONTINUE;
         }
-        IS_OPTION("output")
-        {
+        IS_OPTION("output") {
             CONSUME;
             if (!strcmp(argv[0], "-")) {
                 outputfp = stdout;
@@ -497,8 +511,7 @@ do_ext_makedefs(int argc, char **argv)
             }
             CONTINUE;
         }
-        IS_OPTION("grep")
-        {
+        IS_OPTION("grep") {
             if (todo) {
                 Fprintf(stderr, "Can't do grep and something else.\n");
                 exit(EXIT_FAILURE);
@@ -506,19 +519,17 @@ do_ext_makedefs(int argc, char **argv)
             todo = TODO_GREP;
             CONTINUE;
         }
-        IS_OPTION("grep-showvars")
-        {
+        IS_OPTION("grep-showvars") {
             do_grep_showvars();
             exit(EXIT_SUCCESS);
         }
-        IS_OPTION("grep-trace")
-        {
+        IS_OPTION("grep-trace") {
             grep_trace = 1;
             CONTINUE;
         }
-        IS_OPTION("grep-define")
-        {
+        IS_OPTION("grep-define") {
             struct grep_var *p;
+
             CONSUME;
             p = grepsearch(argv[0]);
             if (p) {
@@ -529,9 +540,9 @@ do_ext_makedefs(int argc, char **argv)
             }
             CONTINUE;
         }
-        IS_OPTION("grep-undef")
-        {
+        IS_OPTION("grep-undef") {
             struct grep_var *p;
+
             CONSUME;
             p = grepsearch(argv[0]);
             if (p) {
@@ -543,11 +554,9 @@ do_ext_makedefs(int argc, char **argv)
             CONTINUE;
         }
 #ifdef notyet
-        IS_OPTION("help")
-        {
+        IS_OPTION("help") {
         }
 #endif
-#undef IS_OPTION
         Fprintf(stderr, "Unknown option '%s'.\n", argv[0]);
         exit(EXIT_FAILURE);
     }
@@ -569,37 +578,40 @@ do_ext_makedefs(int argc, char **argv)
     }
 }
 
+#undef IS_OPTION
+#undef CONTINUE
+#undef CONSUME
+
 /*
- Filtering syntax:
- Any line NOT starting with a caret is either suppressed or passed through
- unchanged depending on the current conditional state.
-
- The default conditional state is printing on.
-
- Conditionals may be nested.
-
- makedefs will exit with a EXIT_FAILURE if any errors are detected; as many
- errors as possible are detected before giving up.
-
- Unknown identifiers are treated as TRUE and also as an error to allow
- processing to continue past the unknown identifier (note that "#undef" is
- different than unknown).
-
- Any line starting with a caret is a control line; as in C, zero or more
- spaces
- may be embedded in the line almost anywhere; the caret MUST be in column 1.
- (XXX for the moment, no white space is allowed after the caret because
-  existing lines in the docs look like that)
-
- Control lines:
- ^^     a line starting with a (single) literal caret
- ^#     a comment - the line is ignored
- ^?ID   if defined(ID)
- ^!ID   if !defined(ID)
- ^:     else
- ^.     endif
-
-*/
+ * Filtering syntax:
+ * Any line NOT starting with a caret is either suppressed or passed
+ * through unchanged depending on the current conditional state.
+ *
+ * The default conditional state is printing on.
+ *
+ * Conditionals may be nested.
+ *
+ * makedefs will exit with a EXIT_FAILURE if any errors are detected;
+ * as many errors as possible are detected before giving up.
+ *
+ * Unknown identifiers are treated as TRUE and also as an error to
+ * allow processing to continue past the unknown identifier (note
+ * that "#undef" is different than unknown).
+ *
+ * Any line starting with a caret is a control line; as in C, zero or
+ * more spaces may be embedded in the line almost anywhere; the caret
+ * MUST be in column 1.
+ * (XXX for the moment, no white space is allowed after the caret because
+ * existing lines in the docs look like that.)
+ *
+ * Control lines:
+ *      ^^      a line starting with a (single) literal caret
+ *      ^#      a comment - the line is ignored
+ *      ^?ID    if defined(ID)
+ *      ^!ID    if !defined(ID)
+ *      ^:      else
+ *      ^.      endif
+ */
 #define GREP_MAGIC '^'
 #define GREP_STACK_SIZE 100
 #ifdef notyet
@@ -608,9 +620,9 @@ static int grep_rewrite = 0; /* need to (possibly) rewrite lines */
 static int grep_writing = 1; /* need to copy lines to output */
 static int grep_errors = 0;
 static int grep_sp = 0;
-#define ST_LD(old, opp) (!!(old) | (!!(opp) << 1))
-#define ST_OLD(v) ((v) &1)
-#define ST_OPP(v) !!((v) &2)
+#define ST_LD(old, opp) (((old) ? 1 : 0) | ((opp) ? 2 : 0))
+#define ST_OLD(v) (((v) & 1) != 0)
+#define ST_OPP(v) (((v) & 2) != 0)
 #define ST_ELSE 4
 static int grep_stack[GREP_STACK_SIZE] = { ST_LD(1, 0) };
 static int grep_lineno = 0;
@@ -619,6 +631,7 @@ static void
 do_grep_showvars()
 {
     int x;
+
     for (x = 0; x < SIZE(grep_vars) - 1; x++) {
         printf("%d\t%s\n", grep_vars[x].is_defined, grep_vars[x].name);
     }
@@ -626,10 +639,11 @@ do_grep_showvars()
 
 static struct grep_var *
 grepsearch(name)
-char *name;
+const char *name;
 {
     /* XXX make into binary search */
     int x = 0;
+
     while (x < SIZE(grep_vars) - 1) {
         if (!strcmp(grep_vars[x].name, name))
             return &grep_vars[x];
@@ -640,10 +654,11 @@ char *name;
 
 static int
 grep_check_id(id)
-char *id;
+const char *id;
 {
     struct grep_var *rv;
-    while (*id && isspace(*id))
+
+    while (*id && isspace((uchar) *id))
         id++;
     if (!*id) {
         Fprintf(stderr, "missing identifier in line %d", grep_lineno);
@@ -669,7 +684,7 @@ char *id;
 
 static void
 grep_show_wstack(tag)
-char *tag;
+const char *tag;
 {
     int x;
 
@@ -690,10 +705,10 @@ char *buf;
     int isif = 1;
     char *buf0 = buf;
 #if 1
-    if (isspace(buf[0]))
+    if (isspace((uchar) buf[0]))
         return &buf[-1]; /* XXX see docs above */
 #else
-    while (buf[0] && isspace(buf[0]))
+    while (buf[0] && isspace((uchar) buf[0]))
         buf++;
 #endif
     switch (buf[0]) {
@@ -743,7 +758,8 @@ char *buf;
         return buf0;
     default: {
         char str[10];
-        if (isprint(buf[0])) {
+
+        if (isprint((uchar) buf[0])) {
             str[0] = buf[0];
             str[1] = '\0';
         } else {
@@ -1154,6 +1170,9 @@ make_version()
     return;
 }
 
+/* REPRODUCIBLE_BUILD will change this to TRUE */
+static boolean date_via_env = FALSE;
+
 static char *
 version_string(outbuf, delim)
 char *outbuf;
@@ -1183,8 +1202,9 @@ const char *build_date;
     Strcat(subbuf, " Beta");
 #endif
 
-    Sprintf(outbuf, "%s NetHack%s Version %s - last build %s.", PORT_ID,
-            subbuf, version_string(versbuf, "."), build_date);
+    Sprintf(outbuf, "%s NetHack%s Version %s - last %s %s.", PORT_ID,
+            subbuf, version_string(versbuf, "."),
+            date_via_env ? "revision" : "build", build_date);
     return outbuf;
 }
 
@@ -1204,8 +1224,9 @@ const char *build_date;
     Strcat(subbuf, " Beta");
 #endif
 
-    Sprintf(outbuf, "         Version %s %s%s, built %s.",
-            version_string(versbuf, "."), PORT_ID, subbuf, &build_date[4]);
+    Sprintf(outbuf, "         Version %s %s%s, %s %s.",
+            version_string(versbuf, "."), PORT_ID, subbuf,
+            date_via_env ? "revised" : "built", &build_date[4]);
 #if 0
     Sprintf(outbuf, "%s NetHack%s %s Copyright 1985-%s (built %s)",
             PORT_ID, subbuf, version_string(versbuf,"."), RELEASE_YEAR,
@@ -1222,6 +1243,7 @@ do_date()
 #else
     time_t clocktim = 0;
 #endif
+    char githash[BUFSZ], gitbranch[BUFSZ];
     char *c, cbuf[60], buf[BUFSZ];
     const char *ul_sfx;
 
@@ -1244,20 +1266,96 @@ do_date()
     Fprintf(ofp, "%s", Dont_Edit_Code);
 
     (void) time(&clocktim);
-    Strcpy(cbuf, ctime(&clocktim));
+#ifdef REPRODUCIBLE_BUILD
+    {
+        /*
+         * Use date+time of latest source file revision (set up in
+         * our environment rather than derived by scanning sources)
+         * instead of current date+time, so that later rebuilds of
+         * the same sources specifying the same configuration will
+         * produce the same result.
+         *
+         * Changing the configuration should be done by modifying
+         * config.h or <port>conf.h and setting SOURCE_DATE_EPOCH
+         * based on whichever changed most recently, not by using
+         *   make CFLAGS='-Dthis -Dthat'
+         * to make alterations on the fly.
+         *
+         * Limited validation is performed to prevent dates in the
+         * future (beyond a leeway of 24 hours) or distant past.
+         *
+         * Assumes the value of time_t is in seconds, which is
+         * fundamental for Unix and mandated by POSIX.  For any ports
+         * where that isn't true, leaving REPRODUCIBLE_BUILD disabled
+         * is probably preferrable to hacking this code....
+         */
+        static struct tm nh360; /* static init should yield UTC timezone */
+        unsigned long sd_num, sd_earliest, sd_latest;
+        const char *sd_str = getenv("SOURCE_DATE_EPOCH");
 
-    for (c = cbuf; *c; c++)
-        if (*c == '\n')
-            break;
-    *c = '\0'; /* strip off the '\n' */
-    Fprintf(ofp, "#define BUILD_DATE \"%s\"\n", cbuf);
-    Fprintf(ofp, "#define BUILD_TIME (%ldL)\n", (long) clocktim);
-    Fprintf(ofp, "\n");
+        if (sd_str) {
+            sd_num = strtoul(sd_str, (char **) 0, 10);
+            /*
+             * Note:  this does not need to be updated for future
+             * releases.  It serves as a sanity check for potentially
+             * mis-set environment, not a hard baseline for when the
+             * current version could have first been built.
+             */
+            /* oldest date we'll accept: 7-Dec-2015 (release of 3.6.0) */
+            nh360.tm_mday = 7;
+            nh360.tm_mon  = 12 - 1;
+            nh360.tm_year = 2015 - 1900;
+            sd_earliest = (unsigned long) mktime(&nh360);
+            /* 'youngest' date we'll accept: 24 hours in the future */
+            sd_latest = (unsigned long) clocktim + 24L * 60L * 60L;
+
+            if (sd_num >= sd_earliest && sd_num <= sd_latest) {
+                /* use SOURCE_DATE_EPOCH value */
+                clocktim = (time_t) sd_num;
+                date_via_env = TRUE;
+            } else {
+                Fprintf(stderr, "? Invalid value for SOURCE_DATE_EPOCH (%lu)",
+                        sd_num);
+                if (sd_num > 0L && sd_num < sd_earliest)
+                    Fprintf(stderr, ", older than %lu", sd_earliest);
+                else if (sd_num > sd_latest)
+                    Fprintf(stderr, ", newer than %lu", sd_latest);
+                Fprintf(stderr, ".\n");
+                Fprintf(stderr, ": Reverting to current date+time (%lu).\n",
+                        (unsigned long) clocktim);
+                (void) fflush(stderr);
+            }
+        } else {
+            /* REPRODUCIBLE_BUILD enabled but SOURCE_DATE_EPOCH is missing */
+            Fprintf(stderr, "? No value for SOURCE_DATE_EPOCH.\n");
+            Fprintf(stderr, ": Using current date+time (%lu).\n",
+                    (unsigned long) clocktim);
+            (void) fflush(stderr);
+        }
+        Strcpy(cbuf, asctime(gmtime(&clocktim)));
+    }
+#else
+    /* ordinary build: use current date+time */
+    Strcpy(cbuf, ctime(&clocktim));
+#endif
+
+    if ((c = index(cbuf, '\n')) != 0)
+        *c = '\0'; /* strip off the '\n' */
 #ifdef NHSTDC
     ul_sfx = "UL";
 #else
     ul_sfx = "L";
 #endif
+    if (date_via_env)
+        Fprintf(ofp, "#define SOURCE_DATE_EPOCH (%lu%s) /* via getenv() */\n",
+                (unsigned long) clocktim, ul_sfx);
+    Fprintf(ofp, "#define BUILD_DATE \"%s\"\n", cbuf);
+    if (date_via_env)
+        Fprintf(ofp, "#define BUILD_TIME SOURCE_DATE_EPOCH\n");
+    else
+        Fprintf(ofp, "#define BUILD_TIME (%lu%s)\n",
+                (unsigned long) clocktim, ul_sfx);
+    Fprintf(ofp, "\n");
     Fprintf(ofp, "#define VERSION_NUMBER 0x%08lx%s\n", version.incarnation,
             ul_sfx);
     Fprintf(ofp, "#define VERSION_FEATURES 0x%08lx%s\n", version.feature_set,
@@ -1279,17 +1377,100 @@ do_date()
     Fprintf(ofp, "#define COPYRIGHT_BANNER_C \\\n \"%s\"\n",
             bannerc_string(buf, cbuf));
     Fprintf(ofp, "\n");
+    if (get_gitinfo(githash, gitbranch)) {
+        Fprintf(ofp, "#define NETHACK_GIT_SHA \"%s\"\n", githash);
+        Fprintf(ofp, "#define NETHACK_GIT_BRANCH \"%s\"\n", gitbranch);
+    }
 #ifdef AMIGA
     {
         struct tm *tm = localtime((time_t *) &clocktim);
+
         Fprintf(ofp, "#define AMIGA_VERSION_STRING ");
         Fprintf(ofp, "\"\\0$VER: NetHack %d.%d.%d (%d.%d.%d)\"\n",
-                VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL, tm->tm_mday,
-                tm->tm_mon + 1, tm->tm_year + 1900);
+                VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
+                tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900);
     }
 #endif
     Fclose(ofp);
     return;
+}
+
+boolean
+get_gitinfo(githash, gitbranch)
+char *githash, *gitbranch;
+{
+    FILE *gifp;
+    size_t len;
+    char infile[600];
+    char *line, *strval, *opt, *c, *end;
+    boolean havebranch = FALSE, havehash = FALSE;
+
+    if (!githash || !gitbranch) return FALSE;
+
+    Sprintf(infile, DATA_IN_TEMPLATE, GITINFO_FILE);
+    if (!(gifp = fopen(infile, RDTMODE))) {
+        /* perror(infile); */
+        return FALSE;
+    }
+
+    /* read the gitinfo file */
+    while ((line = fgetline(gifp)) != 0) {
+        strval = index(line, '=');
+        if (strval && strlen(strval) < (BUFSZ-1)) {
+            opt = line;
+            *strval++ = '\0';
+            /* strip off the '\n' */
+            if ((c = index(strval, '\n')) != 0)
+                *c = '\0'; 
+            if ((c = index(opt, '\n')) != 0)
+                *c = '\0';
+            /* strip leading and trailing white space */
+            while (*strval == ' ' || *strval == '\t')
+                strval++;
+            end = eos(strval);
+            while (--end >= strval && (*end == ' ' || *end == '\t'))
+            *end = '\0';
+            while (*opt == ' ' || *opt == '\t')
+                opt++;
+            end = eos(opt);
+            while (--end >= opt && (*end == ' ' || *end == '\t'))
+            *end = '\0';
+
+            len = strlen(opt);
+            if ((len >= strlen("gitbranch")) && !case_insensitive_comp(opt, "gitbranch")) {
+                Strcpy(gitbranch, strval);
+                havebranch = TRUE;
+            }
+            if ((len >= strlen("githash")) && !case_insensitive_comp(opt, "githash")) {
+                Strcpy(githash, strval);
+                havehash = TRUE;
+            }
+	}
+    }
+    Fclose(gifp);
+    if (havebranch && havehash)
+        return TRUE;
+    return FALSE;
+}
+
+static int
+case_insensitive_comp(s1, s2)
+const char *s1;
+const char *s2;
+{
+    uchar u1, u2;
+
+    for (;; s1++, s2++) {
+        u1 = (uchar) *s1;
+        if (isupper(u1))
+            u1 = tolower(u1);
+        u2 = (uchar) *s2;
+        if (isupper(u2))
+            u2 = tolower(u2);
+        if (u1 == '\0' || u1 != u2)
+            break;
+    }
+    return u1 - u2;
 }
 
 static char save_bones_compat_buf[BUFSZ];
@@ -1323,6 +1504,9 @@ static const char *build_opts[] = {
 #ifdef TEXTCOLOR
     "color",
 #endif
+#ifdef TTY_TILES_ESCCODES
+    "console escape codes for tile hinting",
+#endif
 #ifdef COM_COMPL
     "command line completion",
 #endif
@@ -1338,17 +1522,29 @@ static const char *build_opts[] = {
 #ifdef DLB
     "data librarian",
 #endif
+#ifdef DUMPLOG
+    "end-of-game dumplogs",
+#endif
+#ifdef HOLD_LOCKFILE_OPEN
+    "exclusive lock on level 0 file",
+#endif
+#if defined(MSGHANDLER) && (defined(POSIX_TYPES) || defined(__GNUC__))
+    "external program as a message handler",
+#endif
 #ifdef MFLOPPY
     "floppy drive support",
 #endif
 #ifdef INSURANCE
     "insurance files for recovering from crashes",
 #endif
-#ifdef HOLD_LOCKFILE_OPEN
-    "exclusive lock on level 0 file",
-#endif
 #ifdef LOGFILE
     "log file",
+#endif
+#ifdef XLOGFILE
+    "extended log file",
+#endif
+#ifdef PANICLOG
+    "errors and warnings log file",
 #endif
 #ifdef MAIL
     "mail daemon",
@@ -1370,6 +1566,8 @@ static const char *build_opts[] = {
 #endif
 #endif
 #endif
+    /* pattern matching method will be substituted by nethack at run time */
+    "pattern matching via :PATMATCH:",
 #ifdef SELECTSAVED
     "restore saved games via menu",
 #endif
@@ -1398,6 +1596,12 @@ static const char *build_opts[] = {
 #endif
 #ifdef SHELL
     "shell command",
+#endif
+    "traditional status display",
+#ifdef STATUS_HILITES
+    "status via windowport with highlighting",
+#else
+    "status via windowport without highlighting",
 #endif
 #ifdef SUSPEND
     "suspend command",
@@ -1431,7 +1635,8 @@ static const char *build_opts[] = {
 #ifdef SYSCF
     "system configuration at run-time",
 #endif
-    save_bones_compat_buf, "and basic NetHack features"
+    save_bones_compat_buf,
+    "and basic NetHack features"
 };
 
 struct win_info {
@@ -1499,8 +1704,7 @@ windowing_sanity()
         for (i = 0; window_opts[i].id; ++i)
             if (!strcmp(window_opts[i].id, DEFAULT_WINDOW_SYS))
                 break;
-        if (!window_opts[i]
-                 .id) { /* went through whole list without a match */
+        if (!window_opts[i].id) { /* went through whole list without a match */
             Fprintf(stderr, "Configuration error: DEFAULT_WINDOW_SYS (%s)\n",
                     DEFAULT_WINDOW_SYS);
             Fprintf(stderr,
@@ -1544,7 +1748,8 @@ do_options()
     Fprintf(ofp, "\nOptions compiled into this edition:\n");
     length = COLNO + 1; /* force 1st item onto new line */
     for (i = 0; i < SIZE(build_opts); i++) {
-        str = strcpy(buf, build_opts[i]);
+        str = strcat(strcpy(buf, build_opts[i]),
+                     (i < SIZE(build_opts) - 1) ? "," : ".");
         while (*str) {
             word = index(str, ' ');
             if (word)
@@ -1556,7 +1761,6 @@ do_options()
             Fprintf(ofp, "%s", str), length += strlen(str);
             str += strlen(str) + (word ? 1 : 0);
         }
-        Fprintf(ofp, (i < SIZE(build_opts) - 1) ? "," : "."), length++;
     }
 
     winsyscnt = SIZE(window_opts) - 1;
@@ -1939,7 +2143,6 @@ do_oracles()
 void
 do_dungeon()
 {
-    int rcnt = 0;
     char *line;
 
     Sprintf(filename, DATA_IN_TEMPLATE, DGN_I_FILE);
@@ -1965,7 +2168,6 @@ do_dungeon()
     while ((line = fgetline(ifp)) != 0) {
         SpinCursor(3);
 
-        rcnt++;
         if (line[0] == '#') {
             free(line);
             continue; /* discard comments */
@@ -2117,9 +2319,6 @@ do_permonst()
     }
     Fprintf(ofp, "%s", Dont_Edit_Code);
     Fprintf(ofp, "#ifndef PM_H\n#define PM_H\n");
-
-    if (strcmp(mons[0].mname, "playermon") != 0)
-        Fprintf(ofp, "\n#define\tPM_PLAYERMON\t(-1)");
 
     for (i = 0; mons[i].mlet; i++) {
         SpinCursor(3);
@@ -2580,6 +2779,7 @@ do_objs()
                 prefix = -1;
                 break;
             }
+            /*FALLTHRU*/
         default:
             Fprintf(ofp, "#define\t");
         }
@@ -2708,7 +2908,7 @@ do_vision()
 #ifdef FILE_PREFIX
     Strcat(filename, file_prefix);
 #endif
-    Sprintf(filename, INCLUDE_TEMPLATE, VIS_TAB_H);
+    Sprintf(eos(filename), INCLUDE_TEMPLATE, VIS_TAB_H);
     if (!(ofp = fopen(filename, WRTMODE))) {
         perror(filename);
         exit(EXIT_FAILURE);
@@ -2731,10 +2931,15 @@ do_vision()
 #ifdef FILE_PREFIX
     Strcat(filename, file_prefix);
 #endif
-    Sprintf(filename, SOURCE_TEMPLATE, VIS_TAB_C);
+    Sprintf(eos(filename), SOURCE_TEMPLATE, VIS_TAB_C);
     if (!(ofp = fopen(filename, WRTMODE))) {
         perror(filename);
-        Sprintf(filename, INCLUDE_TEMPLATE, VIS_TAB_H);
+        /* creating vis_tab.c failed; remove the vis_tab.h we just made */
+        filename[0] = '\0';
+#ifdef FILE_PREFIX
+        Strcat(filename, file_prefix);
+#endif
+        Sprintf(eos(filename), INCLUDE_TEMPLATE, VIS_TAB_H);
         Unlink(filename);
         exit(EXIT_FAILURE);
     }

@@ -1,5 +1,7 @@
 #	NetHack Makefile.
-# NetHack 3.6  Makefile.src	$NHDT-Date: 1447313972 2015/11/12 07:39:32 $  $NHDT-Branch: master $:$NHDT-Revision: 1.45 $
+# NetHack 3.6  Makefile.src    $NHDT-Date: 1524689449 2018/04/25 20:50:49 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.54 $
+# Copyright (c) 2018 by Pasi Kallinen
+# NetHack may be freely redistributed.  See license for details.
 
 # Root of source tree:
 NHSROOT=..
@@ -167,6 +169,11 @@ CXX=g++
 #CXX=arm-linux-g++
 #LINK=arm-linux-gcc
 
+# we specify C preprocessor flags via CFLAGS; files built with default rules
+# might include $(CPPFLAGS) which could get a value from user's environment;
+# we avoid that by forcing it empty rather than by overriding default rules
+CPPFLAGS =
+
 # file for regular expression matching
 REGEXOBJ = posixregex.o
 #REGEXOBJ = pmatchregex.o
@@ -195,6 +202,22 @@ WINX11OBJ = Window.o dialogs.o winX.o winmap.o winmenu.o winmesg.o \
 #
 WINQTSRC = ../win/Qt/qt_win.cpp ../win/Qt/qt_clust.cpp ../win/Qt/qttableview.cpp
 WINQTOBJ = qt_win.o qt_clust.o qttableview.o tile.o
+#
+# Files for a Qt 4 or 5 port
+#
+WINQT4SRC = ../win/Qt4/qt4bind.cpp ../win/Qt4/qt4click.cpp \
+	../win/Qt4/qt4clust.cpp ../win/Qt4/qt4delay.cpp \
+	../win/Qt4/qt4glyph.cpp ../win/Qt4/qt4icon.cpp ../win/Qt4/qt4inv.cpp \
+	../win/Qt4/qt4key.cpp ../win/Qt4/qt4line.cpp ../win/Qt4/qt4main.cpp \
+	../win/Qt4/qt4map.cpp ../win/Qt4/qt4menu.cpp ../win/Qt4/qt4msg.cpp \
+	../win/Qt4/qt4plsel.cpp ../win/Qt4/qt4rip.cpp ../win/Qt4/qt4set.cpp \
+	../win/Qt4/qt4stat.cpp ../win/Qt4/qt4str.cpp ../win/Qt4/qt4streq.cpp \
+	../win/Qt4/qt4svsel.cpp ../win/Qt4/qt4win.cpp ../win/Qt4/qt4xcmd.cpp \
+	../win/Qt4/qt4yndlg.cpp
+WINQT4OBJ = qt4bind.o qt4click.o qt4clust.o qt4delay.o qt4glyph.o qt4icon.o \
+	qt4inv.o qt4key.o qt4line.o qt4main.o qt4map.o qt4menu.o qt4msg.o \
+	qt4plsel.o qt4rip.o qt4set.o qt4stat.o qt4str.o qt4streq.o qt4svsel.o \
+	qt4win.o qt4xcmd.o qt4yndlg.o tile.o
 #
 # Files for a Gnome port
 #
@@ -248,8 +271,11 @@ WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11
 # WINX11LIB = -lXaw -lXmu -lXext -lXt -lXpm -lX11 -lm
 # WINX11LIB = -lXaw -lXmu -lXpm -lXext -lXt -lX11 -lSM -lICE -lm # BSD/OS 2.0
 #
-# libraries for Qt
+# libraries for Qt 3
 WINQTLIB = -L$(QTDIR)/lib -lqt
+#
+# libraries for Qt 4
+WINQT4LIB = `pkg-config QtGui --libs`
 #
 # libraries for KDE (with Qt)
 WINKDELIB = -lkdecore -lkdeui -lXext
@@ -308,12 +334,51 @@ RANDOBJ =
 # used by `make depend' to reconstruct this Makefile; you shouldn't need this
 AWK	= nawk
 
+# when using 'makedefs -v', also force dat/gitinfo.txt to be up to date;
+# changing this to 0 will change the behavior to only make that file if
+# it doesn't already exist; to skip it completely, create an empty file
+# of that name and also set this to 0; there shouldn't be any need to
+# skip it--if nethack's sources don't reside in a git repository than
+# the script which creates that file will fail benignly and 'makedefs -v'
+# will proceed without it
+GITINFO=1
+
+#VERBOSEMAKE = 1
+
 # ----------------------------------------
 #
 # Nothing below this line should have to be changed.
 #
 # Other things that have to be reconfigured are in config.h,
 # {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
+
+# Verbosity definitions, begin
+#   Set VERBOSEMAKE=1 to output more stuff.
+#   CC and CXX obey verbosity, LD and LINK don't.
+#   AT is @ when not verbose, empty otherwise
+ACTUAL_CC := $(CC)
+ACTUAL_CXX := $(CXX)
+ACTUAL_LD := $(LD)
+ACTUAL_LINK := $(LINK)
+
+CC_V0 = @echo "[CC] $<"; $(ACTUAL_CC)
+CC_V = $(CC_V0)
+CC_V1 = $(ACTUAL_CC)
+CC = $(CC_V$(VERBOSEMAKE))
+
+CXX_V0 = @echo "[CXX] $<"; $(ACTUAL_CXX)
+CXX_V = $(CXX_V0)
+CXX_V1 = $(ACTUAL_CXX)
+CXX = $(CXX_V$(VERBOSEMAKE))
+
+LD = $(ACTUAL_LD)
+LINK = $(ACTUAL_LINK)
+
+AT_V0 := @
+AT_V := $(AT_V0)
+AT_V1 :=
+AT = $(AT_V$(VERBOSEMAKE))
+# Verbosity, end
 
 MAKEDEFS = ../util/makedefs
 
@@ -333,11 +398,11 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
-	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c rip.c \
-	   rnd.c role.c rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c \
-	   spell.c steal.c steed.c sys.c teleport.c timeout.c topten.c track.c \
-	   trap.c \
-	   u_init.c uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
+	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c \
+	   rip.c rnd.c role.c rumors.c save.c shk.c shknam.c sit.c sounds.c \
+	   sp_lev.c spell.c steal.c steed.c sys.c teleport.c timeout.c \
+	   topten.c track.c trap.c u_init.c \
+	   uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
 	   windows.c wizard.c worm.c worn.c write.c zap.c
 
 # all operating-system-dependent .c (for dependencies and such)
@@ -347,6 +412,7 @@ SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 	../sys/share/random.c \
 	../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
 	../sys/unix/unixunix.c ../sys/unix/unixres.c ../sys/be/bemain.c
+SYSCXXSRC = ../sys/share/cppregex.cpp
 
 # generated source files (tile.c is handled separately via WINxxxSRC)
 GENCSRC = monstr.c vis_tab.c	#tile.c
@@ -354,12 +420,12 @@ GENCSRC = monstr.c vis_tab.c	#tile.c
 # all windowing-system-dependent .c (for dependencies and such)
 WINCSRC = $(WINTTYSRC) $(WINX11SRC) $(WINGNOMESRC) $(WINGEMSRC)
 # all windowing-system-dependent .cpp (for dependencies and such)
-WINCXXSRC = $(WINQTSRC) $(WINBESRC)
+WINCXXSRC = $(WINQTSRC) $(WINQT4SRC) $(WINBESRC)
 
 # Files for window system chaining.  Requires SYSCF; include via HINTSRC/HINTOBJ
-CHAINSRC=../win/chain/wc_chainin.c ../win/chain/wc_chainout.c \
-	../win/chain/wc_trace.c
-CHAINOBJ=wc_chainin.o wc_chainout.o wc_trace.o
+CHAINSRC = ../win/chain/wc_chainin.c ../win/chain/wc_chainout.c \
+	   ../win/chain/wc_trace.c
+CHAINOBJ = wc_chainin.o wc_chainout.o wc_trace.o
 
 # .c files for this version (for date.h)
 VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(CHAINSRC) $(GENCSRC)
@@ -378,9 +444,9 @@ HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h botl.h \
 	global.h hack.h lev.h lint.h macconf.h mextra.h mfndpos.h micro.h \
 	mkroom.h \
 	monattk.h mondata.h monflag.h monst.h monsym.h obj.h objclass.h \
-	os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h region.h rm.h \
-	sp_lev.h spell.h sys.h system.h tcap.h timeout.h tosconf.h tradstdc.h \
-	trampoli.h trap.h unixconf.h vision.h vmsconf.h wintty.h \
+	os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h region.h \
+	rm.h sp_lev.h spell.h sys.h system.h tcap.h timeout.h tosconf.h \
+	tradstdc.h trampoli.h trap.h unixconf.h vision.h vmsconf.h wintty.h \
 	winX.h winprocs.h wintype.h you.h youprop.h
 
 HSOURCES = $(HACKINCL) date.h onames.h pm.h vis_tab.h\
@@ -412,33 +478,33 @@ $(GAME):	$(SYSTEM)
 	@echo "$(GAME) is up to date."
 
 Sysunix:	$(HOBJ) Makefile
-	@echo "Loading ..."
-	$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
+	@echo "Linking $(GAME)."
+	$(AT)$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
 	@touch Sysunix
 
 Sys3B2:	$(HOBJ) Makefile
-	@echo "Loading ..."
-	@$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) -lmalloc
+	@echo "Linking $(GAME)."
+	$(AT)$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) -lmalloc
 	@touch Sys3B2
 
 Sysatt:	$(HOBJ) Makefile
-	@echo "Loading ..."
-	@$(LD) $(LFLAGS) /lib/crt0s.o /lib/shlib.ifile -o $(GAME) $(HOBJ)
+	@echo "Loading $(GAME)."
+	$(AT)$(LD) $(LFLAGS) /lib/crt0s.o /lib/shlib.ifile -o $(GAME) $(HOBJ)
 	@touch Sysatt
 
 Systos:	$(HOBJ) Makefile
-	@echo "Loading ..."
-	@$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB)
+	@echo "Linking $(GAME)."
+	$(AT)$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB)
 	@touch Systos
 
 SysV-AT:	DUMB.Setup $(HOBJ) Makefile
-	@echo "Loading ..."
-	@$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB)
+	@echo "Linking $(GAME)."
+	$(AT)$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB)
 	@touch SysV-AT
 
 SysBe: $(HOBJ) Makefile
-	@echo "Loading ..."
-	@$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
+	@echo "Linking $(GAME)."
+	$(AT)$(LINK) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
 	@xres -o $(GAME) ../win/BeOS/nethack.rsrc
 	@mimeset -f $(GAME)
 	@touch SysBe
@@ -480,7 +546,7 @@ objects.o:
 	$(CC) $(CFLAGS) -c objects.c
 	@rm -f $(MAKEDEFS)
 
-# Qt windowport meta-object-compiler output
+# Qt 3 windowport meta-object-compiler output
 qt_kde0.moc: ../include/qt_kde0.h
 	$(QTDIR)/bin/moc -o qt_kde0.moc ../include/qt_kde0.h
 
@@ -490,23 +556,55 @@ qt_win.moc: ../include/qt_win.h
 qttableview.moc: ../include/qttableview.h
 	$(QTDIR)/bin/moc -o qttableview.moc ../include/qttableview.h
 
-$(MAKEDEFS): ../util/makedefs.c  $(CONFIG_H) ../include/permonst.h \
+# Qt 4 windowport meta-object-compiler output
+qt4kde0.moc : ../win/Qt4/qt4kde0.h
+	$(QTDIR)/bin/moc -o qt4kde0.moc ../win/Qt4/qt4kde0.h
+qt4main.moc : ../win/Qt4/qt4main.h
+	$(QTDIR)/bin/moc -o qt4main.moc ../win/Qt4/qt4main.h
+qt4map.moc : ../win/Qt4/qt4map.h
+	$(QTDIR)/bin/moc -o qt4map.moc ../win/Qt4/qt4map.h
+qt4menu.moc : ../win/Qt4/qt4menu.h
+	$(QTDIR)/bin/moc -o qt4menu.moc ../win/Qt4/qt4menu.h
+qt4msg.moc : ../win/Qt4/qt4msg.h
+	$(QTDIR)/bin/moc -o qt4msg.moc ../win/Qt4/qt4msg.h
+qt4plsel.moc : ../win/Qt4/qt4plsel.h
+	$(QTDIR)/bin/moc -o qt4plsel.moc ../win/Qt4/qt4plsel.h
+qt4set.moc : ../win/Qt4/qt4set.h
+	$(QTDIR)/bin/moc -o qt4set.moc ../win/Qt4/qt4set.h
+qt4stat.moc : ../win/Qt4/qt4stat.h
+	$(QTDIR)/bin/moc -o qt4stat.moc ../win/Qt4/qt4stat.h
+qt4xcmd.moc : ../win/Qt4/qt4xcmd.h
+	$(QTDIR)/bin/moc -o qt4xcmd.moc ../win/Qt4/qt4xcmd.h
+qt4yndlg.moc : ../win/Qt4/qt4yndlg.h
+	$(QTDIR)/bin/moc -o qt4yndlg.moc ../win/Qt4/qt4yndlg.h
+
+#	build monst.o and objects.o before executing '$(MAKE) makedefs'
+$(MAKEDEFS): $(FIRSTOBJ) \
+		../util/makedefs.c $(CONFIG_H) ../include/permonst.h \
 		../include/objclass.h ../include/monsym.h \
 		../include/artilist.h ../include/dungeon.h ../include/obj.h \
 		../include/monst.h ../include/you.h ../include/flag.h \
 		../include/dlb.h ../include/patchlevel.h ../include/qtext.h
-	@( cd ../util ; $(MAKE) makedefs)
+	@( cd ../util ; $(MAKE) makedefs )
 
+#	Source files created by 'makedefs' at build time.
+#	Each is given an artificial dependency upon the one before
+#	so that parallel makes will have to build them sequentially.
+#	(More for documentation than effect; 'make' should know not
+#	to try to build $(MAKEDEFS) for bar.h while it is in the
+#	process of building it for foo.h.)
 ../include/onames.h: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../include/onames.h )
-../include/pm.h: $(MAKEDEFS)
+../include/pm.h: $(MAKEDEFS) ../include/onames.h
 	@( cd ../util ; $(MAKE) ../include/pm.h )
-monstr.c: $(MAKEDEFS)
+monstr.c: $(MAKEDEFS) ../include/pm.h
 	@( cd ../util ; $(MAKE) ../src/monstr.c )
-../include/vis_tab.h: $(MAKEDEFS)
+../include/vis_tab.h: $(MAKEDEFS) monstr.c
 	@( cd ../util ; $(MAKE) ../include/vis_tab.h )
 # makedefs -z makes both vis_tab.h and vis_tab.c, but writes the .h first
 vis_tab.c: ../include/vis_tab.h
+#	Created at build time for configurations which support tiles,
+#	but not by makedefs so not connected to the others.
 tile.c: ../win/share/tilemap.c $(HACK_H)
 	@( cd ../util ; $(MAKE) ../src/tile.c )
 
@@ -518,10 +616,13 @@ tile.c: ../win/share/tilemap.c $(HACK_H)
 #	file far more complex.  Since "hack.h" depends on most of the include
 #	files, we kludge around this by making date.h dependent on hack.h,
 #	even though it doesn't include this file.
+#	Do NOT include ../dat/gitinfo.txt as either a prerequisite or target.
+#	'makedefs -v' processes it when present and ignores it if not.
 #
 #	hack.h depends on makedefs' output, so we know makedefs will be
 #	up to date before being executed
 ../include/date.h:	$(VERSOURCES) $(HACK_H)
+	-$(SHELL) ../sys/unix/gitinfo.sh $(GITINFO) #before 'makedefs -v'
 	../util/makedefs -v
 
 
@@ -551,11 +652,11 @@ spotless: clean
 
 
 depend: ../sys/unix/depend.awk \
-		$(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(CHAINSRC) $(GENCSRC) \
-		$(HACKCSRC)
+		$(SYSCSRC) $(WINCSRC) $(SYSCXXSRC) $(WINCXXSRC) \
+		$(CHAINSRC) $(GENCSRC) $(HACKCSRC)
 	$(AWK) -f ../sys/unix/depend.awk ../include/*.h \
-		$(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(CHAINSRC) $(GENCSRC) \
-		$(HACKCSRC) >makedep
+		$(SYSCSRC) $(WINCSRC) $(SYSCXXSRC) $(WINCXXSRC) \
+		$(CHAINSRC) $(GENCSRC) $(HACKCSRC) >makedep
 	@echo '/^# DO NOT DELETE THIS LINE OR CHANGE ANYTHING BEYOND IT/+2,$$d' >eddep
 	@echo '$$r makedep' >>eddep
 	@echo 'w' >>eddep
@@ -710,6 +811,8 @@ load_img.o: ../win/gem/load_img.c ../include/load_img.h
 gr_rect.o: ../win/gem/gr_rect.c ../include/gr_rect.h
 	$(CC) $(CFLAGS) -c ../win/gem/gr_rect.c
 tile.o: tile.c $(HACK_H)
+cppregex.o: ../sys/share/cppregex.cpp
+	$(CXX) $(CXXFLAGS) -c ../sys/share/cppregex.cpp
 qt_win.o: ../win/Qt/qt_win.cpp $(HACK_H) ../include/func_tab.h \
 		../include/dlb.h ../include/patchlevel.h ../include/tile2x11.h \
 		../include/qt_win.h ../include/qt_clust.h ../include/qt_kde0.h \
@@ -719,6 +822,52 @@ qt_clust.o: ../win/Qt/qt_clust.cpp ../include/qt_clust.h
 	$(CXX) $(CXXFLAGS) -c ../win/Qt/qt_clust.cpp
 qttableview.o: ../win/Qt/qttableview.cpp ../include/qttableview.h
 	$(CXX) $(CXXFLAGS) -c ../win/Qt/qttableview.cpp
+qt4bind.o : ../win/Qt4/qt4bind.cpp $(HACK_H) ../win/Qt4/qt4bind.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4bind.cpp
+qt4click.o : ../win/Qt4/qt4click.cpp $(HACK_H) ../win/Qt4/qt4click.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4click.cpp
+qt4clust.o : ../win/Qt4/qt4clust.cpp $(HACK_H) ../win/Qt4/qt4clust.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4clust.cpp
+qt4delay.o : ../win/Qt4/qt4delay.cpp $(HACK_H) ../win/Qt4/qt4delay.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4delay.cpp
+qt4glyph.o : ../win/Qt4/qt4glyph.cpp $(HACK_H) ../win/Qt4/qt4glyph.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4glyph.cpp
+qt4icon.o : ../win/Qt4/qt4icon.cpp $(HACK_H) ../win/Qt4/qt4icon.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4icon.cpp
+qt4inv.o : ../win/Qt4/qt4inv.cpp $(HACK_H) ../win/Qt4/qt4inv.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4inv.cpp
+qt4key.o : ../win/Qt4/qt4key.cpp $(HACK_H) ../win/Qt4/qt4key.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4key.cpp
+qt4line.o : ../win/Qt4/qt4line.cpp $(HACK_H) ../win/Qt4/qt4line.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4line.cpp
+qt4main.o : ../win/Qt4/qt4main.cpp $(HACK_H) qt4main.moc ../win/Qt4/qt4main.h qt4kde0.moc
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4main.cpp
+qt4map.o : ../win/Qt4/qt4map.cpp $(HACK_H) qt4map.moc ../win/Qt4/qt4map.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4map.cpp
+qt4menu.o : ../win/Qt4/qt4menu.cpp $(HACK_H) qt4menu.moc ../win/Qt4/qt4menu.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4menu.cpp
+qt4msg.o : ../win/Qt4/qt4msg.cpp $(HACK_H) qt4msg.moc ../win/Qt4/qt4msg.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4msg.cpp
+qt4plsel.o : ../win/Qt4/qt4plsel.cpp $(HACK_H) qt4plsel.moc ../win/Qt4/qt4plsel.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4plsel.cpp
+qt4rip.o : ../win/Qt4/qt4rip.cpp $(HACK_H) ../win/Qt4/qt4rip.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4rip.cpp
+qt4set.o : ../win/Qt4/qt4set.cpp $(HACK_H) qt4set.moc ../win/Qt4/qt4set.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4set.cpp
+qt4stat.o : ../win/Qt4/qt4stat.cpp $(HACK_H) qt4stat.moc ../win/Qt4/qt4stat.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4stat.cpp
+qt4str.o : ../win/Qt4/qt4str.cpp ../win/Qt4/qt4str.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4str.cpp
+qt4streq.o : ../win/Qt4/qt4streq.cpp $(HACK_H) ../win/Qt4/qt4streq.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4streq.cpp
+qt4svsel.o : ../win/Qt4/qt4svsel.cpp $(HACK_H) ../win/Qt4/qt4svsel.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4svsel.cpp
+qt4win.o : ../win/Qt4/qt4win.cpp $(HACK_H) ../win/Qt4/qt4win.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4win.cpp
+qt4xcmd.o : ../win/Qt4/qt4xcmd.cpp $(HACK_H) qt4xcmd.moc ../win/Qt4/qt4xcmd.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4xcmd.cpp
+qt4yndlg.o : ../win/Qt4/qt4yndlg.cpp $(HACK_H) qt4yndlg.moc ../win/Qt4/qt4yndlg.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt4/qt4yndlg.cpp
 wc_chainin.o: ../win/chain/wc_chainin.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../win/chain/wc_chainin.c
 wc_chainout.o: ../win/chain/wc_chainout.c $(HACK_H)

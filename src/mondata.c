@@ -1,10 +1,12 @@
-/* NetHack 3.6	mondata.c	$NHDT-Date: 1446604115 2015/11/04 02:28:35 $  $NHDT-Branch: master $:$NHDT-Revision: 1.58 $ */
+/* NetHack 3.6	mondata.c	$NHDT-Date: 1508479720 2017/10/20 06:08:40 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.63 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-
-/*      These routines provide basic data for any type of monster. */
+/*
+ *      These routines provide basic data for any type of monster.
+ */
 
 /* set up an individual monster's base type (initial creation, shapechange) */
 void
@@ -13,7 +15,10 @@ struct monst *mon;
 struct permonst *ptr;
 int flag;
 {
+    int new_speed, old_speed = mon->data ? mon->data->mmove : 0;
+
     mon->data = ptr;
+    mon->mnum = (short) monsndx(ptr);
     if (flag == -1)
         return; /* "don't care" */
 
@@ -21,6 +26,15 @@ int flag;
         mon->mintrinsics |= (ptr->mresists & 0x00FF);
     else
         mon->mintrinsics = (ptr->mresists & 0x00FF);
+
+    if (mon->movement) { /* same adjustment as poly'd hero undergoes */
+        new_speed = ptr->mmove;
+        /* prorate unused movement if new form is slower so that
+           it doesn't get extra moves leftover from previous form;
+           if new form is faster, leave unused movement as is */
+        if (new_speed < old_speed)
+            mon->movement = new_speed * mon->movement / old_speed;
+    }
     return;
 }
 
@@ -312,13 +326,25 @@ struct permonst *mptr;
 /* returns True if monster can blow (whistle, etc) */
 boolean
 can_blow(mtmp)
-register struct monst *mtmp;
+struct monst *mtmp;
 {
     if ((is_silent(mtmp->data) || mtmp->data->msound == MS_BUZZ)
         && (breathless(mtmp->data) || verysmall(mtmp->data)
             || !has_head(mtmp->data) || mtmp->data->mlet == S_EEL))
         return FALSE;
     if ((mtmp == &youmonst) && Strangled)
+        return FALSE;
+    return TRUE;
+}
+
+/* for casting spells and reading scrolls while blind */
+boolean
+can_chant(mtmp)
+struct monst *mtmp;
+{
+    if ((mtmp == &youmonst && Strangled)
+        || is_silent(mtmp->data) || !has_head(mtmp->data)
+        || mtmp->data->msound == MS_BUZZ || mtmp->data->msound == MS_BURBLE)
         return FALSE;
     return TRUE;
 }
@@ -842,16 +868,12 @@ int *mndx_p;
             if ((p = strstri(x, in_str)) != 0 && (p == x || *(p - 1) == ' '))
                 return i;
         }
-        /* check individual species names; not as thorough as mon_to_name()
-           but our caller can call that directly if desired */
-        for (i = LOW_PM; i < NUMMONS; i++) {
-            x = mons[i].mname;
-            if ((p = strstri(x, in_str)) != 0
-                && (p == x || *(p - 1) == ' ')) {
-                if (mndx_p)
-                    *mndx_p = i;
-                return mons[i].mlet;
-            }
+        /* check individual species names */
+        i = name_to_mon(in_str);
+        if (i != NON_PM) {
+            if (mndx_p)
+                *mndx_p = i;
+            return mons[i].mlet;
         }
     }
     return 0;
@@ -998,6 +1020,32 @@ int montype;
             break;
         }
     return montype;
+}
+
+/* determine whether two permonst indices are part of the same progression;
+   existence of progressions with more than one step makes it a bit tricky */
+boolean
+big_little_match(montyp1, montyp2)
+int montyp1, montyp2;
+{
+    int l, b;
+
+    /* simplest case: both are same pm */
+    if (montyp1 == montyp2)
+        return TRUE;
+    /* assume it isn't possible to grow from one class letter to another */
+    if (mons[montyp1].mlet != mons[montyp2].mlet)
+        return FALSE;
+    /* check whether montyp1 can grow up into montyp2 */
+    for (l = montyp1; (b = little_to_big(l)) != l; l = b)
+        if (b == montyp2)
+            return TRUE;
+    /* check whether montyp2 can grow up into montyp1 */
+    for (l = montyp2; (b = little_to_big(l)) != l; l = b)
+        if (b == montyp1)
+            return TRUE;
+    /* neither grows up to become the other; no match */
+    return FALSE;
 }
 
 /*
