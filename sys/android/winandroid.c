@@ -194,8 +194,8 @@ extern char *status_vals[MAXBLSTATS];
 static int status_colors[MAXBLSTATS];
 extern boolean status_activefields[MAXBLSTATS];
 extern unsigned long cond_hilites[BL_ATTCLR_MAX];
-unsigned long active_conditions;
-const char* cond_names[] = {
+static unsigned long active_conditions;
+static const char* cond_names[] = {
 	"Stone", "Slime", "Strngl", "FoodPois", "TermIll", "Blind",
 	"Deaf", "Stun", "Conf", "Hallu", "Lev", "Fly", "Ride"
 };
@@ -786,12 +786,11 @@ void and_putstr(winid wid, int attr, const char *str)
 	and_putstr_ex(wid, attr, str, 0);
 }
 
-/*void and_set_health_color(colop)
-struct color_option colop;
+void and_set_health_color(int nhcolor)
 {
-	JNICallV(jSetHealthColor, nhcolor_to_RGB(colop.color));
+	JNICallV(jSetHealthColor, nhcolor_to_RGB(nhcolor));
 }
-*/
+
 void and_bot_updated()
 {
 	JNICallV(jRedrawStatus);
@@ -957,6 +956,18 @@ void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int colo
 			active_conditions = condptr ? *condptr : 0L;
 			*status_vals[idx] = 0;
 		}
+		else if(idx == BL_GOLD)
+		{
+			// Remove encoded glyph value. (This might break in the future if the format is changed in botl.c)
+			if(*text == '\\')
+			{
+				text += 10;
+				Sprintf(status_vals[idx], "$%s", text);
+			}
+			else
+				Sprintf(status_vals[idx], status_fieldfmt[idx] ? status_fieldfmt[idx] : "%s", text ? text : "");
+			status_colors[idx] = color;
+		}
 		else
 		{
 			Sprintf(status_vals[idx], status_fieldfmt[idx] ? status_fieldfmt[idx] : "%s", text ? text : "");
@@ -965,11 +976,55 @@ void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int colo
 	}
 }
 
+void print_status_field(int idx, boolean first_field)
+{
+	if(!status_activefields[idx])
+		return;
+
+	const char* val = status_vals[idx];
+
+	if(first_field && *val == ' ')
+	{
+		// Remove leading space of first field
+		val++;
+	}
+	else if(idx == BL_LEVELDESC && !first_field)
+	{
+		/* leveldesc has no leading space, so if we've moved
+		   it past the first position, provide one */
+		and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+	}
+
+	// Don't want coloring on leading spaces (ATR_INVERSE would show), so print those first
+	while(*val == ' ')
+	{
+		and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+		val++;
+	}
+
+	if(idx == BL_HP)
+	{
+		int color = status_colors[idx] & 0xFF;
+		and_set_health_color(color);
+	}
+
+	if(idx == BL_CONDITION)
+	{
+		print_conditions(cond_names);
+	}
+	else
+	{
+		int attr = (status_colors[idx] >> 8) & 0xFF;
+		int color = status_colors[idx] & 0xFF;
+		and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
+	//	debuglog("field %d: %s color %s", idx+1, val, colname(color));
+	}
+}
+
 void and_status_flush()
 {
 	enum statusfields idx, *fieldlist;
 	register int i;
-	char* nb;
 
 	static enum statusfields fieldorder_line1[] = {
 		BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, BL_ALIGN, BL_SCORE,
@@ -983,41 +1038,11 @@ void and_status_flush()
 
 	curs(WIN_STATUS, 1, 0);
 	for(i = 0; (idx = fieldorder_line1[i]) != BL_FLUSH; ++i)
-	{
-		if(status_activefields[idx])
-		{
-			int attr = (status_colors[idx] >> 8) & 0xFF;
-			int color = status_colors[idx] & 0xFF;
-			and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), status_vals[idx], 0, color);
-		//	debuglog("field %d: %s color %s", idx+1, status_vals[idx], colname(status_colors[idx]));
-		}
-	}
+		print_status_field(idx, i == 0);
 
 	curs(WIN_STATUS, 1, 1);
 	for(i = 0; (idx = fieldorder_line2[i]) != BL_FLUSH; ++i)
-	{
-		if(!status_activefields[idx])
-			continue;
-
-		const char *val = status_vals[idx];
-
-		// Prepend space on all fields except the first
-		if(i > 0)
-			and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
-		// Remove leading space from value
-		if(*val == ' ') val++;
-
-		if(idx == BL_CONDITION)
-		{
-			print_conditions(cond_names);
-		}
-		else
-		{
-			int attr = (status_colors[idx] >> 8) & 0xFF;
-			int color = status_colors[idx] & 0xFF;
-			and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
-		}
-	}
+		print_status_field(idx, i == 0);
 
 	and_bot_updated();
 }
