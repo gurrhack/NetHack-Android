@@ -57,6 +57,8 @@ static void NDECL(and_end_screen);
 static char* FDECL(and_getmsghistory, (BOOLEAN_P));
 static void FDECL(and_putmsghistory, (const char *, BOOLEAN_P));
 static void save_msg(const char* msg);
+static void FDECL(and_status_update, (int, genericptr_t, int, int, int, unsigned long *));
+static void and_status_flush();
 
 int NetHackMain(int argc, char** argv);
 
@@ -64,8 +66,8 @@ extern short glyph2tile[];
 
 struct window_procs and_procs = {
 	"and",
-	WC_COLOR | WC_HILITE_PET | WC_INVERSE, /* window port capability options supported */
-	WC2_HILITE_STATUS, /* additional window port capability options supported */
+	WC_COLOR | WC_HILITE_PET | WC_INVERSE,	/* window port capability options supported */
+	WC2_HILITE_STATUS | WC2_FLUSH_STATUS,	/* additional window port capability options supported */
 	and_init_nhwindows,
 	and_player_selection,
 	and_askname,
@@ -117,18 +119,12 @@ struct window_procs and_procs = {
 	genl_preference_update,
 	and_getmsghistory,
 	and_putmsghistory,
-    genl_status_init,
-    genl_status_finish,
-    genl_status_enablefield,
-    genl_status_update,
-    genl_can_suspend_no,
+	genl_status_init,
+	genl_status_finish,
+	genl_status_enablefield,
+	and_status_update,
+	genl_can_suspend_no,
 };
-
-/*    void NDECL((*win_status_init));
-    void NDECL((*win_status_finish));
-    void FDECL((*win_status_enablefield), (int, const char *, const char *, BOOLEAN_P));
-    void FDECL((*win_status_update), (int, genericptr_t, int, int, int, unsigned long *));
-    boolean NDECL((*win_can_suspend));*/
 
 static void and_n_getline(const char* question, char* buf, int nMax, int showLog);
 static void and_n_getline_r(const char* question, char* buf, int nMax, int showLog, int reentry);
@@ -170,9 +166,40 @@ static jmethodID jGetDumplogDir;
 
 static boolean quit_if_possible;
 static boolean restoring_msghistory;
+
 static char* msghistory[32];
 static int msghistory_idx;
 static int msghistory_idx0;
+
+extern const char *status_fieldfmt[MAXBLSTATS];
+// Need to separate conditions in order to color them properly
+enum bl_conditions {
+	BL_COND_STONE,
+	BL_COND_SLIME,
+	BL_COND_STRNGL,
+	BL_COND_FOODPOIS,
+	BL_COND_TERMILL,
+	BL_COND_BLIND,
+	BL_COND_DEAF,
+	BL_COND_STUN,
+	BL_COND_CONF,
+	BL_COND_HALLU,
+	BL_COND_LEV,
+	BL_COND_FLY,
+	BL_COND_RIDE
+};
+
+#define MAXBLCONDITIONS 13
+extern char *status_vals[MAXBLSTATS];
+static int status_colors[MAXBLSTATS];
+extern boolean status_activefields[MAXBLSTATS];
+extern unsigned long cond_hilites[BL_ATTCLR_MAX];
+unsigned long active_conditions;
+const char* cond_names[] = {
+	"Stone", "Slime", "Strngl", "FoodPois", "TermIll", "Blind",
+	"Deaf", "Stun", "Conf", "Hallu", "Lev", "Fly", "Ride"
+};
+
 
 //____________________________________________________________________________________
 //
@@ -625,9 +652,9 @@ void and_curs(winid wid, int x, int y)
 	JNICallV(jSetCursorPos, wid, x, y);
 }
 
-// For STATUSCOLORS
+// For TEXTCOLOR
 static int text_attribs = 0;
-static int text_color = 0xffffffff;
+static int text_color = CLR_WHITE;
 
 static int palette[CLR_MAX] = {
 	0xFF555555,	// CLR_BLACK
@@ -697,13 +724,13 @@ term_start_color(color)
 int color;
 {
 	//debuglog("term_start_color %s", colname(color));
-	text_color = nhcolor_to_RGB(color);
+	text_color = color;
 }
 
 void
 term_end_color()
 {
-	text_color = 0xffffffff;
+	text_color = CLR_WHITE;
 }
 
 //____________________________________________________________________________________
@@ -728,25 +755,21 @@ term_end_color()
 //		   then the second.  In the tty port, pline() achieves this
 //		   by calling more() or displaying both on the same line.
 //____________________________________________________________________________________
-void and_putstr_ex(winid wid, int attr, const char *str, int append)
+void and_putstr_ex2(winid wid, int attr, const char *str, int append, int nhcolor)
 {
 	jbyteArray jstr = create_bytearray(str);
+	JNICallV(jPutString, wid, attr, jstr, append, nhcolor_to_RGB(nhcolor));
+	destroy_jobject(jstr);
+}
 
-	if(wid == NHW_STATUS)
-	{
-		debuglog("status: %s", str);
-/*		if(context.botlx)
-			append = 0;
-		else
-			append = 1;*/
-	}
+void and_putstr_ex(winid wid, int attr, const char *str, int append)
+{
 	if(attr)
 		attr = 1<<attr;
 	else
 		attr = text_attribs;
 
-	JNICallV(jPutString, wid, attr, jstr, append, text_color);
-	destroy_jobject(jstr);
+	and_putstr_ex2(wid, attr, str, append, text_color);
 
 #if defined(USER_SOUNDS)
 	if(wid == NHW_MESSAGE)
@@ -775,8 +798,272 @@ void and_bot_updated()
 }
 
 //____________________________________________________________________________________
-void
-and_putmixed(window, attr, str)
+//status_update(int fldindex, genericptr_t ptr, int chg, int percentage, int color, long *colormasks)
+//		-- update the value of a status field.
+//		-- the fldindex identifies which field is changing and
+//		   is an integer index value from botl.h
+//		-- fldindex could be any one of the following from botl.h:
+//		   BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH,
+//		   BL_ALIGN, BL_SCORE, BL_CAP, BL_GOLD, BL_ENE, BL_ENEMAX,
+//		   BL_XP, BL_AC, BL_HD, BL_TIME, BL_HUNGER, BL_HP, BL_HPMAX,
+//		   BL_LEVELDESC, BL_EXP, BL_CONDITION
+//		-- The value passed for BL_GOLD includes a leading
+//		   symbol for GOLD "$:nnn". If the window port needs to use
+//		   the textual gold amount without the leading "$:" the port
+//		   will have to add 2 to the passed "ptr" for the BL_GOLD case.
+//		-- fldindex could also be BL_FLUSH (-1), which is not really
+//		   a field index, but is a special trigger to tell the
+//		   windowport that it should redisplay all its status fields,
+//		   even if no changes have been presented to it.
+//		-- ptr is usually a "char *", unless fldindex is BL_CONDITION.
+//		   If fldindex is BL_CONDITION, then ptr is a long value with
+//		   any or none of the following bits set (from botl.h):
+//                        BL_MASK_STONE           0x00000001L
+//                        BL_MASK_SLIME           0x00000002L
+//                        BL_MASK_STRNGL          0x00000004L
+//                        BL_MASK_FOODPOIS        0x00000008L
+//                        BL_MASK_TERMILL         0x00000010L
+//                        BL_MASK_BLIND           0x00000020L
+//                        BL_MASK_DEAF            0x00000040L
+//                        BL_MASK_STUN            0x00000080L
+//                        BL_MASK_CONF            0x00000100L
+//                        BL_MASK_HALLU           0x00000200L
+//                        BL_MASK_LEV             0x00000400L
+//                        BL_MASK_FLY             0x00000800L
+//                        BL_MASK_RIDE            0x00001000L
+//      -- color is an unsigned int.
+//             int & 0x00FF = color CLR_*
+//             int >> 8 = attribute (if any)
+//         This contains the color and attribute that the field should
+//         be displayed in.
+//         This is relevant for everything except BL_CONDITION fldindex.
+//         If fldindex is BL_CONDITION, this parameter should be ignored,
+//         as condition hilighting is done via the next colormasks
+//         parameter instead.
+//      -- colormasks - pointer to cond_hilites[] array of colormasks.
+//         Only relevant for BL_CONDITION fldindex. The window port
+//         should ignore this parameter for other fldindex values.
+//         Each condition bit must only ever appear in one of the
+//         CLR_ array members, but can appear in multiple HL_ATTCLR_
+//         offsets (because more than one attribute can co-exist).
+//         For the user's chosen set of BL_MASK_ condition bits,
+//         They are stored internally in the cond_hilites[] array,
+//         at the array offset aligned to the color those condtion
+//         bits should display in.
+//         For example, if the user has chosen to display strngl
+//         and stone and termill in red and inverse,
+//              BL_MASK_SLIME           0x00000002
+//              BL_MASK_STRNGL          0x00000004
+//              BL_MASK_TERMILL         0x00000010
+//         The bitmask corresponding to those conditions is
+//         0x00000016 (or 00010110 in binary) and the color
+//         is at offset 1 (CLR_RED).
+//         Here is how that is stored in the cond_hilites[] array:
+//         +------+----------------------+--------------------+
+//         |array |                      |                    |
+//         |offset| macro for indexing   |   bitmask          |
+//         |------+----------------------+--------------------+
+//         |   0  |   CLR_BLACK          |                    |
+//         +------+----------------------+--------------------+
+//         |   1  |   CLR_RED            |   00010110         |
+//         +------+----------------------+--------------------+
+//         |   2  |   CLR_GREEN          |                    |
+//         +------+----------------------+--------------------+
+//         |   3  |   CLR_BROWN          |                    |
+//         +------+----------------------+--------------------+
+//         |   4  |   CLR_BLUE           |                    |
+//         +------+----------------------+--------------------+
+//         |   5  |   CLR_MAGENTA        |                    |
+//         +------+----------------------+--------------------+
+//         |   6  |   CLR_CYAN           |                    |
+//         +------+----------------------+--------------------+
+//         |   7  |   CLR_GRAY           |                    |
+//         +------+----------------------+--------------------+
+//         |   8  |   NO_COLOR           |                    |
+//         +------+----------------------+--------------------+
+//         |   9  |   CLR_ORANGE         |                    |
+//         +------+----------------------+--------------------+
+//         |  10  |   CLR_BRIGHT_GREEN   |                    |
+//         +------+----------------------+--------------------+
+//         |  11  |   CLR_BRIGHT_YELLOW  |                    |
+//         +------+----------------------+--------------------+
+//         |  12  |   CLR_BRIGHT_BLUE    |                    |
+//         +------+----------------------+--------------------+
+//         |  13  |   CLR_BRIGHT_MAGENTA |                    |
+//         +------+----------------------+--------------------+
+//         |  14  |   CLR_BRIGHT_CYAN    |                    |
+//         +------+----------------------+--------------------+
+//         |  15  |   CLR_WHITE          |                    |
+//         +------+----------------------+--------------------+
+//         |  16  |   HL_ATTCLR_DIM      |                    | CLR_MAX
+//         +------+----------------------+--------------------+
+//         |  17  |   HL_ATTCLR_BLINK    |                    |
+//         +------+----------------------+--------------------+
+//         |  18  |   HL_ATTCLR_ULINE    |                    |
+//         +------+----------------------+--------------------+
+//         |  19  |   HL_ATTCLR_INVERSE  |   00010110         |
+//         +------+----------------------+--------------------+
+//         |  20  |   HL_ATTCLR_BOLD     |                    |
+//         +------+----------------------+--------------------+
+//         |  21  |  beyond array boundary                    | BL_ATTCLR_MAX
+//         The window port can AND (&) the bits passed in the
+//         ptr argument to status_update() with any non-zero
+//         entries in the cond_hilites[] array to determine
+//         the color and attributes for displaying the
+//         condition on the screen for the user.
+//         If the bit for a particular condition does not
+//         appear in any of the cond_hilites[] array offsets,
+//         that condition should be displayed in the default
+//         color and attributes.
+//____________________________________________________________________________________
+int hl_attridx_to_attrmask(int idx)
+{
+	switch(idx)
+	{
+	case HL_ATTCLR_DIM: 	return (1<<ATR_DIM);
+	case HL_ATTCLR_BLINK:	return (1<<ATR_BLINK);
+	case HL_ATTCLR_ULINE:   return (1<<ATR_ULINE);
+	case HL_ATTCLR_INVERSE:	return (1<<ATR_INVERSE);
+	case HL_ATTCLR_BOLD:	return (1<<ATR_BOLD);
+	}
+	return 0;
+}
+
+int hl_attrmask_to_attrmask(int mask)
+{
+	int attr = 0;
+	if(mask & HL_DIM) attr |= (1<<ATR_DIM);
+	if(mask & HL_BLINK) attr |= (1<<ATR_BLINK);
+	if(mask & HL_ULINE) attr |= (1<<ATR_ULINE);
+	if(mask & HL_INVERSE) attr |= (1<<ATR_INVERSE);
+	if(mask & HL_BOLD) attr |= (1<<ATR_BOLD);
+	return attr;
+}
+
+void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int color, unsigned long *colormasks)
+{
+	long cond, *condptr = (long *) ptr;
+	char *nb, *text = (char *) ptr;
+	int i;
+
+	if(idx == BL_FLUSH)
+	{
+		and_status_flush();
+	}
+	else if(status_activefields[idx])
+	{
+		if(idx == BL_CONDITION)
+		{
+			active_conditions = condptr ? *condptr : 0L;
+			*status_vals[idx] = 0;
+		}
+		else
+		{
+			Sprintf(status_vals[idx], status_fieldfmt[idx] ? status_fieldfmt[idx] : "%s", text ? text : "");
+			status_colors[idx] = color;
+		}
+	}
+}
+
+void and_status_flush()
+{
+	enum statusfields idx, *fieldlist;
+	register int i;
+	char* nb;
+
+	static enum statusfields fieldorder_line1[] = {
+		BL_TITLE, BL_STR, BL_DX, BL_CO, BL_IN, BL_WI, BL_CH, BL_ALIGN, BL_SCORE,
+		BL_FLUSH, BL_FLUSH, BL_FLUSH, BL_FLUSH, BL_FLUSH, BL_FLUSH
+	};
+
+	static enum statusfields fieldorder_line2[] = {
+		BL_LEVELDESC, BL_GOLD, BL_HP, BL_HPMAX, BL_ENE, BL_ENEMAX, BL_AC, BL_XP,
+		BL_EXP, BL_HD, BL_TIME, BL_HUNGER, BL_CAP, BL_CONDITION, BL_FLUSH
+	};
+
+	curs(WIN_STATUS, 1, 0);
+	for(i = 0; (idx = fieldorder_line1[i]) != BL_FLUSH; ++i)
+	{
+		if(status_activefields[idx])
+		{
+			int attr = (status_colors[idx] >> 8) & 0xFF;
+			int color = status_colors[idx] & 0xFF;
+			and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), status_vals[idx], 0, color);
+		//	debuglog("field %d: %s color %s", idx+1, status_vals[idx], colname(status_colors[idx]));
+		}
+	}
+
+	curs(WIN_STATUS, 1, 1);
+	for(i = 0; (idx = fieldorder_line2[i]) != BL_FLUSH; ++i)
+	{
+		if(!status_activefields[idx])
+			continue;
+
+		const char *val = status_vals[idx];
+
+		// Prepend space on all fields except the first
+		if(i > 0)
+			and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+		// Remove leading space from value
+		if(*val == ' ') val++;
+
+		if(idx == BL_CONDITION)
+		{
+			print_conditions(cond_names);
+		}
+		else
+		{
+			int attr = (status_colors[idx] >> 8) & 0xFF;
+			int color = status_colors[idx] & 0xFF;
+			and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
+		}
+	}
+
+	and_bot_updated();
+}
+
+int get_condition_color(int cond_mask)
+{
+	int i;
+	for(i = 0; i < CLR_MAX; i++)
+		if(cond_hilites[i] & cond_mask)
+			return i;
+	return CLR_WHITE;
+}
+
+int get_condition_attr(int cond_mask)
+{
+	int i;
+	int attr = 0;
+	for(i = CLR_MAX; i < BL_ATTCLR_MAX; i++)
+		if(cond_hilites[i] & cond_mask)
+			attr |= hl_attridx_to_attrmask(i);
+	return attr;
+}
+
+void print_conditions(const char** names)
+{
+	int i;
+	boolean addspace = FALSE;
+	for(i = 0; i < MAXBLCONDITIONS; i++) {
+		int cond_mask = 1 << i;
+		if(active_conditions & cond_mask)
+		{
+			if(addspace)
+				and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+			addspace = TRUE;
+
+			const char* name = names[i];
+			int color = get_condition_color(cond_mask);
+			int attr = get_condition_attr(cond_mask);
+			//debuglog("cond '%s' active. col=%s attr=%x", name, colname(color), attr);
+			and_putstr_ex2(WIN_STATUS, attr, name, 0, color);
+		}
+	}
+}
+
+//____________________________________________________________________________________
+void and_putmixed(window, attr, str)
 winid window;
 int attr;
 const char *str;
