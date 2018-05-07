@@ -25,7 +25,7 @@
 
 #ifdef DUMPLOG
 #undef DUMPLOG_FILE
-#define DUMPLOG_FILE        "nethack.%n.%d.txt"
+#define DUMPLOG_FILE        "%n.%d.dumplog.txt"
 #endif
 
 //#undef MAIL
