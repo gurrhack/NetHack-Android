@@ -956,16 +956,11 @@ void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int colo
 			active_conditions = condptr ? *condptr : 0L;
 			*status_vals[idx] = 0;
 		}
-		else if(idx == BL_GOLD)
+		else if(idx == BL_GOLD && *text == '\\')
 		{
 			// Remove encoded glyph value. (This might break in the future if the format is changed in botl.c)
-			if(*text == '\\')
-			{
-				text += 10;
-				Sprintf(status_vals[idx], "$%s", text);
-			}
-			else
-				Sprintf(status_vals[idx], status_fieldfmt[idx] ? status_fieldfmt[idx] : "%s", text ? text : "");
+			text += 10;
+			Sprintf(status_vals[idx], "$%s", text);
 			status_colors[idx] = color;
 		}
 		else
@@ -1002,12 +997,6 @@ void print_status_field(int idx, boolean first_field)
 		val++;
 	}
 
-	if(idx == BL_HP)
-	{
-		int color = status_colors[idx] & 0xFF;
-		and_set_health_color(color);
-	}
-
 	if(idx == BL_CONDITION)
 	{
 		print_conditions(cond_names);
@@ -1016,6 +1005,28 @@ void print_status_field(int idx, boolean first_field)
 	{
 		int attr = (status_colors[idx] >> 8) & 0xFF;
 		int color = status_colors[idx] & 0xFF;
+		if(idx == BL_HP)
+		{
+			and_set_health_color(color);
+		}
+		else if(idx == BL_HPMAX)
+		{
+			// Set hp-max to same color as hp if it's not explicitly defined
+			if(color == NO_COLOR && attr == ATR_NONE && status_activefields[BL_HP])
+			{
+				attr = (status_colors[BL_HP] >> 8) & 0xFF;
+				color = status_colors[BL_HP] & 0xFF;
+			}
+		}
+		else if(idx == BL_ENEMAX)
+		{
+			// Set power-max to same color as power if it's not explicitly defined
+			if(color == NO_COLOR && attr == ATR_NONE && status_activefields[BL_ENE])
+			{
+				attr = (status_colors[BL_ENE] >> 8) & 0xFF;
+				color = status_colors[BL_ENE] & 0xFF;
+			}
+		}
 		and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
 	//	debuglog("field %d: %s color %s", idx+1, val, colname(color));
 	}
