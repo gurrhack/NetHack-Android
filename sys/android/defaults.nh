@@ -2,10 +2,10 @@
 # A '#' at the beginning of a line means the rest of the
 # line is a comment.
 #
-# Some options MUST be set in this file, other options can
-# be toggled while playing. The options set in this file
-# will override corresponding options in the preference
-# screen.
+# Some options MUST be set in this file, other options
+# can be toggled while playing. The options set in this
+# file will override corresponding options in the
+# preference screen.
 #
 # Not all NetHack options are supported in the Android
 # port. Unsupported options will be silently ignored.
@@ -21,7 +21,7 @@
 # Some options to set personal preferences. Uncomment
 # and change these to suit your personal preference.
 #
-#OPTIONS=name:Eir,role:Valkyrie,race:Human,gender:female,align:lawful
+#OPTIONS=name:Eir,role:Valkyrie,race:Human,align:lawful
 #OPTIONS=dogname:Fido,catname:Morris,fruit:guava
 #OPTIONS=horsename:Silver
 #
@@ -30,28 +30,35 @@
 #
 #OPTIONS=packorder:")[%?+/=!(*0_`
 OPTIONS=scores:10 top/2 around/own
+OPTIONS=!cmdassist
 #OPTIONS=nolegacy,noverbose
 
 #OPTIONS=autopickup,pickup_types:$"=/!?+
 OPTIONS=!autopickup
 
-OPTIONS=lit_corridor,showexp,time,toptenwin,IBMgraphics,runmode:walk
+OPTIONS=lit_corridor,showexp,time,toptenwin
 OPTIONS=pile_limit:2,hilite_pile,hilite_pet
+OPTIONS=DECgraphics,runmode:walk
+OPTIONS=boulder:0
 #OPTIONS=!force_invmenu
 
-OPTIONS=!cmdassist
+# Change ghost symbol to X
+#SYMBOLS=S_ghost:X
 
 #
 # *** Palette ***
 #
-# With the palette option you can change the colors used by NetHack.
+# With the palette option you can change the colors used
+# by NetHack.
 #
-# There are 16 colors in total. Each color is specified with three
-# hexadecimal digits. One digit each for the red, green, and blue
-# component. Internally the digits are duplicated to form a 24bpp
-# color. So F90 expands to FF9900.
+# There are 16 colors in total. Each color is specified
+# with three hexadecimal digits. One digit each for the
+# red, green, and blue component. Internally the digits
+# are duplicated to form a 24bpp color. So F90 expands
+# to FF9900.
 #
-# The colors are specified in a fixed order and separated with '/'.
+# The colors are specified in a fixed order separated
+# with '/'.
 # The order is as follows:
 #
 # Palette index
@@ -76,21 +83,18 @@ OPTIONS=!cmdassist
 #                |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
 #OPTIONS=palette:555/F00/080/641/00F/F0F/0FF/888/FFF/F90/0F0/FF0/08F/F7F/7FF/FFF
 
-
-SYMBOLS=S_ghost:X,S_boulder:0
-
 # *** Dumplog ***
 #
 # A dump log is a log that is written when the game is
-# over. It contains a view of the map and a record of the
-# player's belonging, attributes, etc.
+# over. It contains a view of the map and a record of
+# the player's belonging, attributes, etc.
 #
-# The logs are written to the phone's documents folder.
-# Normally /sdcard/Documents/
+# The logs are written to the "Documents" folder
+# normally located at /sdcard/Documents/
 #OPTIONS=dumplog
 
-# Colorize individual rows on a menu based on what regular
-# expressions match its text
+# Colorize individual rows on a menu based on what
+# regular expressions match its text
 # http://nethackwiki.com/wiki/Menucolors
 MENUCOLOR=" blessed "=green
 MENUCOLOR=" holy "=green
@@ -103,26 +107,42 @@ MENUCOLOR="Amulet of Yendor named"=magenta
 MENUCOLOR="gold piece"=yellow
 
 
-# Colorize the status line values
+# *** Status hilites ***
+#
+
+## Keep changes for x number of turns
+OPTIONS=statushilites:10
+
+## Misc
+OPTIONS=hilite_status:gold/always/yellow
+OPTIONS=hilite_status:characteristics/up/green/down/red
+OPTIONS=hilite_status:experience-level/up/green/down/red
+
 ## HP
-STATUSCOLOR=hp%100=green,hp%66=yellow,hp%50=orange
-STATUSCOLOR=hp%33=red&bold,hp%15:red&inverse,hp%0:red&inverse&blink
-## Pw
-STATUSCOLOR=pw%100=green,pw%66=yellow,pw%50:orange,pw%33=red&bold
-## Carry
-STATUSCOLOR=burdened:yellow,stressed:orange,strained:red&bold
-STATUSCOLOR=overtaxed:red&inverse,overloaded:red&inverse&blink
+OPTIONS=hilite_status:hitpoints/<100%/green/<70%/yellow
+OPTIONS=hilite_status:hitpoints/<50%/orange/<30%/red&bold
+OPTIONS=hilite_status:hitpoints/<15%/red&inverse
+
+## Power
+OPTIONS=hilite_status:power/<100%/green/<70%/yellow
+OPTIONS=hilite_status:power/<50%/orange/<30%/red&bold
+
+## Conditions
+OPTIONS=hilite_status:condition/movement/green
+OPTIONS=hilite_status:condition/minor_troubles/orange
+OPTIONS=hilite_status:condition/major_troubles/red&inverse
+OPTIONS=hilite_status:condition/blind/red/stun/red
+
 ## Hunger
-STATUSCOLOR=satiated:yellow,hungry:orange,weak:red&bold
-STATUSCOLOR=fainting:red&inverse,fainted:red&inverse&blink
-## Mental
-STATUSCOLOR=hallu:yellow,conf:orange,stun:red&bold
-## Health
-STATUSCOLOR=ill:red&inverse,foodpois:red&inverse,slime:red&inverse
-## Other
-STATUSCOLOR=held:red&inverse,blind:red&inverse
+OPTIONS=hilite_status:hunger/satiated/yellow/hungry/orange
+OPTIONS=hilite_status:hunger/weak/red&bold/fainting/red&inverse
+OPTIONS=hilite_status:hunger/fainted/red&inverse
 
-
+## Encumbrance
+OPTIONS=hilite_status:carrying-capacity/burdened/yellow/stressed/orange
+OPTIONS=hilite_status:carrying-capacity/strained/red&bold
+OPTIONS=hilite_status:carrying-capacity/overtaxed/red&inverse
+OPTIONS=hilite_status:carrying-capacity/overloaded/red&inverse
 
 
 
