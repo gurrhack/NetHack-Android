@@ -705,6 +705,7 @@ boolean *valsetlist;
 
     chg = update_all ? 0 : compare_blstats(prev, curr);
 
+#ifndef ANDROID
     /* Temporary? hack: moveloop()'s prolog for a new game sets
      * context.rndencode after the status window has been init'd,
      * so $:0 has already been encoded and cached by the window
@@ -715,6 +716,7 @@ boolean *valsetlist;
         chg = 2;
         oldrndencode = context.rndencode;
     }
+#endif
 
     reset = FALSE;
 #ifdef STATUS_HILITES
