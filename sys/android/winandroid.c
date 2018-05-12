@@ -1080,19 +1080,15 @@ int get_condition_attr(int cond_mask)
 void print_conditions(const char** names)
 {
 	int i;
-	boolean addspace = FALSE;
 	for(i = 0; i < MAXBLCONDITIONS; i++) {
 		int cond_mask = 1 << i;
 		if(active_conditions & cond_mask)
 		{
-			if(addspace)
-				and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
-			addspace = TRUE;
-
 			const char* name = names[i];
 			int color = get_condition_color(cond_mask);
 			int attr = get_condition_attr(cond_mask);
 			//debuglog("cond '%s' active. col=%s attr=%x", name, colname(color), attr);
+			and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
 			and_putstr_ex2(WIN_STATUS, attr, name, 0, color);
 		}
 	}
