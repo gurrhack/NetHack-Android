@@ -1938,12 +1938,12 @@ void and_askname()
 //		-- Get an extended command in a window-port specific way.
 //		   An index into extcmdlist[] is returned on a successful
 //		   selection, -1 otherwise.
-int do_ext_cmd_menu()
+int do_ext_cmd_menu(BOOLEAN_P complete)
 {
 //	debuglog("and_get_ext_cmd");
 
 	winid wid;
-	int i, count, what;
+	int i, count, what, flgs;
 	menu_item *selected = NULL;
 	anything any;
 	char accelerator = 'a', tmp_acc = 0;
@@ -1953,6 +1953,13 @@ int do_ext_cmd_menu()
 	and_start_menu(wid);
 	for(i = 0; (ptr = extcmdlist[i].ef_txt); i++)
 	{
+		flgs = extcmdlist[i].flags;
+		if((flgs & WIZMODECMD) && !wizard)
+			continue;
+
+		if(!complete && !(flgs & AUTOCOMPLETE) && !(flgs & WIZMODECMD))
+			continue;
+
 		any.a_int = i+1;
 		and_add_menu(wid, NO_GLYPH, &any, accelerator, 0, ATR_NONE, ptr, FALSE);
 
@@ -1963,6 +1970,9 @@ int do_ext_cmd_menu()
 		else
 			accelerator++;
 	}
+	any.a_int = i+1;
+	if(!complete)
+		and_add_menu(wid, NO_GLYPH, &any, '*', 0, ATR_NONE, "(list everything)", FALSE);
 	and_end_menu(wid, "Extended command");
 	count = and_select_menu(wid, PICK_ONE, &selected);
 	what = count > 0 ? selected->item.a_int - 1 : -1;
@@ -1970,7 +1980,7 @@ int do_ext_cmd_menu()
 		free(selected);
 	and_destroy_nhwindow(wid);
 
-	return (what);
+	return what == any.a_int-1 ? do_ext_cmd_menu(TRUE) : what;
 }
 
 const char* complete_ext_cmd(const char* base)
@@ -2078,7 +2088,7 @@ int do_ext_cmd_text()
 int and_get_ext_cmd()
 {
 	if(iflags.force_invmenu)
-		return do_ext_cmd_menu();
+		return do_ext_cmd_menu(FALSE);
 	return do_ext_cmd_text();
 }
 
