@@ -755,35 +755,32 @@ term_end_color()
 //		   then the second.  In the tty port, pline() achieves this
 //		   by calling more() or displaying both on the same line.
 //____________________________________________________________________________________
-void and_putstr_ex2(winid wid, int attr, const char *str, int append, int nhcolor)
+void and_putstr_ex(winid wid, int attr, const char *str, int append, int nhcolor)
 {
+	if(!str || !*str)
+		return;
 	jbyteArray jstr = create_bytearray(str);
 	JNICallV(jPutString, wid, attr, jstr, append, nhcolor_to_RGB(nhcolor));
 	destroy_jobject(jstr);
 }
 
-void and_putstr_ex(winid wid, int attr, const char *str, int append)
+void and_putstr(winid wid, int attr, const char *str)
 {
 	if(attr)
 		attr = 1<<attr;
 	else
 		attr = text_attribs;
 
-	and_putstr_ex2(wid, attr, str, append, text_color);
+	and_putstr_ex(wid, attr, str, 0, text_color);
 
-#if defined(USER_SOUNDS)
 	if(wid == NHW_MESSAGE)
 	{
 		save_msg(str);
+#ifdef USER_SOUNDS
 		if(!restoring_msghistory)
 			play_sound_for_message(str);
-	}
 #endif
-}
-
-void and_putstr(winid wid, int attr, const char *str)
-{
-	and_putstr_ex(wid, attr, str, 0);
+	}
 }
 
 void and_set_health_color(int nhcolor)
@@ -971,6 +968,42 @@ void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int colo
 	}
 }
 
+int get_condition_color(int cond_mask)
+{
+	int i;
+	for(i = 0; i < CLR_MAX; i++)
+		if(cond_hilites[i] & cond_mask)
+			return i;
+	return CLR_WHITE;
+}
+
+int get_condition_attr(int cond_mask)
+{
+	int i;
+	int attr = 0;
+	for(i = CLR_MAX; i < BL_ATTCLR_MAX; i++)
+		if(cond_hilites[i] & cond_mask)
+			attr |= hl_attridx_to_attrmask(i);
+	return attr;
+}
+
+void print_conditions(const char** names)
+{
+	int i;
+	for(i = 0; i < MAXBLCONDITIONS; i++) {
+		int cond_mask = 1 << i;
+		if(active_conditions & cond_mask)
+		{
+			const char* name = names[i];
+			int color = get_condition_color(cond_mask);
+			int attr = get_condition_attr(cond_mask);
+			//debuglog("cond '%s' active. col=%s attr=%x", name, colname(color), attr);
+			and_putstr_ex(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+			and_putstr_ex(WIN_STATUS, attr, name, 0, color);
+		}
+	}
+}
+
 void print_status_field(int idx, boolean first_field)
 {
 	if(!status_activefields[idx])
@@ -987,13 +1020,13 @@ void print_status_field(int idx, boolean first_field)
 	{
 		/* leveldesc has no leading space, so if we've moved
 		   it past the first position, provide one */
-		and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+		and_putstr_ex(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
 	}
 
 	// Don't want coloring on leading spaces (ATR_INVERSE would show), so print those first
 	while(*val == ' ')
 	{
-		and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
+		and_putstr_ex(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
 		val++;
 	}
 
@@ -1027,7 +1060,7 @@ void print_status_field(int idx, boolean first_field)
 				color = status_colors[BL_ENE] & 0xFF;
 			}
 		}
-		and_putstr_ex2(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
+		and_putstr_ex(WIN_STATUS, hl_attrmask_to_attrmask(attr), val, 0, color);
 	//	debuglog("field %d: %s color %s", idx+1, val, colname(color));
 	}
 }
@@ -1056,42 +1089,6 @@ void and_status_flush()
 		print_status_field(idx, i == 0);
 
 	and_bot_updated();
-}
-
-int get_condition_color(int cond_mask)
-{
-	int i;
-	for(i = 0; i < CLR_MAX; i++)
-		if(cond_hilites[i] & cond_mask)
-			return i;
-	return CLR_WHITE;
-}
-
-int get_condition_attr(int cond_mask)
-{
-	int i;
-	int attr = 0;
-	for(i = CLR_MAX; i < BL_ATTCLR_MAX; i++)
-		if(cond_hilites[i] & cond_mask)
-			attr |= hl_attridx_to_attrmask(i);
-	return attr;
-}
-
-void print_conditions(const char** names)
-{
-	int i;
-	for(i = 0; i < MAXBLCONDITIONS; i++) {
-		int cond_mask = 1 << i;
-		if(active_conditions & cond_mask)
-		{
-			const char* name = names[i];
-			int color = get_condition_color(cond_mask);
-			int attr = get_condition_attr(cond_mask);
-			//debuglog("cond '%s' active. col=%s attr=%x", name, colname(color), attr);
-			and_putstr_ex2(WIN_STATUS, ATR_NONE, " ", 0, CLR_WHITE);
-			and_putstr_ex2(WIN_STATUS, attr, name, 0, color);
-		}
-	}
 }
 
 //____________________________________________________________________________________
@@ -1706,13 +1703,13 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 			char z, digit_string[2];
 			int n_len = 0;
 			long value = 0;
-			and_putstr_ex(WIN_MESSAGE, ATR_BOLD, "#", 1);
+			and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, "#", 1, CLR_WHITE);
 			n_len++;
 			digit_string[1] = '\0';
 			if(ch != '#')
 			{
 				digit_string[0] = ch;
-				and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, 1);
+				and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, digit_string, 1, CLR_WHITE);
 				n_len++;
 				value = ch - '0';
 				ch = '#';
@@ -1726,7 +1723,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 					if(value < 0)
 						break; /* overflow: try again */
 					digit_string[0] = z;
-					and_putstr(WIN_MESSAGE, ATR_BOLD, digit_string);
+					and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, digit_string, 0, CLR_WHITE);
 					n_len++;
 				}
 				else if(z == 'y' || index(quitchars, z))
@@ -1745,7 +1742,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 					else
 					{
 						value /= 10;
-						and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -2);
+						and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, digit_string, -2, CLR_WHITE);
 						n_len--;
 					}
 				}
@@ -1763,7 +1760,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 				ch = 'n'; /* 0 => "no" */
 			else
 			{ /* remove number from top line, then try again */
-				and_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -n_len-1);
+				and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, digit_string, -n_len-1, CLR_WHITE);
 				n_len = 0;
 				ch = (char)0;
 			}
@@ -1778,7 +1775,7 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 		{
 			res_ch[0] = ch;
 			res_ch[1] = '\x0';
-			and_putstr_ex(WIN_MESSAGE, ATR_BOLD, res_ch, 1);
+			and_putstr_ex(WIN_MESSAGE, 1<<ATR_BOLD, res_ch, 1, CLR_WHITE);
 		}
 	}
 	else
@@ -2019,11 +2016,13 @@ void get_ext_cmd_auto(const char *query, register char *bufp)
 		if(c == EOF || c == '\n')
 		{
 			bufp[n] = 0;
+			if(complete)
+				strcpy(bufp, complete);
+			save_msg(bufp);
 			break;
 		}
 		if(c == '\033')
 		{
-			complete = 0;
 			bufp[0] = c;
 			bufp[1] = 0;
 			break;
@@ -2039,16 +2038,14 @@ void get_ext_cmd_auto(const char *query, register char *bufp)
 			bufp[++n] = 0;
 		}
 		complete = complete_ext_cmd(bufp);
-		and_putstr_ex(WIN_MESSAGE, ATR_NONE, bufp, -nl-1);
-		if(complete)
-			and_putstr_ex(WIN_MESSAGE, ATR_INVERSE, complete + n, 1);
+		and_putstr_ex(WIN_MESSAGE, 0, bufp, -nl-1, CLR_WHITE);
+		if(complete) {
+			and_putstr_ex(WIN_MESSAGE, 1<<ATR_INVERSE, complete + n, 1, CLR_WHITE);
+		}
 		nl = complete ? strlen(complete) : n;
 	}
-	if(complete)
-		strcpy(bufp, complete);
 	clear_nhwindow(WIN_MESSAGE);	/* clean up after ourselves */
 }
-
 
 /*
  * Read in an extended command, doing command line completion.  We
@@ -2067,14 +2064,12 @@ int do_ext_cmd_text()
 	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
 		if (!strcmpi(buf, extcmdlist[i].ef_txt)) break;
 
-#ifdef REDO
 	if (!in_doagain) {
 	    int j;
 	    for (j = 0; buf[j]; j++)
-		savech(buf[j]);
+			savech(buf[j]);
 	    savech('\n');
 	}
-#endif
 
 	if (extcmdlist[i].ef_txt == (char *)0) {
 		pline("%s: unknown extended command.", buf);
@@ -2083,7 +2078,6 @@ int do_ext_cmd_text()
 
 	return i;
 }
-
 
 int and_get_ext_cmd()
 {
@@ -2201,7 +2195,7 @@ void and_putmsghistory(const char *msg, BOOLEAN_P restoring)
 	{
 //		debuglog("restore msghistory: %s", msg);
 		restoring_msghistory = TRUE;
-		and_putstr_ex(WIN_MESSAGE, ATR_NONE, msg, 0);
+		and_putstr(WIN_MESSAGE, ATR_NONE, msg);
 		restoring_msghistory = FALSE;
 	}
 	else
@@ -2212,7 +2206,7 @@ void and_putmsghistory(const char *msg, BOOLEAN_P restoring)
 
 void save_msg(const char* msg)
 {
-	if(!strcmp("Restoring save file...", msg))
+	if(!msg || !*msg || !strcmp("Restoring save file...", msg))
 		return;
 	if(msghistory[msghistory_idx])
 		free(msghistory[msghistory_idx]);
