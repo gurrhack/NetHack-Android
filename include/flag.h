@@ -312,8 +312,11 @@ struct instance_flags {
     uchar bouldersym; /* symbol for boulder display */
 #ifdef TTY_GRAPHICS
     char prevmsg_window; /* type of old message window to use */
+#endif
+#if defined(TTY_GRAPHICS) || defined(ANDROID)
     boolean extmenu;     /* extended commands use menu interface */
 #endif
+
 #ifdef MFLOPPY
     boolean checkspace; /* check disk space before writing files */
                         /* (in iflags to allow restore after moving

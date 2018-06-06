@@ -118,6 +118,8 @@ static struct Bool_Opt {
     { "eight_bit_tty", &iflags.wc_eight_bit_input, FALSE, SET_IN_GAME }, /*WC*/
 #ifdef TTY_GRAPHICS
     { "extmenu", &iflags.extmenu, FALSE, SET_IN_GAME },
+#elif defined(ANDROID)
+    { "extmenu", &iflags.extmenu, TRUE, SET_IN_GAME },
 #else
     { "extmenu", (boolean *) 0, FALSE, SET_IN_FILE },
 #endif

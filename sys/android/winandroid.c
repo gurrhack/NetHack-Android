@@ -2081,7 +2081,7 @@ int do_ext_cmd_text()
 
 int and_get_ext_cmd()
 {
-	if(iflags.force_invmenu)
+	if(iflags.extmenu)
 		return do_ext_cmd_menu(FALSE);
 	return do_ext_cmd_text();
 }
