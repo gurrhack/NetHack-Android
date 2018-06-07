@@ -3141,7 +3141,7 @@ commands_init()
     (void) bind_key(M('2'), "twoweapon");
 
     /* wait_on_space */
-    (void) bind_key(' ',    "wait");
+    (void) bind_key('.',    "wait");
 }
 
 int
