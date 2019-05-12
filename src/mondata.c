@@ -1,4 +1,4 @@
-/* NetHack 3.6	mondata.c	$NHDT-Date: 1508479720 2017/10/20 06:08:40 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.63 $ */
+/* NetHack 3.6	mondata.c	$NHDT-Date: 1550525093 2019/02/18 21:24:53 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.72 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -10,30 +10,30 @@
 
 /* set up an individual monster's base type (initial creation, shapechange) */
 void
-set_mon_data(mon, ptr, flag)
+set_mon_data(mon, ptr)
 struct monst *mon;
 struct permonst *ptr;
-int flag;
 {
     int new_speed, old_speed = mon->data ? mon->data->mmove : 0;
 
     mon->data = ptr;
     mon->mnum = (short) monsndx(ptr);
-    if (flag == -1)
-        return; /* "don't care" */
 
-    if (flag == 1)
-        mon->mintrinsics |= (ptr->mresists & 0x00FF);
-    else
-        mon->mintrinsics = (ptr->mresists & 0x00FF);
-
-    if (mon->movement) { /* same adjustment as poly'd hero undergoes */
+    if (mon->movement) { /* used to adjust poly'd hero as well as monsters */
         new_speed = ptr->mmove;
         /* prorate unused movement if new form is slower so that
            it doesn't get extra moves leftover from previous form;
            if new form is faster, leave unused movement as is */
-        if (new_speed < old_speed)
-            mon->movement = new_speed * mon->movement / old_speed;
+        if (new_speed < old_speed) {
+            /*
+             * Some static analysis warns that this might divide by 0
+               mon->movement = new_speed * mon->movement / old_speed;
+             * so add a redundant test to suppress that.
+             */
+            mon->movement *= new_speed;
+            if (old_speed > 0) /* old > new and new >= 0, so always True */
+                mon->movement /= old_speed;
+        }
     }
     return;
 }
@@ -310,6 +310,14 @@ register struct permonst *ptr;
     return (boolean) (is_were(ptr) || ptr->mlet == S_VAMPIRE || is_demon(ptr)
                       || ptr == &mons[PM_SHADE]
                       || (ptr->mlet == S_IMP && ptr != &mons[PM_TENGU]));
+}
+
+/* True if specific monster is especially affected by light-emitting weapons */
+boolean
+mon_hates_light(mon)
+struct monst *mon;
+{
+    return (boolean) (hates_light(mon->data));
 }
 
 /* True iff the type of monster pass through iron bars */
@@ -731,8 +739,14 @@ const char *in_str;
             /* Outdated names */
             { "invisible stalker", PM_STALKER },
             { "high-elf", PM_ELVENKING }, /* PM_HIGH_ELF is obsolete */
+            /* other misspellings or incorrect words */
+            { "wood-elf", PM_WOODLAND_ELF },
+            { "wood elf", PM_WOODLAND_ELF },
+            { "woodland nymph", PM_WOOD_NYMPH },
             { "halfling", PM_HOBBIT },    /* potential guess for polyself */
-            /* Hyphenated names */
+            { "genie", PM_DJINNI }, /* potential guess for ^G/#wizgenesis */
+            /* Hyphenated names -- it would be nice to handle these via
+               fuzzymatch() but it isn't able to ignore trailing stuff */
             { "ki rin", PM_KI_RIN },
             { "uruk hai", PM_URUK_HAI },
             { "orc captain", PM_ORC_CAPTAIN },
@@ -752,6 +766,7 @@ const char *in_str;
             { "lurkers above", PM_LURKER_ABOVE },
             { "cavemen", PM_CAVEMAN },
             { "cavewomen", PM_CAVEWOMAN },
+            { "watchmen", PM_WATCHMAN },
             { "djinn", PM_DJINNI },
             { "mumakil", PM_MUMAK },
             { "erinyes", PM_ERINYS },
@@ -766,11 +781,12 @@ const char *in_str;
     }
 
     for (len = 0, i = LOW_PM; i < NUMMONS; i++) {
-        register int m_i_len = strlen(mons[i].mname);
+        register int m_i_len = (int) strlen(mons[i].mname);
 
         if (m_i_len > len && !strncmpi(mons[i].mname, str, m_i_len)) {
             if (m_i_len == slen) {
-                return i; /* exact match */
+                mntmp = i;
+                break; /* exact match */
             } else if (slen > m_i_len
                        && (str[m_i_len] == ' '
                            || !strcmpi(&str[m_i_len], "s")
@@ -826,7 +842,7 @@ int *mndx_p;
         { 0, NON_PM }
     };
     const char *p, *x;
-    int i;
+    int i, len;
 
     if (mndx_p)
         *mndx_p = NON_PM; /* haven't [yet] matched a specific type */
@@ -848,6 +864,8 @@ int *mndx_p;
         return i;
     } else {
         /* multiple characters */
+        if (!strcmpi(in_str, "long")) /* not enough to match "long worm" */
+            return 0; /* avoid false whole-word match with "long worm tail" */
         in_str = makesingular(in_str);
         /* check for special cases */
         for (i = 0; falsematch[i]; i++)
@@ -863,9 +881,12 @@ int *mndx_p;
                 return mons[i].mlet;
             }
         /* check monster class descriptions */
+        len = (int) strlen(in_str);
         for (i = 1; i < MAXMCLASSES; i++) {
             x = def_monsyms[i].explain;
-            if ((p = strstri(x, in_str)) != 0 && (p == x || *(p - 1) == ' '))
+            if ((p = strstri(x, in_str)) != 0 && (p == x || *(p - 1) == ' ')
+                && ((int) strlen(p) >= len
+                    && (p[len] == '\0' || p[len] == ' ')))
                 return i;
         }
         /* check individual species names */
@@ -892,10 +913,13 @@ register struct monst *mtmp;
 /* Like gender(), but lower animals and such are still "it".
    This is the one we want to use when printing messages. */
 int
-pronoun_gender(mtmp)
+pronoun_gender(mtmp, override_vis)
 register struct monst *mtmp;
+boolean override_vis; /* if True then 'no it' unless neuter */
 {
-    if (is_neuter(mtmp->data) || !canspotmon(mtmp))
+    if (!override_vis && !canspotmon(mtmp))
+        return 2;
+    if (is_neuter(mtmp->data))
         return 2;
     return (humanoid(mtmp->data) || (mtmp->data->geno & G_UNIQ)
             || type_is_pname(mtmp->data)) ? (int) mtmp->female : 2;

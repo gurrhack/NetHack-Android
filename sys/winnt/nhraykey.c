@@ -160,9 +160,9 @@
 static char where_to_get_source[] = "http://www.nethack.org/";
 static char author[] = "Ray Chason";
 
+#include "win32api.h"
 #include "hack.h"
 #include "wintty.h"
-#include "win32api.h"
 
 extern HANDLE hConIn;
 extern INPUT_RECORD ir;
@@ -461,6 +461,7 @@ int __declspec(dllexport) __stdcall CheckInput(hConIn, ir, count, numpad,
 HANDLE hConIn;
 INPUT_RECORD *ir;
 DWORD *count;
+int mode;
 int *mod;
 boolean numpad;
 coord *cc;

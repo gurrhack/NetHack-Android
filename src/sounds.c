@@ -1,4 +1,4 @@
-/* NetHack 3.6	sounds.c	$NHDT-Date: 1452992329 2016/01/17 00:58:49 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.78 $ */
+/* NetHack 3.6	sounds.c	$NHDT-Date: 1542765362 2018/11/21 01:56:02 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.81 $ */
 /*      Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -601,7 +601,7 @@ register struct monst *mtmp;
             else if (youmonst.data == &mons[PM_SILVER_DRAGON]
                      || youmonst.data == &mons[PM_BABY_SILVER_DRAGON]) {
                 /* Silver dragons are silver in color, not made of silver */
-                Sprintf(verbuf, "%s! Your silver sheen does not frighten me!",
+                Sprintf(verbuf, "%s!  Your silver sheen does not frighten me!",
                         youmonst.data == &mons[PM_SILVER_DRAGON]
                             ? "Fool"
                             : "Young Fool");
@@ -1059,8 +1059,8 @@ dochat()
         return 0;
     }
 
-    if (!mtmp || mtmp->mundetected || mtmp->m_ap_type == M_AP_FURNITURE
-        || mtmp->m_ap_type == M_AP_OBJECT)
+    if (!mtmp || mtmp->mundetected || M_AP_TYPE(mtmp) == M_AP_FURNITURE
+        || M_AP_TYPE(mtmp) == M_AP_OBJECT)
         return 0;
 
     /* sleeping monsters won't talk, except priests (who wake up) */

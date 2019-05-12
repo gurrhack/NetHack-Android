@@ -1,4 +1,4 @@
-/* NetHack 3.6	mklev.c	$NHDT-Date: 1511681724 2017/11/26 07:35:24 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.47 $ */
+/* NetHack 3.6	mklev.c	$NHDT-Date: 1550800390 2019/02/22 01:53:10 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.59 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Alex Smith, 2017. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -89,7 +89,7 @@ xchar xl, yl, xh, yh;
     /* cannot find something reasonable -- strange */
     x = xl;
     y = yh;
-gotit:
+ gotit:
     cc->x = x;
     cc->y = y;
     return;
@@ -99,11 +99,12 @@ void
 sort_rooms()
 {
 #if defined(SYSV) || defined(DGUX)
-    qsort((genericptr_t) rooms, (unsigned) nroom, sizeof(struct mkroom),
-          do_comp);
+#define CAST_nroom (unsigned) nroom
 #else
-    qsort((genericptr_t) rooms, nroom, sizeof(struct mkroom), do_comp);
+#define CAST_nroom nroom /*as-is*/
 #endif
+    qsort((genericptr_t) rooms, CAST_nroom, sizeof (struct mkroom), do_comp);
+#undef CAST_nroom
 }
 
 STATIC_OVL void
@@ -503,8 +504,7 @@ int trap_type;
             if (trap_type || !rn2(4)) {
                 rm->typ = SCORR;
                 if (trap_type) {
-                    if ((trap_type == HOLE || trap_type == TRAPDOOR)
-                        && !Can_fall_thru(&u.uz))
+                    if (is_hole(trap_type) && !Can_fall_thru(&u.uz))
                         trap_type = ROCKTRAP;
                     ttmp = maketrap(xx, yy + dy, trap_type);
                     if (ttmp) {
@@ -729,11 +729,12 @@ makelevel()
     /* make a secret treasure vault, not connected to the rest */
     if (do_vault()) {
         xchar w, h;
+
         debugpline0("trying to make a vault...");
         w = 1;
         h = 1;
         if (check_room(&vault_x, &w, &vault_y, &h, TRUE)) {
-        fill_vault:
+ fill_vault:
             add_room(vault_x, vault_y, vault_x + w, vault_y + h, TRUE, VAULT,
                      FALSE);
             level.flags.has_vault = 1;
@@ -786,7 +787,7 @@ makelevel()
             mkroom(COCKNEST);
     }
 
-skip0:
+ skip0:
     /* Place multi-dungeon branch. */
     place_branch(branchp, 0, 0);
 
@@ -804,7 +805,7 @@ skip0:
         if (u.uhave.amulet || !rn2(3)) {
             x = somex(croom);
             y = somey(croom);
-            tmonst = makemon((struct permonst *) 0, x, y, NO_MM_FLAGS);
+            tmonst = makemon((struct permonst *) 0, x, y, MM_NOGRP);
             if (tmonst && tmonst->data == &mons[PM_GIANT_SPIDER]
                 && !occupied(x, y))
                 (void) maketrap(x, y, WEB);
@@ -849,6 +850,7 @@ skip0:
         if (!rn2(27 + 3 * abs(depth(&u.uz)))) {
             char buf[BUFSZ];
             const char *mesg = random_engraving(buf);
+
             if (mesg) {
                 do {
                     x = somex(croom);
@@ -860,7 +862,7 @@ skip0:
             }
         }
 
-    skip_nonrogue:
+ skip_nonrogue:
         if (!rn2(3)) {
             (void) mkobj_at(0, somex(croom), somey(croom), TRUE);
             tryct = 0;
@@ -983,6 +985,9 @@ mklev()
     struct mkroom *croom;
     int ridx;
 
+    reseed_random(rn2);
+    reseed_random(rn2_on_display_rng);
+
     init_mapseen(&u.uz);
     if (getbones())
         return;
@@ -1010,6 +1015,9 @@ mklev()
        entered; rooms[].orig_rtype always retains original rtype value */
     for (ridx = 0; ridx < SIZE(rooms); ridx++)
         rooms[ridx].orig_rtype = rooms[ridx].rtype;
+
+    reseed_random(rn2);
+    reseed_random(rn2_on_display_rng);
 }
 
 void
@@ -1254,6 +1262,7 @@ struct mkroom *croom;
 coord *tm;
 {
     register int kind;
+    struct trap *t;
     unsigned lvl = level_difficulty();
     coord m;
 
@@ -1342,15 +1351,14 @@ coord *tm;
         } while (kind == NO_TRAP);
     }
 
-    if ((kind == TRAPDOOR || kind == HOLE) && !Can_fall_thru(&u.uz))
+    if (is_hole(kind) && !Can_fall_thru(&u.uz))
         kind = ROCKTRAP;
 
     if (tm) {
         m = *tm;
     } else {
         register int tryct = 0;
-        boolean avoid_boulder = (kind == PIT || kind == SPIKED_PIT
-                                 || kind == TRAPDOOR || kind == HOLE);
+        boolean avoid_boulder = (is_pit(kind) || is_hole(kind));
 
         do {
             if (++tryct > 200)
@@ -1363,7 +1371,11 @@ coord *tm;
                  || (avoid_boulder && sobj_at(BOULDER, m.x, m.y)));
     }
 
-    (void) maketrap(m.x, m.y, kind);
+    t = maketrap(m.x, m.y, kind);
+    /* we should always get type of trap we're asking for (occupied() test
+       should prevent cases where that might not happen) but be paranoid */
+    kind = t ? t->ttyp : NO_TRAP;
+
     if (kind == WEB)
         (void) makemon(&mons[PM_GIANT_SPIDER], m.x, m.y, NO_MM_FLAGS);
 
@@ -1388,9 +1400,14 @@ coord *tm;
        lethal, and tend not to generate on shallower levels anyway.
        Finally, pits are excluded because it's weird to see an item
        in a pit and yet not be able to identify that the pit is there. */
-    if (lvl <= (unsigned) rnd(4)
+    if (kind != NO_TRAP && lvl <= (unsigned) rnd(4)
         && kind != SQKY_BOARD && kind != RUST_TRAP
-        && kind != PIT && kind != SPIKED_PIT && kind < HOLE) {
+        /* rolling boulder trap might not have a boulder if there was no
+           viable path (such as when placed in the corner of a room), in
+           which case tx,ty==launch.x,y; no boulder => no dead predecessor */
+        && !(kind == ROLLING_BOULDER_TRAP
+             && t->launch.x == t->tx && t->launch.y == t->ty)
+        && !is_pit(kind) && kind < HOLE) {
         /* Object generated by the trap; initially NULL, stays NULL if
            we fail to generate an object or if the trap doesn't
            generate objects. */
@@ -1626,12 +1643,23 @@ struct mkroom *croom;
             return;
     } while (occupied(m.x, m.y) || bydoor(m.x, m.y));
 
-    /* Put a grave at m.x, m.y */
+    /* Put a grave at <m.x,m.y> */
     make_grave(m.x, m.y, dobell ? "Saved by the bell!" : (char *) 0);
 
     /* Possibly fill it with objects */
-    if (!rn2(3))
-        (void) mkgold(0L, m.x, m.y);
+    if (!rn2(3)) {
+        /* this used to use mkgold(), which puts a stack of gold on
+           the ground (or merges it with an existing one there if
+           present), and didn't bother burying it; now we create a
+           loose, easily buriable, stack but we make no attempt to
+           replicate mkgold()'s level-based formula for the amount */
+        struct obj *gold = mksobj(GOLD_PIECE, TRUE, FALSE);
+
+        gold->quan = (long) (rnd(20) + level_difficulty() * rnd(5));
+        gold->owt = weight(gold);
+        gold->ox = m.x, gold->oy = m.y;
+        add_to_buried(gold);
+    }
     for (tryct = rn2(5); tryct; tryct--) {
         otmp = mkobj(RANDOM_CLASS, TRUE);
         if (!otmp)
@@ -1674,9 +1702,9 @@ mkinvokearea()
 
     /* any trap hero is stuck in will be going away now */
     if (u.utrap) {
-        u.utrap = 0;
         if (u.utraptype == TT_BURIEDBALL)
             buried_ball_to_punishment();
+        reset_utrap(FALSE);
     }
     mkinvpos(xmin, ymin, 0); /* middle, before placing stairs */
 
@@ -1722,6 +1750,7 @@ int dist;
     struct obj *otmp;
     boolean make_rocks;
     register struct rm *lev = &levl[x][y];
+    struct monst *mon;
 
     /* clip at existing map borders if necessary */
     if (!within_bounded_area(x, y, x_maze_min + 1, y_maze_min + 1,
@@ -1748,7 +1777,6 @@ int dist;
             obfree(otmp, (struct obj *) 0);
         }
     }
-    unblock_point(x, y); /* make sure vision knows this location is open */
 
     /* fake out saved state */
     lev->seenv = 0;
@@ -1784,6 +1812,20 @@ int dist;
         impossible("mkinvpos called with dist %d", dist);
         break;
     }
+
+    if ((mon = m_at(x, y)) != 0) {
+        /* wake up mimics, don't want to deal with them blocking vision */
+        if (mon->m_ap_type)
+            seemimic(mon);
+
+        if ((ttmp = t_at(x, y)) != 0)
+            (void) mintrap(mon);
+        else
+            (void) minliquid(mon);
+    }
+
+    if (!does_block(x, y, lev))
+        unblock_point(x, y); /* make sure vision knows this location is open */
 
     /* display new value of position; could have a monster/object on it */
     newsym(x, y);

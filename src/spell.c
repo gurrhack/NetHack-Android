@@ -1,4 +1,4 @@
-/* NetHack 3.6	spell.c	$NHDT-Date: 1508479722 2017/10/20 06:08:42 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.84 $ */
+/* NetHack 3.6	spell.c	$NHDT-Date: 1546565814 2019/01/04 01:36:54 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.88 $ */
 /*      Copyright (c) M. Stephenson 1988                          */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -886,7 +886,7 @@ int spell;
 boolean atme;
 {
     int energy, damage, chance, n, intell;
-    int skill, role_skill, res = 0;
+    int otyp, skill, role_skill, res = 0;
     boolean confused = (Confusion != 0);
     boolean physical_damage = FALSE;
     struct obj *pseudo;
@@ -923,6 +923,10 @@ boolean atme;
     } else if (spellknow(spell) <= KEEN / 10) { /* 2000 turns left */
         Your("recall of this spell is gradually fading.");
     }
+    /*
+     *  Note: dotele() also calculates energy use and checks nutrition
+     *  and strength requirements; it any of these change, update it too.
+     */
     energy = (spellev(spell) * 5); /* 5 <= energy <= 35 */
 
     if (u.uhunger <= 10 && spellid(spell) != SPE_DETECT_FOOD) {
@@ -1029,10 +1033,11 @@ boolean atme;
      * Find the skill the hero has in a spell type category.
      * See spell_skilltype for categories.
      */
-    skill = spell_skilltype(pseudo->otyp);
+    otyp = pseudo->otyp;
+    skill = spell_skilltype(otyp);
     role_skill = P_SKILL(skill);
 
-    switch (pseudo->otyp) {
+    switch (otyp) {
     /*
      * At first spells act as expected.  As the hero increases in skill
      * with the appropriate spell type, some spells increase in their
@@ -1056,9 +1061,9 @@ boolean atme;
                         }
                     } else {
                         explode(u.dx, u.dy,
-                                pseudo->otyp - SPE_MAGIC_MISSILE + 10,
+                                otyp - SPE_MAGIC_MISSILE + 10,
                                 spell_damage_bonus(u.ulevel / 2 + 1), 0,
-                                (pseudo->otyp == SPE_CONE_OF_COLD)
+                                (otyp == SPE_CONE_OF_COLD)
                                    ? EXPL_FROSTY
                                    : EXPL_FIERY);
                     }
@@ -1073,12 +1078,13 @@ boolean atme;
                 }
             }
             break;
-        } /* else fall through... */
+        } /* else */
+        /*FALLTHRU*/
 
     /* these spells are all duplicates of wand effects */
     case SPE_FORCE_BOLT:
         physical_damage = TRUE;
-    /* fall through */
+    /*FALLTHRU*/
     case SPE_SLEEP:
     case SPE_MAGIC_MISSILE:
     case SPE_KNOCK:
@@ -1096,7 +1102,13 @@ boolean atme;
     case SPE_EXTRA_HEALING:
     case SPE_DRAIN_LIFE:
     case SPE_STONE_TO_FLESH:
-        if (!(objects[pseudo->otyp].oc_dir == NODIR)) {
+        if (objects[otyp].oc_dir != NODIR) {
+            if (otyp == SPE_HEALING || otyp == SPE_EXTRA_HEALING) {
+                /* healing and extra healing are actually potion effects,
+                   but they've been extended to take a direction like wands */
+                if (role_skill >= P_SKILLED)
+                    pseudo->blessed = 1;
+            }
             if (atme) {
                 u.dx = u.dy = u.dz = 0;
             } else if (!getdir((char *) 0)) {
@@ -1136,7 +1148,7 @@ boolean atme;
         /* high skill yields effect equivalent to blessed scroll */
         if (role_skill >= P_SKILLED)
             pseudo->blessed = 1;
-    /* fall through */
+    /*FALLTHRU*/
     case SPE_CHARM_MONSTER:
     case SPE_MAGIC_MAPPING:
     case SPE_CREATE_MONSTER:
@@ -1152,7 +1164,7 @@ boolean atme;
         /* high skill yields effect equivalent to blessed potion */
         if (role_skill >= P_SKILLED)
             pseudo->blessed = 1;
-    /* fall through */
+    /*FALLTHRU*/
     case SPE_INVISIBILITY:
         (void) peffects(pseudo);
         break;
@@ -1222,7 +1234,7 @@ throwspell()
     struct monst *mtmp;
 
     if (u.uinwater) {
-        pline("You're joking! In this weather?");
+        pline("You're joking!  In this weather?");
         return 0;
     } else if (Is_waterlevel(&u.uz)) {
         You("had better wait for the sun to come out.");
@@ -1259,6 +1271,62 @@ throwspell()
     u.dx = cc.x;
     u.dy = cc.y;
     return 1;
+}
+
+/* add/hide/remove/unhide teleport-away on behalf of dotelecmd() to give
+   more control to behavior of ^T when used in wizard mode */
+int
+tport_spell(what)
+int what;
+{
+    static struct tport_hideaway {
+        struct spell savespell;
+        int tport_indx;
+    } save_tport;
+    int i;
+/* also defined in teleport.c */
+#define NOOP_SPELL  0
+#define HIDE_SPELL  1
+#define ADD_SPELL   2
+#define UNHIDESPELL 3
+#define REMOVESPELL 4
+
+    for (i = 0; i < MAXSPELL; i++)
+        if (spellid(i) == SPE_TELEPORT_AWAY || spellid(i) == NO_SPELL)
+            break;
+    if (i == MAXSPELL) {
+        impossible("tport_spell: spellbook full");
+        /* wizard mode ^T is not able to honor player's menu choice */
+    } else if (spellid(i) == NO_SPELL) {
+        if (what == HIDE_SPELL || what == REMOVESPELL) {
+            save_tport.tport_indx = MAXSPELL;
+        } else if (what == UNHIDESPELL) {
+            /*assert( save_tport.savespell.sp_id == SPE_TELEPORT_AWAY );*/
+            spl_book[save_tport.tport_indx] = save_tport.savespell;
+            save_tport.tport_indx = MAXSPELL; /* burn bridge... */
+        } else if (what == ADD_SPELL) {
+            save_tport.savespell = spl_book[i];
+            save_tport.tport_indx = i;
+            spl_book[i].sp_id = SPE_TELEPORT_AWAY;
+            spl_book[i].sp_lev = objects[SPE_TELEPORT_AWAY].oc_level;
+            spl_book[i].sp_know = KEEN;
+            return REMOVESPELL; /* operation needed to reverse */
+        }
+    } else { /* spellid(i) == SPE_TELEPORT_AWAY */
+        if (what == ADD_SPELL || what == UNHIDESPELL) {
+            save_tport.tport_indx = MAXSPELL;
+        } else if (what == REMOVESPELL) {
+            /*assert( i == save_tport.tport_indx );*/
+            spl_book[i] = save_tport.savespell;
+            save_tport.tport_indx = MAXSPELL;
+        } else if (what == HIDE_SPELL) {
+            save_tport.savespell = spl_book[i];
+            save_tport.tport_indx = i;
+            spl_book[i].sp_id = NO_SPELL;
+            return UNHIDESPELL; /* operation needed to reverse */
+        }
+    }
+    return NOOP_SPELL;
 }
 
 /* forget a random selection of known spells due to amnesia;

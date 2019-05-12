@@ -1,4 +1,4 @@
-/* NetHack 3.6	allmain.c	$NHDT-Date: 1518193644 2018/02/09 16:27:24 $  $NHDT-Branch: githash $:$NHDT-Revision: 1.86 $ */
+/* NetHack 3.6	allmain.c	$NHDT-Date: 1555552624 2019/04/18 01:57:04 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.100 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -6,6 +6,7 @@
 /* various code that was replicated in *main.c */
 
 #include "hack.h"
+#include <ctype.h>
 
 #ifndef NO_SIGNAL
 #include <signal.h>
@@ -16,6 +17,7 @@ STATIC_DCL void NDECL(do_positionbar);
 #endif
 STATIC_DCL void FDECL(regen_hp, (int));
 STATIC_DCL void FDECL(interrupt_multi, (const char *));
+STATIC_DCL void FDECL(debug_fields, (const char *));
 
 void
 moveloop(resuming)
@@ -33,7 +35,6 @@ boolean resuming;
     */
     decl_init();
     monst_init();
-    monstr_init(); /* monster strengths */
     objects_init();
 
     /* if a save file created in normal mode is now being restored in
@@ -105,21 +106,24 @@ boolean resuming;
                 context.mon_moving = FALSE;
 
                 if (!monscanmove && youmonst.movement < NORMAL_SPEED) {
-                    /* both you and the monsters are out of steam this round
-                     */
-                    /* set up for a new turn */
+                    /* both hero and monsters are out of steam this round */
                     struct monst *mtmp;
+
+                    /* set up for a new turn */
                     mcalcdistress(); /* adjust monsters' trap, blind, etc */
 
-                    /* reallocate movement rations to monsters */
+                    /* reallocate movement rations to monsters; don't need
+                       to skip dead monsters here because they will have
+                       been purged at end of their previous round of moving */
                     for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
                         mtmp->movement += mcalcmove(mtmp);
 
-                    if (!rn2(u.uevent.udemigod
-                                 ? 25
-                                 : (depth(&u.uz) > depth(&stronghold_level))
-                                       ? 50
-                                       : 70))
+                    /* occasionally add another monster; since this takes
+                       place after movement has been allotted, the new
+                       monster effectively loses its first turn */
+                    if (!rn2(u.uevent.udemigod ? 25
+                             : (depth(&u.uz) > depth(&stronghold_level)) ? 50
+                               : 70))
                         (void) makemon((struct permonst *) 0, 0, 0,
                                        NO_MM_FLAGS);
 
@@ -130,11 +134,11 @@ boolean resuming;
                     } else {
                         moveamt = youmonst.data->mmove;
 
-                        if (Very_fast) { /* speed boots or potion */
+                        if (Very_fast) { /* speed boots, potion, or spell */
                             /* gain a free action on 2/3 of turns */
                             if (rn2(3) != 0)
                                 moveamt += NORMAL_SPEED;
-                        } else if (Fast) {
+                        } else if (Fast) { /* intrinsic */
                             /* gain a free action on 1/3 of turns */
                             if (rn2(3) == 0)
                                 moveamt += NORMAL_SPEED;
@@ -180,7 +184,7 @@ boolean resuming;
                     if (u.ublesscnt)
                         u.ublesscnt--;
                     if (flags.time && !context.run)
-                        context.botl = 1;
+                        iflags.time_botl = TRUE;
 
                     /* One possible result of prayer is healing.  Whether or
                      * not you get healed depends on your current hit points.
@@ -206,8 +210,10 @@ boolean resuming;
                                                    : moves % 10)) {
                             if (Upolyd && u.mh > 1) {
                                 u.mh--;
+                                context.botl = TRUE;
                             } else if (!Upolyd && u.uhp > 1) {
                                 u.uhp--;
+                                context.botl = TRUE;
                             } else {
                                 You("pass out from exertion!");
                                 exercise(A_CON, FALSE);
@@ -225,7 +231,7 @@ boolean resuming;
                             (int) (ACURR(A_WIS) + ACURR(A_INT)) / 15 + 1, 1);
                         if (u.uen > u.uenmax)
                             u.uen = u.uenmax;
-                        context.botl = 1;
+                        context.botl = TRUE;
                         if (u.uen == u.uenmax)
                             interrupt_multi("You feel full of energy.");
                     }
@@ -233,6 +239,7 @@ boolean resuming;
                     if (!u.uinvulnerable) {
                         if (Teleportation && !rn2(85)) {
                             xchar old_ux = u.ux, old_uy = u.uy;
+
                             tele();
                             if (u.ux != old_ux || u.uy != old_uy) {
                                 if (!next_to_u()) {
@@ -309,14 +316,16 @@ boolean resuming;
                         }
                     }
                 }
-            } while (youmonst.movement
-                     < NORMAL_SPEED); /* hero can't move loop */
+            } while (youmonst.movement < NORMAL_SPEED); /* hero can't move */
 
             /******************************************/
             /* once-per-hero-took-time things go here */
             /******************************************/
 
-            status_eval_next_unhilite();
+#ifdef STATUS_HILITES
+            if (iflags.hilite_delta)
+                status_eval_next_unhilite();
+#endif
             if (context.bypasses)
                 clear_bypasses();
             if ((u.uhave.amulet || Clairvoyant) && !In_endgame(&u.uz)
@@ -355,6 +364,9 @@ boolean resuming;
         if (context.botl || context.botlx) {
             bot();
             curs_on_u();
+        } else if (iflags.time_botl) {
+            timebot();
+            curs_on_u();
         }
 
         context.move = 1;
@@ -388,7 +400,7 @@ boolean resuming;
             continue;
         }
 
-        if (iflags.sanity_check)
+        if (iflags.sanity_check || iflags.debug_fuzzer)
             sanity_check();
 
 #ifdef CLIPPING
@@ -404,7 +416,7 @@ boolean resuming;
                 /* lookaround may clear multi */
                 context.move = 0;
                 if (flags.time)
-                    context.botl = 1;
+                    context.botl = TRUE;
                 continue;
             }
             if (context.mv) {
@@ -426,7 +438,7 @@ boolean resuming;
             deferred_goto(); /* after rhack() */
         /* !context.move here: multiple movement command stopped */
         else if (flags.time && (!context.move || !context.mv))
-            context.botl = 1;
+            context.botl = TRUE;
 
         if (vision_full_recalc)
             vision_recalc(0); /* vision! */
@@ -434,7 +446,8 @@ boolean resuming;
         if ((!context.run || flags.runmode == RUN_TPORT)
             && (multi && (!context.travel ? !(multi % 7) : !(moves % 7L)))) {
             if (flags.time && context.run)
-                context.botl = 1;
+                context.botl = TRUE;
+            /* [should this be flush_screen() instead?] */
             display_nhwindow(WIN_MAP, FALSE);
         }
     }
@@ -464,7 +477,7 @@ int wtcap;
                 heal = 1;
         }
         if (heal) {
-            context.botl = 1;
+            context.botl = TRUE;
             u.mh += heal;
             reached_full = (u.mh == u.mhmax);
         }
@@ -496,7 +509,7 @@ int wtcap;
                 heal = 1;
 
             if (heal) {
-                context.botl = 1;
+                context.botl = TRUE;
                 u.uhp += heal;
                 if (u.uhp > u.uhpmax)
                     u.uhp = u.uhpmax;
@@ -517,7 +530,7 @@ stop_occupation()
         if (!maybe_finished_meal(TRUE))
             You("stop %s.", occtxt);
         occupation = 0;
-        context.botl = 1; /* in case u.uhs changed */
+        context.botl = TRUE; /* in case u.uhs changed */
         nomul(0);
         pushch(0);
     } else if (multi >= 0) {
@@ -529,11 +542,11 @@ void
 display_gamewindows()
 {
     WIN_MESSAGE = create_nhwindow(NHW_MESSAGE);
-#ifdef STATUS_HILITES
-    status_initialize(0);
-#else
-    WIN_STATUS = create_nhwindow(NHW_STATUS);
-#endif
+    if (VIA_WINDOWPORT()) {
+        status_initialize(0);
+    } else {
+        WIN_STATUS = create_nhwindow(NHW_STATUS);
+    }
     WIN_MAP = create_nhwindow(NHW_MAP);
     WIN_INVEN = create_nhwindow(NHW_MENU);
     /* in case of early quit where WIN_INVEN could be destroyed before
@@ -570,7 +583,7 @@ newgame()
     gameDiskPrompt();
 #endif
 
-    context.botlx = 1;
+    context.botlx = TRUE;
     context.ident = 1;
     context.stethoscope_move = -1L;
     context.warnlevel = 1;
@@ -752,11 +765,25 @@ const char *msg;
  */
 
 static struct early_opt earlyopts[] = {
-    {ARG_DEBUG, "debug", 5, FALSE},
+    {ARG_DEBUG, "debug", 5, TRUE},
     {ARG_VERSION, "version", 4, TRUE},
+#ifdef WIN32
+    {ARG_WINDOWS, "windows", 4, TRUE},
+#endif
 };
 
-boolean
+#ifdef WIN32
+extern int FDECL(windows_early_options, (const char *));
+#endif
+
+/*
+ * Returns:
+ *    0 = no match
+ *    1 = found and skip past this argument
+ *    2 = found and trigger immediate exit
+ */
+
+int
 argcheck(argc, argv, e_arg)
 int argc;
 char *argv[];
@@ -774,7 +801,7 @@ enum earlyarg e_arg;
     if ((idx >= SIZE(earlyopts)) || (argc <= 1))
             return FALSE;
 
-    for (i = 1; i < argc; ++i) {
+    for (i = 0; i < argc; ++i) {
         if (argv[i][0] != '-')
             continue;
         if (argv[i][1] == '-') {
@@ -784,42 +811,111 @@ enum earlyarg e_arg;
             userea = &argv[i][1];
         }
         match = match_optname(userea, earlyopts[idx].name,
-                    earlyopts[idx].minlength, earlyopts[idx].valallowed);
+                              earlyopts[idx].minlength,
+                              earlyopts[idx].valallowed);
         if (match) break;
     }
 
     if (match) {
+        const char *extended_opt = index(userea, ':');
+
+        if (!extended_opt)
+            extended_opt = index(userea, '=');
         switch(e_arg) {
-            case ARG_DEBUG:
-                        break;
-            case ARG_VERSION: {
-                        boolean insert_into_pastebuf = FALSE;
-                        const char *extended_opt = index(userea,':');
-
-                        if (!extended_opt)
-                            extended_opt = index(userea, '=');
-
-                        if (extended_opt) {
-                            extended_opt++;
-                            if (match_optname(extended_opt, "paste",
-                                                   5, FALSE)) {
-                                insert_into_pastebuf = TRUE;
-                            } else {
-                                raw_printf(
-                     "-%sversion can only be extended with -%sversion:paste.\n",
-                                            dashdash, dashdash);
-                                return TRUE;
-            		    }
-        		}
-                        early_version_info(insert_into_pastebuf);
-                        return TRUE;
-                        break;
+        case ARG_DEBUG:
+            if (extended_opt) {
+                extended_opt++;
+                debug_fields(extended_opt);
             }
-            default:
-                        break;
+            return 1;
+        case ARG_VERSION: {
+            boolean insert_into_pastebuf = FALSE;
+
+            if (extended_opt) {
+                extended_opt++;
+                if (match_optname(extended_opt, "paste", 5, FALSE)) {
+                    insert_into_pastebuf = TRUE;
+                } else {
+                    raw_printf(
+                   "-%sversion can only be extended with -%sversion:paste.\n",
+                               dashdash, dashdash);
+                    return TRUE;
+                }
+            }
+            early_version_info(insert_into_pastebuf);
+            return 2;
+        }
+#ifdef WIN32
+        case ARG_WINDOWS: {
+            if (extended_opt) {
+                extended_opt++;
+                return windows_early_options(extended_opt);
+            }
+        }
+#endif
+        default:
+            break;
         }
     };
     return FALSE;
 }
 
+/*
+ * These are internal controls to aid developers with
+ * testing and debugging particular aspects of the code.
+ * They are not player options and the only place they
+ * are documented is right here. No gameplay is altered.
+ *
+ * test             - test whether this parser is working
+ * ttystatus        - TTY:
+ * immediateflips   - WIN32: turn off display performance
+ *                    optimization so that display output
+ *                    can be debugged without buffering.
+ */
+void
+debug_fields(opts)
+const char *opts;
+{
+    char *op;
+    boolean negated = FALSE;
+
+    while ((op = index(opts, ',')) != 0) {
+        *op++ = 0;
+        /* recurse */
+        debug_fields(op);
+    }
+    if (strlen(opts) > BUFSZ / 2)
+        return;
+
+
+    /* strip leading and trailing white space */
+    while (isspace((uchar) *opts))
+        opts++;
+    op = eos((char *) opts);
+    while (--op >= opts && isspace((uchar) *op))
+        *op = '\0';
+
+    if (!*opts) {
+        /* empty */
+        return;
+    }
+    while ((*opts == '!') || !strncmpi(opts, "no", 2)) {
+        if (*opts == '!')
+            opts++;
+        else
+            opts += 2;
+        negated = !negated;
+    }
+    if (match_optname(opts, "test", 4, FALSE))
+        iflags.debug.test = negated ? FALSE : TRUE;
+#ifdef TTY_GRAPHICS
+    if (match_optname(opts, "ttystatus", 9, FALSE))
+        iflags.debug.ttystatus = negated ? FALSE : TRUE;
+#endif
+#ifdef WIN32
+    if (match_optname(opts, "immediateflips", 14, FALSE))
+        iflags.debug.immediateflips = negated ? FALSE : TRUE;
+#endif
+    return;
+}
 /*allmain.c*/

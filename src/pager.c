@@ -1,4 +1,4 @@
-/* NetHack 3.6	pager.c	$NHDT-Date: 1523142395 2018/04/07 23:06:35 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.123 $ */
+/* NetHack 3.6	pager.c	$NHDT-Date: 1555627307 2019/04/18 22:41:47 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.151 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -16,8 +16,10 @@ STATIC_DCL void FDECL(look_at_monster, (char *, char *,
                                         struct monst *, int, int));
 STATIC_DCL struct permonst *FDECL(lookat, (int, int, char *, char *));
 STATIC_DCL void FDECL(checkfile, (char *, struct permonst *,
-                                  BOOLEAN_P, BOOLEAN_P));
+                                  BOOLEAN_P, BOOLEAN_P, char *));
 STATIC_DCL void FDECL(look_all, (BOOLEAN_P,BOOLEAN_P));
+STATIC_DCL void FDECL(do_supplemental_info, (char *, struct permonst *,
+                                             BOOLEAN_P));
 STATIC_DCL void NDECL(whatdoes_help);
 STATIC_DCL void NDECL(docontact);
 STATIC_DCL void NDECL(dispfile_help);
@@ -87,7 +89,7 @@ char *outbuf;
             mons[u.umonnum].mname, plname);
     if (u.usteed)
         Sprintf(eos(outbuf), ", mounted on %s", y_monnam(u.usteed));
-    if (u.uundetected || (Upolyd && youmonst.m_ap_type))
+    if (u.uundetected || (Upolyd && U_AP_TYPE))
         mhidden_description(&youmonst, FALSE, eos(outbuf));
     return outbuf;
 }
@@ -107,26 +109,28 @@ char *outbuf;
                                                     : glyph_at(x, y);
 
     *outbuf = '\0';
-    if (mon->m_ap_type == M_AP_FURNITURE
-        || mon->m_ap_type == M_AP_OBJECT) {
+    if (M_AP_TYPE(mon) == M_AP_FURNITURE
+        || M_AP_TYPE(mon) == M_AP_OBJECT) {
         Strcpy(outbuf, ", mimicking ");
-        if (mon->m_ap_type == M_AP_FURNITURE) {
+        if (M_AP_TYPE(mon) == M_AP_FURNITURE) {
             Strcat(outbuf, an(defsyms[mon->mappearance].explanation));
-        } else if (mon->m_ap_type == M_AP_OBJECT
+        } else if (M_AP_TYPE(mon) == M_AP_OBJECT
                    /* remembered glyph, not glyph_at() which is 'mon' */
                    && glyph_is_object(glyph)) {
-        objfrommap:
+ objfrommap:
             otmp = (struct obj *) 0;
             fakeobj = object_from_map(glyph, x, y, &otmp);
             Strcat(outbuf, (otmp && otmp->otyp != STRANGE_OBJECT)
                               ? ansimpleoname(otmp)
                               : an(obj_descr[STRANGE_OBJECT].oc_name));
-            if (fakeobj)
+            if (fakeobj) {
+                otmp->where = OBJ_FREE; /* object_from_map set to OBJ_FLOOR */
                 dealloc_obj(otmp);
+            }
         } else {
             Strcat(outbuf, something);
         }
-    } else if (mon->m_ap_type == M_AP_MONSTER) {
+    } else if (M_AP_TYPE(mon) == M_AP_MONSTER) {
         if (altmon)
             Sprintf(outbuf, ", masquerading as %s",
                     an(mons[mon->mappearance].mname));
@@ -156,7 +160,7 @@ object_from_map(glyph, x, y, obj_p)
 int glyph, x, y;
 struct obj **obj_p;
 {
-    boolean fakeobj = FALSE;
+    boolean fakeobj = FALSE, mimic_obj = FALSE;
     struct monst *mtmp;
     struct obj *otmp;
     int glyphotyp = glyph_to_obj(glyph);
@@ -170,9 +174,10 @@ struct obj **obj_p;
 
     /* there might be a mimic here posing as an object */
     mtmp = m_at(x, y);
-    if (mtmp && is_obj_mappear(mtmp, (unsigned) glyphotyp))
+    if (mtmp && is_obj_mappear(mtmp, (unsigned) glyphotyp)) {
         otmp = 0;
-    else
+        mimic_obj = TRUE;
+    } else
         mtmp = 0;
 
     if (!otmp || otmp->otyp != glyphotyp) {
@@ -187,6 +192,16 @@ struct obj **obj_p;
             otmp->spe = context.current_fruit; /* give it a type */
         if (mtmp && has_mcorpsenm(mtmp)) /* mimic as corpse/statue */
             otmp->corpsenm = MCORPSENM(mtmp);
+        else if (otmp->otyp == CORPSE && glyph_is_body(glyph))
+            otmp->corpsenm = glyph - GLYPH_BODY_OFF;
+        else if (otmp->otyp == STATUE && glyph_is_statue(glyph))
+            otmp->corpsenm = glyph - GLYPH_STATUE_OFF;
+        if (otmp->otyp == LEASH)
+            otmp->leashmon = 0;
+        /* extra fields needed for shop price with doname() formatting */
+        otmp->where = OBJ_FLOOR;
+        otmp->ox = x, otmp->oy = y;
+        otmp->no_charge = (otmp->otyp == STRANGE_OBJECT && costly_spot(x, y));
     }
     /* if located at adjacent spot, mark it as having been seen up close
        (corpse type will be known even if dknown is 0, so we don't need a
@@ -200,7 +215,11 @@ struct obj **obj_p;
         /* terrain mode views what's already known, doesn't learn new stuff */
         && !iflags.terrainmode) /* so don't set dknown when in terrain mode */
         otmp->dknown = 1; /* if a pile, clearly see the top item only */
-
+    if (fakeobj && mtmp && mimic_obj &&
+        (otmp->dknown || (M_AP_FLAG(mtmp) & M_AP_F_DKNOWN))) {
+            mtmp->m_ap_type |= M_AP_F_DKNOWN;
+            otmp->dknown = 1;
+    }
     *obj_p = otmp;
     return fakeobj; /* when True, caller needs to dealloc *obj_p */
 }
@@ -215,10 +234,13 @@ int x, y, glyph;
 
     if (otmp) {
         Strcpy(buf, (otmp->otyp != STRANGE_OBJECT)
-                     ? distant_name(otmp, doname_vague_quan)
+                     ? distant_name(otmp, otmp->dknown ? doname_with_price
+                                                       : doname_vague_quan)
                      : obj_descr[STRANGE_OBJECT].oc_name);
-        if (fakeobj)
+        if (fakeobj) {
+            otmp->where = OBJ_FREE; /* object_from_map set it to OBJ_FLOOR */
             dealloc_obj(otmp), otmp = 0;
+        }
     } else
         Strcpy(buf, something); /* sanity precaution */
 
@@ -275,14 +297,14 @@ int x, y;
         int tt = t ? t->ttyp : NO_TRAP;
 
         /* newsym lets you know of the trap, so mention it here */
-        if (tt == BEAR_TRAP || tt == PIT || tt == SPIKED_PIT || tt == WEB)
+        if (tt == BEAR_TRAP || is_pit(tt) || tt == WEB)
             Sprintf(eos(buf), ", trapped in %s",
                     an(defsyms[trap_to_defsym(tt)].explanation));
     }
 
     /* we know the hero sees a monster at this location, but if it's shown
        due to persistant monster detection he might remember something else */
-    if (mtmp->mundetected || mtmp->m_ap_type)
+    if (mtmp->mundetected || M_AP_TYPE(mtmp))
         mhidden_description(mtmp, FALSE, eos(buf));
 
     if (monbuf) {
@@ -372,7 +394,8 @@ char *buf, *monbuf;
     buf[0] = monbuf[0] = '\0';
     glyph = glyph_at(x, y);
     if (u.ux == x && u.uy == y && canspotself()
-        && !(iflags.save_uswallow && glyph == mon_to_glyph(u.ustuck))
+        && !(iflags.save_uswallow &&
+             glyph == mon_to_glyph(u.ustuck, rn2_on_display_rng))
         && (!iflags.terrainmode || (iflags.terrainmode & TER_MON) != 0)) {
         /* fill in buf[] */
         (void) self_lookat(buf);
@@ -426,7 +449,7 @@ char *buf, *monbuf;
     } else if (glyph_is_object(glyph)) {
         look_at_object(buf, x, y, glyph); /* fill in buf[] */
     } else if (glyph_is_trap(glyph)) {
-        int tnum = what_trap(glyph_to_trap(glyph));
+        int tnum = what_trap(glyph_to_trap(glyph), rn2_on_display_rng);
 
         /* Trap detection displays a bear trap at locations having
          * a trapped door or trapped container or both.
@@ -505,10 +528,11 @@ char *buf, *monbuf;
  *       Therefore, we create a copy of inp _just_ for data.base lookup.
  */
 STATIC_OVL void
-checkfile(inp, pm, user_typed_name, without_asking)
+checkfile(inp, pm, user_typed_name, without_asking, supplemental_name)
 char *inp;
 struct permonst *pm;
 boolean user_typed_name, without_asking;
+char *supplemental_name;
 {
     dlb *fp;
     char buf[BUFSZ], newstr[BUFSZ], givenname[BUFSZ];
@@ -518,14 +542,14 @@ boolean user_typed_name, without_asking;
 
     fp = dlb_fopen(DATAFILE, "r");
     if (!fp) {
-        pline("Cannot open data file!");
+        pline("Cannot open 'data' file!");
         return;
     }
     /* If someone passed us garbage, prevent fault. */
     if (!inp || strlen(inp) > (BUFSZ - 1)) {
         impossible("bad do_look buffer passed (%s)!",
                    !inp ? "null" : "too long");
-        return;
+        goto checkfile_done;
     }
 
     /* To prevent the need for entries in data.base like *ngel to account
@@ -567,6 +591,8 @@ boolean user_typed_name, without_asking;
         if (*dbase_str == ' ')
             ++dbase_str;
     }
+    if (!strncmp(dbase_str, "pair of ", 8))
+        dbase_str += 8;
     if (!strncmp(dbase_str, "tame ", 5))
         dbase_str += 5;
     else if (!strncmp(dbase_str, "peaceful ", 9))
@@ -615,7 +641,7 @@ boolean user_typed_name, without_asking;
         int chk_skip, pass = 1;
         boolean yes_to_moreinfo, found_in_file, pass1found_in_file,
                 skipping_entry;
-        char *ap, *alt = 0; /* alternate description */
+        char *sp, *ap, *alt = 0; /* alternate description */
 
         /* adjust the input to remove "named " and "called " */
         if ((ep = strstri(dbase_str, " named ")) != 0) {
@@ -625,10 +651,20 @@ boolean user_typed_name, without_asking;
         } else if ((ep = strstri(dbase_str, " called ")) != 0) {
             copynchars(givenname, ep + 8, BUFSZ - 1);
             alt = givenname;
+            if (supplemental_name && (sp = strstri(inp, " called ")) != 0)
+                copynchars(supplemental_name, sp + 8, BUFSZ - 1);
         } else
             ep = strstri(dbase_str, ", ");
         if (ep && ep > dbase_str)
             *ep = '\0';
+        /* remove article from 'alt' name ("a pair of lenses named
+           The Eyes of the Overworld" simplified above to "lenses named
+           The Eyes of the Overworld", now reduced to "The Eyes of the
+           Overworld", skip "The" as with base name processing) */
+        if (alt && (!strncmpi(alt, "a ", 2)
+                    || !strncmpi(alt, "an ", 3)
+                    || !strncmpi(alt, "the ", 4)))
+            alt = index(alt, ' ') + 1;
         /* remove charges or "(lit)" or wizmode "(N aum)" */
         if ((ep = strstri(dbase_str, " (")) != 0 && ep > dbase_str)
             *ep = '\0';
@@ -756,12 +792,13 @@ boolean user_typed_name, without_asking;
 }
 
 int
-do_screen_description(cc, looked, sym, out_str, firstmatch)
+do_screen_description(cc, looked, sym, out_str, firstmatch, for_supplement)
 coord cc;
 boolean looked;
 int sym;
 char *out_str;
 const char **firstmatch;
+struct permonst **for_supplement;
 {
     static const char mon_interior[] = "the interior of a monster",
                       unreconnoitered[] = "unreconnoitered";
@@ -838,9 +875,9 @@ const char **firstmatch;
 
     /* Check for monsters */
     if (!iflags.terrainmode || (iflags.terrainmode & TER_MON) != 0) {
-        for (i = 0; i < MAXMCLASSES; i++) {
+        for (i = 1; i < MAXMCLASSES; i++) {
             if (sym == (looked ? showsyms[i + SYM_OFF_M] : def_monsyms[i].sym)
-                && def_monsyms[i].explain) {
+                && def_monsyms[i].explain && *def_monsyms[i].explain) {
                 need_to_look = TRUE;
                 if (!found) {
                     Sprintf(out_str, "%s%s",
@@ -886,12 +923,17 @@ const char **firstmatch;
     }
 
     if (sym == DEF_INVISIBLE) {
+        extern const char altinvisexplain[]; /* drawing.c */
+        /* for active clairvoyance, use alternate "unseen creature" */
+        boolean usealt = (EDetect_monsters & I_SPECIAL) != 0L;
+        const char *unseen_explain = !usealt ? invisexplain : altinvisexplain;
+
         if (!found) {
-            Sprintf(out_str, "%s%s", prefix, an(invisexplain));
-            *firstmatch = invisexplain;
+            Sprintf(out_str, "%s%s", prefix, an(unseen_explain));
+            *firstmatch = unseen_explain;
             found++;
         } else {
-            found += append_str(out_str, an(invisexplain));
+            found += append_str(out_str, an(unseen_explain));
         }
     }
 
@@ -1004,11 +1046,15 @@ const char **firstmatch;
 
  didlook:
     if (looked) {
+        struct permonst *pm = (struct permonst *)0;
+
         if (found > 1 || need_to_look) {
             char monbuf[BUFSZ];
             char temp_buf[BUFSZ];
 
-            (void) lookat(cc.x, cc.y, look_buf, monbuf);
+            pm = lookat(cc.x, cc.y, look_buf, monbuf);
+            if (pm && for_supplement)
+                *for_supplement = pm;
             *firstmatch = look_buf;
             if (*(*firstmatch)) {
                 Sprintf(temp_buf, " (%s)", *firstmatch);
@@ -1039,13 +1085,16 @@ coord *click_cc;
     boolean clicklook = (mode == 2); /* right mouse-click method */
     char out_str[BUFSZ] = DUMMY;
     const char *firstmatch = 0;
-    struct permonst *pm = 0;
+    struct permonst *pm = 0, *supplemental_pm = 0;
     int i = '\0', ans = 0;
     int sym;              /* typed symbol or converted glyph */
     int found;            /* count of matching syms found */
     coord cc;             /* screen pos of unknown glyph */
     boolean save_verbose; /* saved value of flags.verbose */
     boolean from_screen;  /* question from the screen */
+
+    cc.x = 0;
+    cc.y = 0;
 
     if (!clicklook) {
         if (quick) {
@@ -1133,7 +1182,7 @@ coord *click_cc;
                     break;
                 }
             if (*out_str)
-                checkfile(out_str, pm, TRUE, TRUE);
+                checkfile(out_str, pm, TRUE, TRUE, (char *) 0);
             return 0;
           }
         case '?':
@@ -1147,7 +1196,7 @@ coord *click_cc;
                 return 0;
 
             if (out_str[1]) { /* user typed in a complete string */
-                checkfile(out_str, pm, TRUE, TRUE);
+                checkfile(out_str, pm, TRUE, TRUE, (char *) 0);
                 return 0;
             }
             sym = out_str[0];
@@ -1200,27 +1249,45 @@ coord *click_cc;
         }
 
         found = do_screen_description(cc, (from_screen || clicklook), sym,
-                                      out_str, &firstmatch);
+                                      out_str, &firstmatch, &supplemental_pm);
 
         /* Finally, print out our explanation. */
         if (found) {
             /* use putmixed() because there may be an encoded glyph present */
             putmixed(WIN_MESSAGE, 0, out_str);
+#ifdef DUMPLOG
+            {
+                char dmpbuf[BUFSZ];
+
+                /* putmixed() bypasses pline() so doesn't write to DUMPLOG;
+                   tty puts it into ^P recall, so it ought to be there;
+                   DUMPLOG is plain text, so override graphics character;
+                   at present, force space, but we ought to use defsyms[]
+                   value for the glyph the graphics character came from */
+                (void) decode_mixed(dmpbuf, out_str);
+                if (dmpbuf[0] < ' ' || dmpbuf[0] >= 127) /* ASCII isprint() */
+                    dmpbuf[0] = ' ';
+                dumplogmsg(dmpbuf);
+            }
+#endif
 
             /* check the data file for information about this thing */
             if (found == 1 && ans != LOOK_QUICK && ans != LOOK_ONCE
                 && (ans == LOOK_VERBOSE || (flags.help && !quick))
                 && !clicklook) {
-                char temp_buf[BUFSZ];
+                char temp_buf[BUFSZ], supplemental_name[BUFSZ];
 
+                supplemental_name[0] = '\0';
                 Strcpy(temp_buf, firstmatch);
                 checkfile(temp_buf, pm, FALSE,
-                          (boolean) (ans == LOOK_VERBOSE));
+                          (boolean) (ans == LOOK_VERBOSE), supplemental_name);
+                if (supplemental_pm)
+                    do_supplemental_info(supplemental_name, supplemental_pm,
+                                         (boolean) (ans == LOOK_VERBOSE));
             }
         } else {
             pline("I've never heard of such things.");
         }
-
     } while (from_screen && !quick && ans != LOOK_ONCE && !clicklook);
 
     flags.verbose = save_verbose;
@@ -1315,6 +1382,94 @@ boolean do_mons; /* True => monsters, False => objects */
     destroy_nhwindow(win);
 }
 
+static const char *suptext1[] = {
+    "%s is a member of a marauding horde of orcs",
+    "rumored to have brutally attacked and plundered",
+    "the ordinarily sheltered town that is located ",
+    "deep within The Gnomish Mines.",
+    "",
+    "The members of that vicious horde proudly and ",
+    "defiantly acclaim their allegiance to their",
+    "leader %s in their names.",
+    (char *) 0,
+};
+
+static const char *suptext2[] = {
+    "\"%s\" is the common dungeon name of",
+    "a nefarious orc who is known to acquire property",
+    "from thieves and sell it off for profit.",
+    "",
+    "The perpetrator was last seen hanging around the",
+    "stairs leading to the Gnomish Mines.",
+    (char *) 0,
+};
+
+void
+do_supplemental_info(name, pm, without_asking)
+char *name;
+struct permonst *pm;
+boolean without_asking;
+{
+    const char **textp;
+    winid datawin = WIN_ERR;
+    char *entrytext = name, *bp = (char *) 0, *bp2 = (char *) 0;
+    char question[QBUFSZ];
+    boolean yes_to_moreinfo = FALSE;
+    boolean is_marauder = (name && pm && is_orc(pm));
+
+    /*
+     * Provide some info on some specific things
+     * meant to support in-game mythology, and not
+     * available from data.base or other sources.
+     */
+    if (is_marauder && (strlen(name) < (BUFSZ - 1))) {
+        char fullname[BUFSZ];
+
+        bp = strstri(name, " of ");
+        bp2 = strstri(name, " the Fence");
+
+        if (bp || bp2) {
+            Strcpy(fullname, name);
+            if (!without_asking) {
+                Strcpy(question, "More info about \"");
+                /* +2 => length of "\"?" */
+                copynchars(eos(question), entrytext,
+                    (int) (sizeof question - 1 - (strlen(question) + 2)));
+                Strcat(question, "\"?");
+                if (yn(question) == 'y')
+                yes_to_moreinfo = TRUE;
+            }
+            if (yes_to_moreinfo) {
+                int i, subs = 0;
+                const char *gang = (char *) 0;
+
+                if (bp) {
+                    textp = suptext1;
+                    gang = bp + 4;
+                    *bp = '\0';
+                } else {
+                    textp = suptext2;
+                    gang = "";
+                }
+                datawin = create_nhwindow(NHW_MENU);
+                for (i = 0; textp[i]; i++) {
+                    char buf[BUFSZ];
+                    const char *txt;
+
+                    if (strstri(textp[i], "%s") != 0) {
+                        Sprintf(buf, textp[i], subs++ ? gang : fullname);
+                        txt = buf;
+                    } else
+                        txt = textp[i];
+                    putstr(datawin, 0, txt);
+                }
+                display_nhwindow(datawin, FALSE);
+                destroy_nhwindow(datawin), datawin = WIN_ERR;
+            }
+        }
+    }
+}
+
 /* the '/' command */
 int
 dowhatis()
@@ -1358,11 +1513,10 @@ doidtrap()
                 break;
             tt = trap->ttyp;
             if (u.dz) {
-                if (u.dz < 0 ? (tt == TRAPDOOR || tt == HOLE)
-                             : tt == ROCKTRAP)
+                if (u.dz < 0 ? is_hole(tt) : tt == ROCKTRAP)
                     break;
             }
-            tt = what_trap(tt);
+            tt = what_trap(tt, rn2_on_display_rng);
             pline("That is %s%s%s.",
                   an(defsyms[trap_to_defsym(tt)].explanation),
                   !trap->madeby_u
@@ -1392,7 +1546,7 @@ doidtrap()
     commands:  basic letters vs digits, 'g' vs 'G' for '5', phone
     keypad vs normal layout of digits, and QWERTZ keyboard swap between
     y/Y/^Y/M-y/M-Y/M-^Y and z/Z/^Z/M-z/M-Z/M-^Z.)
-    
+
     The interpretor understands
      '&#' for comment,
      '&? option' for 'if' (also '&? !option'
@@ -1403,7 +1557,7 @@ doidtrap()
      '&:' for 'else' (also '&: #comment';
                       0 or 1 instance for a given 'if'), and
      '&.' for 'endif' (also '&. #comment'; required for each 'if').
-    
+
     The option handling is a bit of a mess, with no generality for
     which options to deal with and only a comma separated list of
     integer values for the '=value' part.  number_pad is the only
@@ -1697,7 +1851,7 @@ dowhatdoes()
 }
 
 STATIC_OVL void
-docontact()
+docontact(VOID_ARGS)
 {
     winid cwin = create_nhwindow(NHW_TEXT);
     char buf[BUFSZ];
@@ -1727,67 +1881,67 @@ docontact()
 }
 
 void
-dispfile_help()
+dispfile_help(VOID_ARGS)
 {
     display_file(HELP, TRUE);
 }
 
 void
-dispfile_shelp()
+dispfile_shelp(VOID_ARGS)
 {
     display_file(SHELP, TRUE);
 }
 
 void
-dispfile_optionfile()
+dispfile_optionfile(VOID_ARGS)
 {
     display_file(OPTIONFILE, TRUE);
 }
 
 void
-dispfile_license()
+dispfile_license(VOID_ARGS)
 {
     display_file(LICENSE, TRUE);
 }
 
 void
-dispfile_debughelp()
+dispfile_debughelp(VOID_ARGS)
 {
     display_file(DEBUGHELP, TRUE);
 }
 
 void
-hmenu_doextversion()
+hmenu_doextversion(VOID_ARGS)
 {
     (void) doextversion();
 }
 
 void
-hmenu_dohistory()
+hmenu_dohistory(VOID_ARGS)
 {
     (void) dohistory();
 }
 
 void
-hmenu_dowhatis()
+hmenu_dowhatis(VOID_ARGS)
 {
     (void) dowhatis();
 }
 
 void
-hmenu_dowhatdoes()
+hmenu_dowhatdoes(VOID_ARGS)
 {
     (void) dowhatdoes();
 }
 
 void
-hmenu_doextlist()
+hmenu_doextlist(VOID_ARGS)
 {
     (void) doextlist();
 }
 
 void
-domenucontrols()
+domenucontrols(VOID_ARGS)
 {
     winid cwin = create_nhwindow(NHW_TEXT);
     show_menu_controls(cwin, FALSE);
@@ -1797,7 +1951,7 @@ domenucontrols()
 
 /* data for dohelp() */
 static struct {
-    void (*f)();
+    void NDECL((*f));
     const char *text;
 } help_menu_items[] = {
     { hmenu_doextversion, "About NetHack (version information)." },
@@ -1817,7 +1971,7 @@ static struct {
     { port_help, "%s-specific help and commands." },
 #endif
     { dispfile_debughelp, "List of wizard-mode commands." },
-    { NULL, (char *) 0 }
+    { (void NDECL((*))) 0, (char *) 0 }
 };
 
 /* the '?' command */
@@ -1830,7 +1984,6 @@ dohelp()
     menu_item *selected;
     anything any;
     int sel;
-    char *bufptr;
 
     any = zeroany; /* zero all bits */
     start_menu(tmpwin);
@@ -1840,13 +1993,12 @@ dohelp()
             continue;
         if (help_menu_items[i].text[0] == '%') {
             Sprintf(helpbuf, help_menu_items[i].text, PORT_ID);
-            bufptr = helpbuf;
         } else {
-            bufptr = (char *)help_menu_items[i].text;
+            Strcpy(helpbuf, help_menu_items[i].text);
         }
         any.a_int = i + 1;
         add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
-                 bufptr, MENU_UNSELECTED);
+                 helpbuf, MENU_UNSELECTED);
     }
     end_menu(tmpwin, "Select one item:");
     n = select_menu(tmpwin, PICK_ONE, &selected);
@@ -1854,7 +2006,7 @@ dohelp()
     if (n > 0) {
         sel = selected[0].item.a_int - 1;
         free((genericptr_t) selected);
-        (void)(*help_menu_items[sel].f)();
+        (void) (*help_menu_items[sel].f)();
     }
     return 0;
 }

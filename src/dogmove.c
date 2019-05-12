@@ -1,4 +1,4 @@
-/* NetHack 3.6	dogmove.c	$NHDT-Date: 1502753407 2017/08/14 23:30:07 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.63 $ */
+/* NetHack 3.6	dogmove.c	$NHDT-Date: 1557094801 2019/05/05 22:20:01 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.74 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -326,7 +326,7 @@ boolean devour;
     /* turning into slime might be cureable */
     if (slimer && munslime(mtmp, FALSE)) {
         /* but the cure (fire directed at self) might be fatal */
-        if (mtmp->mhp < 1)
+        if (DEADMONSTER(mtmp))
             return 2;
         slimer = FALSE; /* sliming is avoided, skip polymorph */
     }
@@ -370,7 +370,7 @@ struct edog *edog;
             mtmp->mhpmax = newmhpmax;
             if (mtmp->mhp > mtmp->mhpmax)
                 mtmp->mhp = mtmp->mhpmax;
-            if (mtmp->mhp < 1)
+            if (DEADMONSTER(mtmp))
                 goto dog_died;
             if (cansee(mtmp->mx, mtmp->my))
                 pline("%s is confused from hunger.", Monnam(mtmp));
@@ -379,8 +379,9 @@ struct edog *edog;
             else
                 You_feel("worried about %s.", y_monnam(mtmp));
             stop_occupation();
-        } else if (monstermoves > edog->hungrytime + 750 || mtmp->mhp < 1) {
-        dog_died:
+        } else if (monstermoves > edog->hungrytime + 750
+                   || DEADMONSTER(mtmp)) {
+ dog_died:
             if (mtmp->mleashed && mtmp != u.usteed)
                 Your("leash goes slack.");
             else if (cansee(mtmp->mx, mtmp->my))
@@ -615,7 +616,6 @@ int after, udist, whappr;
     return appr;
 }
 
-
 STATIC_OVL struct monst *
 find_targ(mtmp, dx, dy, maxdist)
 register struct monst *mtmp;
@@ -644,17 +644,14 @@ int maxdist;
         if (!m_cansee(mtmp, curx, cury))
             break;
 
-        targ = m_at(curx, cury);
-
         if (curx == mtmp->mux && cury == mtmp->muy)
             return &youmonst;
 
-        if (targ) {
+        if ((targ = m_at(curx, cury)) != 0) {
             /* Is the monster visible to the pet? */
-            if ((!targ->minvis || perceives(mtmp->data)) &&
-                !targ->mundetected)
+            if ((!targ->minvis || perceives(mtmp->data))
+                && !targ->mundetected)
                 break;
-
             /* If the pet can't see it, it assumes it aint there */
             targ = 0;
         }
@@ -721,6 +718,7 @@ struct monst *mtmp, *mtarg;
     /* Give 1 in 3 chance of safe breathing even if pet is confused or
      * if you're on the quest start level */
     if (!mtmp->mconf || !rn2(3) || Is_qstart(&u.uz)) {
+        int mtmp_lev;
         aligntyp align1 = A_NONE, align2 = A_NONE; /* For priests, minions */
         boolean faith1 = TRUE,  faith2 = TRUE;
 
@@ -774,10 +772,26 @@ struct monst *mtmp, *mtarg;
             || (mtmp->m_lev > 12 && mtarg->m_lev < mtmp->m_lev - 9
                 && u.ulevel > 8 && mtarg->m_lev < u.ulevel - 7))
             score -= 25;
+        /* for strength purposes, a vampshifter in weak form (vampire bat,
+           fog cloud, maybe wolf) will attack as if in vampire form;
+           otherwise if won't do much and usually wouldn't suffer enough
+           damage (from counterattacks) to switch back to vampire form;
+           make it be more aggressive by behaving as if stronger */
+        mtmp_lev = mtmp->m_lev;
+        if (is_vampshifter(mtmp) && mtmp->data->mlet != S_VAMPIRE) {
+            /* is_vampshifter() implies (mtmp->cham >= LOW_PM) */
+            mtmp_lev = mons[mtmp->cham].mlevel;
+            /* actual vampire level would range from 1.0*mlvl to 1.5*mlvl */
+            mtmp_lev += rn2(mtmp_lev / 2 + 1);
+            /* we don't expect actual level in weak form to exceed
+               base level of strong form, but handle that if it happens */
+            if (mtmp->m_lev > mtmp_lev)
+                mtmp_lev = mtmp->m_lev;
+        }
         /* And pets will hesitate to attack vastly stronger foes.
            This penalty will be discarded if master's in trouble. */
-        if (mtarg->m_lev > mtmp->m_lev + 4L)
-            score -= (mtarg->m_lev - mtmp->m_lev) * 20L;
+        if (mtarg->m_lev > mtmp_lev + 4L)
+            score -= (mtarg->m_lev - mtmp_lev) * 20L;
         /* All things being the same, go for the beefiest monster. This
            bonus should not be large enough to override the pet's aversion
            to attacking much stronger monsters. */
@@ -791,7 +805,6 @@ struct monst *mtmp, *mtarg;
         score -= 1000;
     return score;
 }
-
 
 STATIC_OVL struct monst *
 best_target(mtmp)
@@ -843,7 +856,6 @@ struct monst *mtmp;   /* Pet */
 
     return best_targ;
 }
-
 
 /* return 0 (no move), 1 (move) or 2 (dead) */
 int
@@ -1090,12 +1102,10 @@ int after; /* this is extra fast monster movement */
         /* This causes unintended issues for pets trying to follow
            the hero. Thus, only run it if not leashed and >5 tiles
            away. */
-        if (!mtmp->mleashed &&
-            distmin(mtmp->mx, mtmp->my, u.ux, u.uy) > 5) {
+        if (!mtmp->mleashed && distmin(mtmp->mx, mtmp->my, u.ux, u.uy) > 5) {
             k = has_edog ? uncursedcnt : cnt;
             for (j = 0; j < MTSZ && j < k - 1; j++)
-                if (nx == mtmp->mtrack[j].x &&
-                    ny == mtmp->mtrack[j].y)
+                if (nx == mtmp->mtrack[j].x && ny == mtmp->mtrack[j].y)
                     if (rn2(MTSZ * (k - j)))
                         goto nxti;
         }
@@ -1111,7 +1121,7 @@ int after; /* this is extra fast monster movement */
                 chcnt = 0;
             chi = i;
         }
-    nxti:
+ nxti:
         ;
     }
 
@@ -1126,6 +1136,7 @@ int after; /* this is extra fast monster movement */
         /* How hungry is the pet? */
         if (!mtmp->isminion) {
             struct edog *dog = EDOG(mtmp);
+
             hungry = (monstermoves > (dog->hungrytime + 300));
         }
 
@@ -1171,7 +1182,7 @@ int after; /* this is extra fast monster movement */
         }
     }
 
-newdogpos:
+ newdogpos:
     if (nix != omx || niy != omy) {
         boolean wasseen;
 
@@ -1243,7 +1254,7 @@ newdogpos:
         }
         cc.x = mtmp->mx;
         cc.y = mtmp->my;
-    dognext:
+ dognext:
         if (!m_in_out_region(mtmp, nix, niy))
             return 1;
         remove_monster(mtmp->mx, mtmp->my);
@@ -1348,7 +1359,7 @@ finish_meating(mtmp)
 struct monst *mtmp;
 {
     mtmp->meating = 0;
-    if (mtmp->m_ap_type && mtmp->mappearance && mtmp->cham == NON_PM) {
+    if (M_AP_TYPE(mtmp) && mtmp->mappearance && mtmp->cham == NON_PM) {
         /* was eating a mimic and now appearance needs resetting */
         mtmp->m_ap_type = 0;
         mtmp->mappearance = 0;
@@ -1365,6 +1376,15 @@ struct monst *mtmp;
 
     if (Protection_from_shape_changers || !mtmp->meating)
         return;
+
+    /* with polymorph, the steed's equipment would be re-checked and its
+       saddle would come off, triggering DISMOUNT_FELL, but mimicking
+       doesn't impact monster's equipment; normally DISMOUNT_POLY is for
+       rider taking on an unsuitable shape, but its message works fine
+       for this and also avoids inflicting damage during forced dismount;
+       do this before changing so that dismount refers to original shape */
+    if (mtmp == u.usteed)
+        dismount_steed(DISMOUNT_POLY);
 
     do {
         idx = rn2(SIZE(qm));
@@ -1393,15 +1413,15 @@ struct monst *mtmp;
         newsym(mtmp->mx, mtmp->my);
         You("%s %s %sappear%s where %s was!",
             cansee(mtmp->mx, mtmp->my) ? "see" : "sense that",
-            (mtmp->m_ap_type == M_AP_FURNITURE)
+            (M_AP_TYPE(mtmp) == M_AP_FURNITURE)
                 ? an(defsyms[mtmp->mappearance].explanation)
-                : (mtmp->m_ap_type == M_AP_OBJECT
+                : (M_AP_TYPE(mtmp) == M_AP_OBJECT
                    && OBJ_DESCR(objects[mtmp->mappearance]))
                       ? an(OBJ_DESCR(objects[mtmp->mappearance]))
-                      : (mtmp->m_ap_type == M_AP_OBJECT
+                      : (M_AP_TYPE(mtmp) == M_AP_OBJECT
                          && OBJ_NAME(objects[mtmp->mappearance]))
                             ? an(OBJ_NAME(objects[mtmp->mappearance]))
-                            : (mtmp->m_ap_type == M_AP_MONSTER)
+                            : (M_AP_TYPE(mtmp) == M_AP_MONSTER)
                                   ? an(mons[mtmp->mappearance].mname)
                                   : something,
             cansee(mtmp->mx, mtmp->my) ? "" : "has ",

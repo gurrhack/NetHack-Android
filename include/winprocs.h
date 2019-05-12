@@ -1,4 +1,4 @@
-/* NetHack 3.6	winprocs.h	$NHDT-Date: 1502141230 2017/08/07 21:27:10 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.38 $ */
+/* NetHack 3.6	winprocs.h	$NHDT-Date: 1553204011 2019/03/21 21:33:31 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.47 $ */
 /* Copyright (c) David Cohrs, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -213,8 +213,21 @@ extern
 #define WC2_DARKGRAY      0x0020L /* 06 use bold black for black glyphs */
 #define WC2_HITPOINTBAR   0x0040L /* 07 show bar representing hit points */
 #define WC2_FLUSH_STATUS  0x0080L /* 08 call status_update(BL_FLUSH)
-                                        after updating status window fields */
-                                  /* 24 free bits */
+                                   *    after updating status window fields */
+#define WC2_RESET_STATUS  0x0100L /* 09 call status_update(BL_RESET) to
+                                   *    indicate 'draw everything'      */
+#define WC2_TERM_SIZE     0x0200L /* 10 support setting terminal size   */
+#define WC2_STATUSLINES   0x0400L /* 16 switch between 2 or 3 lines of status */
+#define WC2_WINDOWBORDERS 0x0800L /* 11 display borders on nh windows   */
+#define WC2_PETATTR       0x1000L /* 12 attributes for hilite_pet       */
+#define WC2_GUICOLOR      0x2000L /* 13 display colours outside map win */
+/* pline() can overload the display attributes argument passed to putstr()
+   with one or more flags and at most one of bold/blink/inverse/&c */
+#define WC2_URGENT_MESG   0x4000L /* 14 putstr(WIN_MESSAGE) supports urgency
+                                   *    via non-display attribute flag  */
+#define WC2_SUPPRESS_HIST 0x8000L /* 15 putstr(WIN_MESSAGE) supports history
+                                   *    suppression via non-disp attr   */
+                                  /* 16 free bits */
 
 #define ALIGN_LEFT   1
 #define ALIGN_RIGHT  2
@@ -253,6 +266,11 @@ struct wc_Opt {
     const char *wc_name;
     unsigned long wc_bit;
 };
+
+/* Macro for the currently active Window Port whose function
+   pointers have been loaded */
+#define WINDOWPORT(wn) \
+    (windowprocs.name && !strncmpi((wn), windowprocs.name, strlen((wn))))
 
 /* role selection by player_selection(); this ought to be in the core... */
 #define RS_NAME    0
@@ -364,4 +382,77 @@ struct chain_procs {
 };
 #endif /* WINCHAIN */
 
+#ifdef SAFEPROCS
+/*
+ * window port routines available in sys/share/safeproc.c
+ */
+extern struct window_procs *FDECL(get_safe_procs, (int));
+extern void FDECL(safe_init_nhwindows, (int *, char **));
+extern void NDECL(safe_player_selection);
+extern void NDECL(safe_askname);
+extern void NDECL(safe_get_nh_event);
+extern void FDECL(safe_exit_nhwindows, (const char *));
+extern void FDECL(safe_suspend_nhwindows, (const char *));
+extern void NDECL(safe_resume_nhwindows);
+extern winid FDECL(safe_create_nhwindow, (int));
+extern void FDECL(safe_clear_nhwindow, (winid));
+extern void FDECL(safe_display_nhwindow, (winid, BOOLEAN_P));
+extern void FDECL(safe_destroy_nhwindow, (winid));
+extern void FDECL(safe_curs, (winid, int, int));
+extern void FDECL(safe_putstr, (winid, int, const char *));
+extern void FDECL(safe_putmixed, (winid, int, const char *));
+extern void FDECL(safe_display_file, (const char *, BOOLEAN_P));
+extern void FDECL(safe_start_menu, (winid));
+extern void FDECL(safe_add_menu, (winid, int, const ANY_P *, CHAR_P, CHAR_P,
+                                  int, const char *, BOOLEAN_P));
+extern void FDECL(safe_end_menu, (winid, const char *));
+extern int FDECL(safe_select_menu, (winid, int, MENU_ITEM_P **));
+extern char FDECL(safe_message_menu, (CHAR_P, int, const char *));
+extern void NDECL(safe_update_inventory);
+extern void NDECL(safe_mark_synch);
+extern void NDECL(safe_wait_synch);
+#ifdef CLIPPING
+extern void FDECL(safe_cliparound, (int, int));
+#endif
+#ifdef POSITIONBAR
+extern void FDECL(safe_update_positionbar, (char *));
+#endif
+extern void FDECL(safe_print_glyph, (winid, XCHAR_P, XCHAR_P, int, int));
+extern void FDECL(safe_raw_print, (const char *));
+extern void FDECL(safe_raw_print_bold, (const char *));
+extern int NDECL(safe_nhgetch);
+extern int FDECL(safe_nh_poskey, (int *, int *, int *));
+extern void NDECL(safe_nhbell);
+extern int NDECL(safe_doprev_message);
+extern char FDECL(safe_yn_function, (const char *, const char *, CHAR_P));
+extern void FDECL(safe_getlin, (const char *, char *));
+extern int NDECL(safe_get_ext_cmd);
+extern void FDECL(safe_number_pad, (int));
+extern void NDECL(safe_delay_output);
+#ifdef CHANGE_COLOR
+extern void FDECL(safe_change_color, (int, long, int));
+#ifdef MAC
+extern void FDECL(safe_change_background, (int));
+extern short FDECL(safe_set_font_name, (winid, char *));
+#endif
+extern char *NDECL(safe_get_color_string);
+#endif
+extern void NDECL(safe_start_screen);
+extern void NDECL(safe_end_screen);
+extern void FDECL(safe_outrip, (winid, int, time_t));
+extern void FDECL(safe_preference_update, (const char *));
+extern char *FDECL(safe_getmsghistory, (BOOLEAN_P));
+extern void FDECL(safe_putmsghistory, (const char *, BOOLEAN_P));
+extern void NDECL(safe_status_init);
+extern void NDECL(safe_status_finish);
+extern void FDECL(safe_status_enablefield,
+                    (int, const char *, const char *, BOOLEAN_P));
+extern void FDECL(safe_status_update, (int, genericptr_t, int, int, int, unsigned long *));
+extern boolean NDECL(safe_can_suspend);
+extern void FDECL(stdio_raw_print, (const char *));
+extern void FDECL(stdio_raw_print_bold, (const char *));
+extern void NDECL(stdio_wait_synch);
+extern int NDECL(stdio_nhgetch);
+#endif /* SAFEPROCS */
 #endif /* WINPROCS_H */
+

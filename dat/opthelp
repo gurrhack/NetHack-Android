@@ -1,6 +1,6 @@
 Boolean options not under specific compile flags (with default values in []):
 (You can learn which options exist in your version by checking your current
-option setting, which is reached via the 'O' cmd.)
+option setting, which is reached via the 'O' command.)
 
 acoustics      can your character hear anything                   [TRUE]
 autodescribe   describe the terrain under cursor                  [FALSE]
@@ -17,7 +17,8 @@ cmdassist      give help for errors on direction & other commands [TRUE]
 confirm        ask before hitting tame or peaceful monsters       [TRUE]
 dark_room      show floor not in sight in different color         [TRUE]
 eight_bit_tty  send 8-bit characters straight to terminal         [FALSE]
-extmenu        use a menu for selecting extended commands (#)     [FALSE]
+extmenu        tty, curses: use menu for # (extended commands)    [FALSE]
+               X11: menu has all commands (T) or traditional subset (F)
 fixinv         try to retain the same letter for the same object  [TRUE]
 force_invmenu  commands asking for inventory item show a menu     [FALSE]
 goldX          when filtering objects by bless/curse state,       [FALSE]
@@ -104,7 +105,7 @@ preload_tiles  control whether tiles get pre-loaded into RAM at   [TRUE]
                of the tile graphics, but uses more memory.
 
 Boolean option if TTY_TILES_ESCCODES was set at compile time (tty only):
-vt_tiledata    insert extra data escae code markers into output   [FALSE]
+vt_tiledata    insert extra data escape code markers into output  [FALSE]
 
 Any Boolean option can be negated by prefixing it with a '!' or 'no'.
 
@@ -159,7 +160,7 @@ paranoid_confirmation  space separated list    [paranoid_confirmation:pray]
               pray    -- y to confirm an attempt to pray; on by default
               Remove  -- always pick from inventory for 'R' and 'T' even when
               wearing just one applicable item to remove or take off
-pickup_burden when you pick up an item that exceeds this encumberance   [S]
+pickup_burden when you pick up an item that exceeds this encumbrance    [S]
               level (Unencumbered, Burdened, streSsed, straiNed, overTaxed,
               or overLoaded), you will be asked if you want to continue.
 pickup_types  a list of default symbols for kinds of objects to          []

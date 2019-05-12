@@ -1,4 +1,4 @@
-/* NetHack 3.6	unixtty.c	$NHDT-Date: 1450916700 2015/12/24 00:25:00 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.21 $ */
+/* NetHack 3.6	unixtty.c	$NHDT-Date: 1548372343 2019/01/24 23:25:43 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.25 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Michael Allison, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -121,6 +121,18 @@
 struct tchars inittyb2, curttyb2;
 
 #endif /* V7 */
+
+/*
+ * Old curses.h relied on implicit declaration of has_colors().
+ * Modern compilers tend to warn about implicit declarations and
+ * modern curses.h declares has_colors() explicitly.  However, the
+ * declaration it uses is not one we can simply clone (requires
+ * <stdbool.h>).  This simpler declaration suffices but can't be
+ * used unconditionally because it conflicts with the 'bool' one.
+ */
+#ifdef NEED_HAS_COLORS_DECL
+int has_colors();
+#endif
 
 #if defined(TTY_GRAPHICS) && ((!defined(SYSV) && !defined(HPUX)) \
                               || defined(UNIXPC) || defined(SVR4))
@@ -305,7 +317,7 @@ void intron() /* enable kbd interupts if enabled when game started */
 {
 #ifdef TTY_GRAPHICS
     /* Ugly hack to keep from changing tty modes for non-tty games -dlc */
-    if (!strcmp(windowprocs.name, "tty") && intr_char != nonesuch
+    if (WINDOWPORT("tty") && intr_char != nonesuch
         && curttyb2.intr_sym != '\003') {
         curttyb2.intr_sym = '\003';
         setctty();
@@ -317,7 +329,7 @@ void introff() /* disable kbd interrupts if required*/
 {
 #ifdef TTY_GRAPHICS
     /* Ugly hack to keep from changing tty modes for non-tty games -dlc */
-    if (!strcmp(windowprocs.name, "tty") && curttyb2.intr_sym != nonesuch) {
+    if (WINDOWPORT("tty") && curttyb2.intr_sym != nonesuch) {
         curttyb2.intr_sym = nonesuch;
         setctty();
     }
@@ -345,7 +357,7 @@ void
 sco_mapon()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+    if (WINDOWPORT("tty") && sco_flag_console) {
         if (sco_map_valid != -1) {
             ioctl(0, LDSMAP, sco_chanmap_buf);
         }
@@ -358,7 +370,7 @@ void
 sco_mapoff()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+    if (WINDOWPORT("tty") && sco_flag_console) {
         sco_map_valid = ioctl(0, LDGMAP, sco_chanmap_buf);
         if (sco_map_valid != -1) {
             ioctl(0, LDNMAP, (char *) 0);
@@ -379,7 +391,7 @@ void
 init_sco_cons()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+    if (WINDOWPORT("tty") && sco_flag_console) {
         atexit(sco_mapon);
         sco_mapoff();
         load_symset("IBMGraphics", PRIMARY);
@@ -409,7 +421,7 @@ void
 linux_mapon()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && linux_flag_console) {
+    if (WINDOWPORT("tty") && linux_flag_console) {
         write(1, "\033(B", 3);
     }
 #endif
@@ -419,7 +431,7 @@ void
 linux_mapoff()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && linux_flag_console) {
+    if (WINDOWPORT("tty") && linux_flag_console) {
         write(1, "\033(U", 3);
     }
 #endif
@@ -439,7 +451,7 @@ void
 init_linux_cons()
 {
 #ifdef TTY_GRAPHICS
-    if (!strcmp(windowprocs.name, "tty") && linux_flag_console) {
+    if (WINDOWPORT("tty") && linux_flag_console) {
         atexit(linux_mapon);
         linux_mapoff();
 #ifdef TEXTCOLOR

@@ -1,4 +1,4 @@
-/* NetHack 3.6	winmisc.c	$NHDT-Date: 1457079197 2016/03/04 08:13:17 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.25 $ */
+/* NetHack 3.6	winmisc.c	$NHDT-Date: 1554135506 2019/04/01 16:18:26 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.44 $ */
 /* Copyright (c) Dean Luick, 1992                                 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,6 +41,8 @@
 static Widget extended_command_popup = 0;
 static Widget extended_command_form;
 static Widget *extended_commands = 0;
+static const char **command_list;
+static short *command_indx;
 static int extended_cmd_selected; /* index of the selected command; */
 static int ps_selected;               /* index of selected role */
 #define PS_RANDOM (-50)
@@ -50,6 +52,7 @@ static const char ps_randchars[] = "*@\n\rrR";
 static const char ps_quitchars[] = "\033qQ";
 
 #define EC_NCHARS 32
+static boolean ec_full_list = FALSE;
 static boolean ec_active = FALSE;
 static int ec_nchars = 0;
 static char ec_chars[EC_NCHARS];
@@ -71,6 +74,8 @@ static const char extended_command_translations[] = "#override\n\
      <Key>Right: scroll(6)\n\
      <Key>Up: scroll(8)\n\
      <Key>Down: scroll(2)\n\
+     <Btn4Down>: scroll(8)\n\
+     <Btn5Down>: scroll(2)\n\
      <Key>: ec_key()";
 
 static const char player_select_translations[] = "#override\n\
@@ -81,6 +86,10 @@ static const char gend_select_translations[] = "#override\n\
      <Key>: gend_key()";
 static const char algn_select_translations[] = "#override\n\
      <Key>: algn_key()";
+
+static const char popup_entry_translations[] = "#override\n\
+     <Btn4Down>: scroll(8)\n\
+     <Btn5Down>: scroll(2)";
 
 static void FDECL(ps_quit, (Widget, XtPointer, XtPointer));
 static void FDECL(ps_random, (Widget, XtPointer, XtPointer));
@@ -105,17 +114,17 @@ XtPointer
 i2xtp(i)
 int i;
 {
-    return (XtPointer)(long)i;
+    return (XtPointer) (ptrdiff_t) i;
 }
+
 int
 xtp2i(x)
 XtPointer x;
 {
-    return (long)x;
+    return (int) (ptrdiff_t) x;
 }
 
-/* Player Selection --------------------------------------------------------
- */
+/* Player Selection ------------------------------------------------------- */
 /* ARGSUSED */
 static void
 ps_quit(w, client_data, call_data)
@@ -1237,12 +1246,14 @@ X11_player_selection_dialog()
     XtRealizeWidget(popup);
     X11_player_selection_randomize();
 
-    ps_selected = -1;
-
-    nh_XtPopup(popup, (int) XtGrabExclusive, form);
-
-    /* The callback will enable the event loop exit. */
-    (void) x_event(EXIT_ON_EXIT);
+    if (flags.randomall) {
+        plsel_dialog_acceptvalues();
+    } else {
+        ps_selected = -1;
+        nh_XtPopup(popup, (int) XtGrabExclusive, form);
+        /* The callback will enable the event loop exit. */
+        (void) x_event(EXIT_ON_EXIT);
+    }
 
     nh_XtPopdown(popup);
     XtDestroyWidget(popup);
@@ -1266,8 +1277,7 @@ X11_player_selection_dialog()
     }
 }
 
-/* Global functions =========================================================
- */
+/* Global functions ======================================================== */
 void
 X11_player_selection_prompts()
 {
@@ -1575,9 +1585,16 @@ X11_player_selection()
     }
 }
 
+/* called by core to have the player pick an extended command */
 int
 X11_get_ext_cmd()
 {
+    if (iflags.extmenu != ec_full_list) {
+        /* player has toggled the 'extmenu' option, toss the old widgets */
+        if (extended_commands)
+            release_extended_cmds(); /* will set extended_commands to Null */
+        ec_full_list = iflags.extmenu;
+    }
     if (!extended_commands)
         init_extended_commands_popup();
 
@@ -1591,23 +1608,25 @@ X11_get_ext_cmd()
     /* The callbacks will enable the event loop exit. */
     (void) x_event(EXIT_ON_EXIT);
 
-    return extended_cmd_selected;
+    if (extended_cmd_selected < 0)
+        return -1;
+    return command_indx[extended_cmd_selected];
 }
 
 void
 release_extended_cmds()
 {
     if (extended_commands) {
-        XtDestroyWidget(extended_command_popup);
+        XtDestroyWidget(extended_command_popup), extended_command_popup = 0;
         free((genericptr_t) extended_commands), extended_commands = 0;
+        free((genericptr_t) command_list), command_list = (const char **) 0;
+        free((genericptr_t) command_indx), command_indx = (short *) 0;
     }
 }
 
-/* End global functions =====================================================
- */
+/* End global functions =================================================== */
 
-/* Extended Command --------------------------------------------------------
- */
+/* Extended Command ------------------------------------------------------- */
 /* ARGSUSED */
 static void
 extend_select(w, client_data, call_data)
@@ -1812,6 +1831,22 @@ int ec_indx; /* might be greater than extended_cmd_selected */
     }
 }
 
+/* decide whether extcmdlist[idx] should be part of extended commands menu */
+static boolean
+ignore_extcmd(idx)
+int idx;
+{
+    /* #shell or #suspect might not be available;
+       'extmenu' option controls whether we show full list
+       or just the traditional extended commands */
+    if ((extcmdlist[idx].flags & CMD_NOT_AVAILABLE) != 0
+        || ((extcmdlist[idx].flags & AUTOCOMPLETE) == 0 && !ec_full_list)
+        || strlen(extcmdlist[idx].ef_txt) < 2) /* ignore "#" and "?" */
+        return TRUE;
+
+    return FALSE;
+}
+
 /* ARGSUSED */
 void
 ec_key(w, event, params, num_params)
@@ -1821,11 +1856,12 @@ String *params;
 Cardinal *num_params;
 {
     char ch;
-    int i;
-    int pass;
+    int i, pass;
+    float shown, top;
+    Arg arg[2];
+    Widget hbar, vbar;
     XKeyEvent *xkey = (XKeyEvent *) event;
 
-    nhUse(w);
     nhUse(params);
     nhUse(num_params);
 
@@ -1852,6 +1888,25 @@ Cardinal *num_params;
 
         exit_x_event = TRUE; /* leave event loop */
         ec_active = FALSE;
+        return;
+    } else if (ch == MENU_FIRST_PAGE || ch == MENU_LAST_PAGE) {
+        hbar = vbar = (Widget) 0;
+        find_scrollbars(w, &hbar, &vbar);
+        if (vbar) {
+            top = (ch == MENU_FIRST_PAGE) ? 0.0 : 1.0;
+            XtCallCallbacks(vbar, XtNjumpProc, &top);
+        }
+        return;
+    } else if (ch == MENU_NEXT_PAGE || ch == MENU_PREVIOUS_PAGE) {
+        hbar = vbar = (Widget) 0;
+        find_scrollbars(w, &hbar, &vbar);
+        if (vbar) {
+            XtSetArg(arg[0], nhStr(XtNshown), &shown);
+            XtSetArg(arg[1], nhStr(XtNtopOfThumb), &top);
+            XtGetValues(vbar, arg, TWO);
+            top += ((ch == MENU_NEXT_PAGE) ? shown : -shown);
+            XtCallCallbacks(vbar, XtNjumpProc, &top);
+        }
         return;
     }
 
@@ -1882,17 +1937,14 @@ Cardinal *num_params;
             if (extended_cmd_selected >= 0)
                 swap_fg_bg(extended_commands[extended_cmd_selected]);
             extended_cmd_selected = -1; /* dismiss */
-            ec_chars[0] = ec_chars[ec_nchars-1];
+            ec_chars[0] = ec_chars[ec_nchars - 1];
             ec_nchars = 1;
         }
-        for (i = 0; extcmdlist[i].ef_txt; i++) {
-            if (extcmdlist[i].ef_txt[0] == '?')
-                continue;
-
-            if (!strncmp(ec_chars, extcmdlist[i].ef_txt, ec_nchars)) {
+        for (i = 0; command_list[i]; ++i) {
+            if (!strncmp(ec_chars, command_list[i], ec_nchars)) {
                 if (extended_cmd_selected != i) {
-                    /* I should use set() and unset() actions, but how do */
-                    /* I send the an action to the widget? */
+                    /* I should use set() and unset() actions, but how do
+                       I send the an action to the widget? */
                     if (extended_cmd_selected >= 0)
                         swap_fg_bg(extended_commands[extended_cmd_selected]);
                     extended_cmd_selected = i;
@@ -1902,11 +1954,10 @@ Cardinal *num_params;
                    ambiguous choices, plus one to show thare aren't any
                    more such, will scroll into view */
                 do {
-                    if (!extcmdlist[i + 1].ef_txt
-                        || *extcmdlist[i + 1].ef_txt == '?')
+                    if (!command_list[i + 1])
                         break; /* end of list */
                     ++i;
-                } while (!strncmp(ec_chars, extcmdlist[i].ef_txt, ec_nchars));
+                } while (!strncmp(ec_chars, command_list[i], ec_nchars));
 
                 ec_scroll_to_view(i);
                 return;
@@ -1922,34 +1973,35 @@ Cardinal *num_params;
 static void
 init_extended_commands_popup()
 {
-    int i, num_commands;
-    const char **command_list;
+    int i, j, num_commands, ignore_cmds = 0;
 
     /* count commands */
     for (num_commands = 0; extcmdlist[num_commands].ef_txt; num_commands++)
-        ; /* do nothing */
+        if (ignore_extcmd(num_commands))
+            ++ignore_cmds;
 
-    /* If the last entry is "help", don't use it. */
-    if (strcmp(extcmdlist[num_commands - 1].ef_txt, "?") == 0)
-        --num_commands;
+    j = num_commands - ignore_cmds;
+    command_list = (const char **) alloc((unsigned) (j * sizeof (char *) + 1));
+    command_indx = (short *) alloc((unsigned) (j * sizeof (short) + 1));
 
-    command_list =
-        (const char **) alloc((unsigned) num_commands * sizeof(char *));
-
-    for (i = 0; i < num_commands; i++)
-        command_list[i] = extcmdlist[i].ef_txt;
+    for (i = j = 0; i < num_commands; i++) {
+        if (ignore_extcmd(i))
+            continue;
+        command_indx[j] = (short) i;
+        command_list[j++] = extcmdlist[i].ef_txt;
+    }
+    command_list[j] = (char *) 0;
+    command_indx[j] = -1;
+    num_commands = j;
 
     extended_command_popup =
         make_menu("extended_commands", "Extended Commands",
                   extended_command_translations, "dismiss", extend_dismiss,
                   "help", extend_help, num_commands, command_list,
                   &extended_commands, extend_select, &extended_command_form);
-
-    free((char *) command_list);
 }
 
-/* -------------------------------------------------------------------------
- */
+/* ------------------------------------------------------------------------ */
 
 /*
  * Create a popup widget of the following form:
@@ -1987,35 +2039,55 @@ Widget **command_widgets;
 XtCallbackProc name_callback;
 Widget *formp; /* return */
 {
-    Widget popup, form, label, above, left, right, view;
+    Widget popup, popform, form, label, above, left, right, view;
     Widget *commands, *curr;
     int i;
-    Arg args[8];
+    Arg args[12];
     Cardinal num_args;
     Dimension width, other_width, max_width, border_width,
               height, cumulative_height, screen_height;
     int distance, skip;
+    char btnname[BUFSZ];
 
     commands = (Widget *) alloc((unsigned) num_names * sizeof (Widget));
 
     num_args = 0;
     XtSetArg(args[num_args], XtNallowShellResize, True); num_args++;
+    XtSetArg(args[num_args], XtNborderWidth, 0); num_args++;
     popup = XtCreatePopupShell(popup_name, transientShellWidgetClass,
                                toplevel, args, num_args);
     XtOverrideTranslations(
         popup, XtParseTranslationTable("<Message>WM_PROTOCOLS: ec_delete()"));
 
     num_args = 0;
-    XtSetArg(args[num_args], XtNforceBars, False); num_args++;
-    XtSetArg(args[num_args], XtNallowVert, True); num_args++;
     XtSetArg(args[num_args], XtNtranslations,
              XtParseTranslationTable(popup_translations)); num_args++;
-    view = XtCreateManagedWidget("menuformview", viewportWidgetClass, popup,
+    XtSetArg(args[num_args], XtNborderWidth, 0); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNdefaultDistance), 0); num_args++;
+    popform = XtCreateManagedWidget("topmenuform", formWidgetClass, popup,
+                                    args, num_args);
+
+
+    num_args = 0;
+    XtSetArg(args[num_args], XtNforceBars, False); num_args++;
+    XtSetArg(args[num_args], XtNallowVert, True); num_args++;
+    /*XtSetArg(args[num_args], XtNborderWidth, 0); num_args++;*/
+    XtSetArg(args[num_args], nhStr(XtNuseBottom), True); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNuseRight), True); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNtop), XtChainTop); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNbottom), XtChainBottom); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNleft), XtChainLeft); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNright), XtChainRight); num_args++;
+    XtSetArg(args[num_args], XtNtranslations,
+             XtParseTranslationTable(popup_translations)); num_args++;
+    view = XtCreateManagedWidget("menuformview", viewportWidgetClass, popform,
                                  args, num_args);
 
     num_args = 0;
     XtSetArg(args[num_args], XtNtranslations,
              XtParseTranslationTable(popup_translations)); num_args++;
+    XtSetArg(args[num_args], XtNborderWidth, 0); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNdefaultDistance), 0); num_args++;
     *formp = form = XtCreateManagedWidget("menuform", formWidgetClass, view,
                                           args, num_args);
 
@@ -2050,11 +2122,13 @@ Widget *formp; /* return */
      */
     num_args = 0;
     XtSetArg(args[num_args], nhStr(XtNfromVert), label); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNlabel), left_name); num_args++;
 #if 0
     XtSetArg(args[num_args], nhStr(XtNshapeStyle),
                               XmuShapeRoundedRectangle); num_args++;
 #endif
-    left = XtCreateManagedWidget(left_name, commandWidgetClass, form, args,
+    Sprintf(btnname, "btn_%s", left_name);
+    left = XtCreateManagedWidget(btnname, commandWidgetClass, form, args,
                                  num_args);
     XtAddCallback(left, XtNcallback, left_callback, (XtPointer) 0);
     skip = (distance < 4) ? 8 : 2 * distance;
@@ -2071,11 +2145,13 @@ Widget *formp; /* return */
     XtSetArg(args[num_args], nhStr(XtNfromHoriz), left); num_args++;
     XtSetArg(args[num_args], nhStr(XtNhorizDistance), skip); num_args++;
     XtSetArg(args[num_args], nhStr(XtNfromVert), label); num_args++;
+    XtSetArg(args[num_args], nhStr(XtNlabel), right_name); num_args++;
 #if 0
     XtSetArg(args[num_args], nhStr(XtNshapeStyle),
                               XmuShapeRoundedRectangle); num_args++;
 #endif
-    right = XtCreateManagedWidget(right_name, commandWidgetClass, form, args,
+    Sprintf(btnname, "btn_%s", right_name);
+    right = XtCreateManagedWidget(btnname, commandWidgetClass, form, args,
                                   num_args);
     XtAddCallback(right, XtNcallback, right_callback, (XtPointer) 0);
 
@@ -2089,6 +2165,8 @@ Widget *formp; /* return */
         if (!widget_names[i])
             continue;
         num_args = 0;
+        XtSetArg(args[num_args], XtNtranslations,
+                 XtParseTranslationTable(popup_entry_translations)); num_args++;
         XtSetArg(args[num_args], nhStr(XtNfromVert), above); num_args++;
         if (above == left) {
             /* if first, we are farther apart */

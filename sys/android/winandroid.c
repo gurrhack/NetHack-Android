@@ -1,6 +1,7 @@
 #include <string.h>
 #include <errno.h>
 #include <jni.h>
+#include <ctype.h>
 
 #include "hack.h"
 #include "func_tab.h"   /* for extended commands */
@@ -193,7 +194,7 @@ enum bl_conditions {
 extern char *status_vals[MAXBLSTATS];
 static int status_colors[MAXBLSTATS];
 extern boolean status_activefields[MAXBLSTATS];
-extern unsigned long cond_hilites[BL_ATTCLR_MAX];
+static unsigned long* cond_hilites;
 static unsigned long active_conditions;
 static const char* cond_names[] = {
 	"Stone", "Slime", "Strngl", "FoodPois", "TermIll", "Blind",
@@ -331,7 +332,7 @@ void quit_possible()
 }
 
 //____________________________________________________________________________________
-void setUsername()
+void set_username()
 {
 	jstring username = create_bytearray(plname);
 	JNICallV(jSetUsername, username);
@@ -424,7 +425,7 @@ void and_player_selection()
 			win = create_nhwindow(NHW_MENU);
 			and_start_menu(win);
 			any.a_void = 0; /* zero out all bits */
-			any.a_int = randrole()+1;
+			any.a_int = randrole(TRUE)+1;
 			and_add_menu(win, NO_GLYPH, &any, '*', 0, ATR_NONE, "Random", MENU_UNSELECTED);
 			for(i = 0; roles[i].name.m; i++)
 			{
@@ -944,12 +945,14 @@ void and_status_update(int idx, genericptr_t ptr, int chg, int percent, int colo
 
 	if(idx == BL_FLUSH)
 	{
-		and_status_flush();
+		if(cond_hilites)
+			and_status_flush();
 	}
 	else if(status_activefields[idx])
 	{
 		if(idx == BL_CONDITION)
 		{
+			cond_hilites = colormasks;
 			active_conditions = condptr ? *condptr : 0L;
 			*status_vals[idx] = 0;
 		}
@@ -1245,11 +1248,6 @@ void and_end_menu(winid wid, const char *prompt)
 //		   called for them. There is no way of knowing whether
 //		   select_menu() will be called for the window at
 //		   create_nhwindow() time.
-int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
-{
-	return and_select_menu_r(wid, how, selected, 0);
-}
-
 int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 {
 	int i, n;
@@ -1294,6 +1292,11 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	destroy_jobject(a);
 
 	return n;
+}
+
+int and_select_menu(winid wid, int how, MENU_ITEM_P **selected)
+{
+	return and_select_menu_r(wid, how, selected, 0);
 }
 
 //____________________________________________________________________________________
@@ -1397,7 +1400,7 @@ void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph, int bkglyph)
 		tile = glyph2tile[glyph];
 	int ch;
 	int col;
-	int special;
+	unsigned int special;
 	mapglyph(glyph, &ch, &col, &special, x, y);
 
 	special &= ~(MG_CORPSE|MG_INVIS|MG_RIDDEN|MG_STATUE); // TODO support

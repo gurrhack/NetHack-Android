@@ -1,4 +1,4 @@
-/* NetHack 3.6	monmove.c	$NHDT-Date: 1517877380 2018/02/06 00:36:20 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.96 $ */
+/* NetHack 3.6	monmove.c	$NHDT-Date: 1557094802 2019/05/05 22:20:02 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.113 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Michael Allison, 2006. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,7 +15,8 @@ STATIC_DCL void FDECL(release_hero, (struct monst *));
 STATIC_DCL void FDECL(distfleeck, (struct monst *, int *, int *, int *));
 STATIC_DCL int FDECL(m_arrival, (struct monst *));
 STATIC_DCL boolean FDECL(stuff_prevents_passage, (struct monst *));
-STATIC_DCL int FDECL(vamp_shift, (struct monst *, struct permonst *, BOOLEAN_P));
+STATIC_DCL int FDECL(vamp_shift, (struct monst *, struct permonst *,
+                                  BOOLEAN_P));
 
 /* True if mtmp died */
 boolean
@@ -31,9 +32,9 @@ struct monst *mtmp;
     wake_nearto(mtmp->mx, mtmp->my, 7 * 7);
     mtmp->mstun = 1;
     mtmp->mhp -= rnd(15);
-    if (mtmp->mhp <= 0) {
+    if (DEADMONSTER(mtmp)) {
         mondied(mtmp);
-        if (mtmp->mhp > 0) /* lifesaved */
+        if (!DEADMONSTER(mtmp)) /* lifesaved */
             return FALSE;
         else
             return TRUE;
@@ -230,8 +231,8 @@ register struct monst *mtmp;
               || mtmp->data->mlet == S_LEPRECHAUN) || !rn2(50))
         && (Aggravate_monster
             || (mtmp->data->mlet == S_DOG || mtmp->data->mlet == S_HUMAN)
-            || (!rn2(7) && mtmp->m_ap_type != M_AP_FURNITURE
-                && mtmp->m_ap_type != M_AP_OBJECT))) {
+            || (!rn2(7) && M_AP_TYPE(mtmp) != M_AP_FURNITURE
+                && M_AP_TYPE(mtmp) != M_AP_OBJECT))) {
         mtmp->msleeping = 0;
         return 1;
     }
@@ -252,6 +253,12 @@ struct monst *mon;
         }
     }
 }
+
+#define flees_light(mon) ((mon)->data == &mons[PM_GREMLIN]     \
+                          && (uwep && artifact_light(uwep) && uwep->lamplit))
+/* we could include this in the above macro, but probably overkill/overhead */
+/*      && (!(which_armor((mon), W_ARMC) != 0                               */
+/*            && which_armor((mon), W_ARMH) != 0))                          */
 
 /* monster begins fleeing for the specified time, 0 means untimed flee
  * if first, only adds fleetime if monster isn't already fleeing
@@ -282,14 +289,20 @@ boolean fleemsg;
             mtmp->mfleetim = (unsigned) min(fleetime, 127);
         }
         if (!mtmp->mflee && fleemsg && canseemon(mtmp)
-            && mtmp->m_ap_type != M_AP_FURNITURE
-            && mtmp->m_ap_type != M_AP_OBJECT) {
+            && M_AP_TYPE(mtmp) != M_AP_FURNITURE
+            && M_AP_TYPE(mtmp) != M_AP_OBJECT) {
             /* unfortunately we can't distinguish between temporary
                sleep and temporary paralysis, so both conditions
                receive the same alternate message */
-            if (!mtmp->mcanmove || !mtmp->data->mmove)
+            if (!mtmp->mcanmove || !mtmp->data->mmove) {
                 pline("%s seems to flinch.", Adjmonnam(mtmp, "immobile"));
-            else
+            } else if (flees_light(mtmp)) {
+                if (rn2(10) || Deaf)
+                    pline("%s flees from the painful light of %s.",
+                          Monnam(mtmp), bare_artifactname(uwep));
+                else
+                    verbalize("Bright light!");
+            } else
                 pline("%s turns to flee.", Monnam(mtmp));
         }
         mtmp->mflee = 1;
@@ -304,7 +317,7 @@ register struct monst *mtmp;
 int *inrange, *nearby, *scared;
 {
     int seescaryx, seescaryy;
-    boolean sawscary = FALSE;
+    boolean sawscary = FALSE, bravegremlin = (rn2(5) == 0);
 
     *inrange = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy)
                 <= (BOLT_LIM * BOLT_LIM));
@@ -327,12 +340,15 @@ int *inrange, *nearby, *scared;
 
     sawscary = onscary(seescaryx, seescaryy, mtmp);
     if (*nearby && (sawscary
+                    || (flees_light(mtmp) && !bravegremlin)
                     || (!mtmp->mpeaceful && in_your_sanctuary(mtmp, 0, 0)))) {
         *scared = 1;
         monflee(mtmp, rnd(rn2(7) ? 10 : 100), TRUE, TRUE);
     } else
         *scared = 0;
 }
+
+#undef flees_light
 
 /* perform a special one-time action for a monster; returns -1 if nothing
    special happened, 0 if monster uses up its turn, 1 if monster is killed */
@@ -413,7 +429,7 @@ register struct monst *mtmp;
         m_respond(mtmp);
     if (mdat == &mons[PM_MEDUSA] && couldsee(mtmp->mx, mtmp->my))
         m_respond(mtmp);
-    if (mtmp->mhp <= 0)
+    if (DEADMONSTER(mtmp))
         return 1; /* m_respond gaze can kill medusa */
 
     /* fleeing monsters might regain courage */
@@ -518,14 +534,14 @@ register struct monst *mtmp;
                 if (cansee(m2->mx, m2->my))
                     pline("It locks on to %s.", mon_nam(m2));
                 m2->mhp -= rnd(15);
-                if (m2->mhp <= 0)
+                if (DEADMONSTER(m2))
                     monkilled(m2, "", AD_DRIN);
                 else
                     m2->msleeping = 0;
             }
         }
     }
-toofar:
+ toofar:
 
     /* If monster is nearby you, and has to wield a weapon, do so.   This
      * costs the monster a move, of course.
@@ -590,7 +606,7 @@ toofar:
         case 0: /* no movement, but it can still attack you */
         case 3: /* absolutely no movement */
             /* vault guard might have vanished */
-            if (mtmp->isgd && (mtmp->mhp < 1 || mtmp->mx == 0))
+            if (mtmp->isgd && (DEADMONSTER(mtmp) || mtmp->mx == 0))
                 return 1; /* behave as if it died */
             /* During hallucination, monster appearance should
              * still change - even if it doesn't move.
@@ -716,25 +732,25 @@ struct monst *mtmp;
 xchar nix,niy;
 {
     boolean can_tunnel = 0;
-    struct obj *mw_tmp;
+    struct obj *mw_tmp = MON_WEP(mtmp);
 
     if (!Is_rogue_level(&u.uz))
         can_tunnel = tunnels(mtmp->data);
 
-    if (can_tunnel && needspick(mtmp->data)
-        && mtmp->weapon_check != NO_WEAPON_WANTED
-        && ((IS_ROCK(levl[nix][niy].typ) && may_dig(nix, niy))
-            || closed_door(nix, niy))) {
+    if (can_tunnel && needspick(mtmp->data) && !mwelded(mw_tmp)
+        && (may_dig(nix, niy) || closed_door(nix, niy))) {
+        /* may_dig() is either IS_STWALL or IS_TREE */
         if (closed_door(nix, niy)) {
-            if (!(mw_tmp = MON_WEP(mtmp))
+            if (!mw_tmp
                 || !is_pick(mw_tmp)
                 || !is_axe(mw_tmp))
                 mtmp->weapon_check = NEED_PICK_OR_AXE;
         } else if (IS_TREE(levl[nix][niy].typ)) {
             if (!(mw_tmp = MON_WEP(mtmp)) || !is_axe(mw_tmp))
                 mtmp->weapon_check = NEED_AXE;
-        } else if (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp)) {
-            mtmp->weapon_check = NEED_PICK_AXE;
+        } else if (IS_STWALL(levl[nix][niy].typ)) {
+            if (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp))
+                mtmp->weapon_check = NEED_PICK_AXE;
         }
         if (mtmp->weapon_check >= NEED_PICK_AXE && mon_wield_item(mtmp))
             return TRUE;
@@ -880,7 +896,7 @@ register int after;
         mmoved = 1;
         goto postmov;
     }
-not_special:
+ not_special:
     if (u.uswallow && !mtmp->mflee && u.ustuck != mtmp)
         return 1;
     omx = mtmp->mx;
@@ -966,7 +982,7 @@ not_special:
         if ((likegold || likegems || likeobjs || likemagic || likerock
              || conceals) && (!*in_rooms(omx, omy, SHOPBASE)
                               || (!rn2(25) && !mtmp->isshk))) {
-        look_for_obj:
+ look_for_obj:
             oomx = min(COLNO - 1, omx + minr);
             oomy = min(ROWNO - 1, omy + minr);
             lmx = max(1, omx - minr);
@@ -1141,7 +1157,7 @@ not_special:
                 chi = i;
                 mmoved = 1;
             }
-        nxti:
+ nxti:
             ;
         }
     }
@@ -1185,6 +1201,7 @@ not_special:
         if ((info[chi] & ALLOW_M) || (nix == mtmp->mux && niy == mtmp->muy)) {
             struct monst *mtmp2;
             int mstatus;
+
             mtmp2 = m_at(nix, niy);
 
             notonhead = mtmp2 && (nix != mtmp2->mx || niy != mtmp2->my);
@@ -1208,6 +1225,7 @@ not_special:
         if ((info[chi] & ALLOW_MDISP)) {
             struct monst *mtmp2;
             int mstatus;
+
             mtmp2 = m_at(nix, niy);
             mstatus = mdisplacem(mtmp, mtmp2, FALSE);
             if ((mstatus & MM_AGR_DIED) || (mstatus & MM_DEF_DIED))
@@ -1219,6 +1237,7 @@ not_special:
 
         if (!m_in_out_region(mtmp, nix, niy))
             return 3;
+
         remove_monster(omx, omy);
         place_monster(mtmp, nix, niy);
         for (j = MTSZ - 1; j > 0; j--)
@@ -1236,18 +1255,51 @@ not_special:
         if (mtmp->wormno)
             worm_nomove(mtmp);
     }
-postmov:
+ postmov:
     if (mmoved == 1 || mmoved == 3) {
         boolean canseeit = cansee(mtmp->mx, mtmp->my);
 
         if (mmoved == 1) {
+            /* normal monster move will already have <nix,niy>,
+               but pet dog_move() with 'goto postmov' won't */
+            nix = mtmp->mx, niy = mtmp->my;
+            /* sequencing issue:  when monster movement decides that a
+               monster can move to a door location, it moves the monster
+               there before dealing with the door rather than after;
+               so a vampire/bat that is going to shift to fog cloud and
+               pass under the door is already there but transformation
+               into fog form--and its message, when in sight--has not
+               happened yet; we have to move monster back to previous
+               location before performing the vamp_shift() to make the
+               message happen at right time, then back to the door again
+               [if we did the shift above, before moving the monster,
+               we would need to duplicate it in dog_move()...] */
+            if (is_vampshifter(mtmp) && !amorphous(mtmp->data)
+                && IS_DOOR(levl[nix][niy].typ)
+                && ((levl[nix][niy].doormask & (D_LOCKED | D_CLOSED)) != 0)
+                && can_fog(mtmp)) {
+                if (sawmon) {
+                    remove_monster(nix, niy);
+                    place_monster(mtmp, omx, omy);
+                    newsym(nix, niy), newsym(omx, omy);
+                }
+                if (vamp_shift(mtmp, &mons[PM_FOG_CLOUD], sawmon)) {
+                    ptr = mtmp->data; /* update cached value */
+                }
+                if (sawmon) {
+                    remove_monster(omx, omy);
+                    place_monster(mtmp, nix, niy);
+                    newsym(omx, omy), newsym(nix, niy);
+                }
+            }
+
             newsym(omx, omy); /* update the old position */
             if (mintrap(mtmp) >= 2) {
                 if (mtmp->mx)
                     newsym(mtmp->mx, mtmp->my);
                 return 2; /* it died */
             }
-            ptr = mtmp->data;
+            ptr = mtmp->data; /* in case mintrap() caused polymorph */
 
             /* open a door, or crash through it, if 'mtmp' can */
             if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ)
@@ -1268,18 +1320,11 @@ postmov:
                     btrapped = FALSE;
                 }
                 if ((here->doormask & (D_LOCKED | D_CLOSED)) != 0
-                    && (amorphous(ptr)
-                        || (can_fog(mtmp)
-                            && vamp_shift(mtmp, &mons[PM_FOG_CLOUD],
-                                          sawmon)))) {
-                    /* update cached value for vamp_shift() case */
-                    ptr = mtmp->data;
+                    && amorphous(ptr)) {
                     if (flags.verbose && canseemon(mtmp))
                         pline("%s %s under the door.", Monnam(mtmp),
                               (ptr == &mons[PM_FOG_CLOUD]
-                               || ptr->mlet == S_LIGHT)
-                                  ? "flows"
-                                  : "oozes");
+                               || ptr->mlet == S_LIGHT) ? "flows" : "oozes");
                 } else if (here->doormask & D_LOCKED && can_unlock) {
                     if (btrapped) {
                         here->doormask = D_NODOOR;
@@ -1351,7 +1396,8 @@ postmov:
                         add_damage(mtmp->mx, mtmp->my, 0L);
                 }
             } else if (levl[mtmp->mx][mtmp->my].typ == IRONBARS) {
-                if (may_dig(mtmp->mx, mtmp->my)
+                /* 3.6.2: was using may_dig() but it doesn't handle bars */
+                if (!(levl[mtmp->mx][mtmp->my].wall_info & W_NONDIGGABLE)
                     && (dmgtype(ptr, AD_RUST) || dmgtype(ptr, AD_CORR))) {
                     if (canseemon(mtmp))
                         pline("%s eats through the iron bars.", Monnam(mtmp));
@@ -1457,6 +1503,7 @@ dissolve_bars(x, y)
 register int x, y;
 {
     levl[x][y].typ = (Is_special(&u.uz) || *in_rooms(x, y, 0)) ? ROOM : CORR;
+    levl[x][y].flags = 0;
     newsym(x, y);
 }
 
@@ -1525,6 +1572,7 @@ register struct monst *mtmp;
 
     if (!gotu) {
         register int try_cnt = 0;
+
         do {
             if (++try_cnt > 200)
                 goto found_you; /* punt */
@@ -1538,7 +1586,7 @@ register struct monst *mtmp;
                               && (can_ooze(mtmp) || can_fog(mtmp)))))
                  || !couldsee(mx, my));
     } else {
-    found_you:
+ found_you:
         mx = u.ux;
         my = u.uy;
     }
@@ -1666,6 +1714,9 @@ boolean domsg;
         pline("You %s %s where %s was.",
               !canseemon(mon) ? "now detect" : "observe",
               noname_monnam(mon, ARTICLE_A), oldmtype);
+        /* this message is given when it turns into a fog cloud
+           in order to move under a closed door */
+        display_nhwindow(WIN_MESSAGE, FALSE);
     }
 
     return reslt;

@@ -1,24 +1,30 @@
 $ ! vms/vmsbuild.com -- compile and link NetHack 3.6.*			[pr]
-$	version_number = "3.6.1"
-$ ! $NHDT-Date: 1524689429 2018/04/25 20:50:29 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.17 $
-# Copyright (c) 2018 by Robert Patrick Rankin
-# NetHack may be freely redistributed.  See license for details.
+$	version_number = "3.6.2"
+$ ! $NHDT-Date: 1550360057 2019/02/16 23:34:17 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.22 $
+$ ! Copyright (c) 2018 by Robert Patrick Rankin
+$ ! NetHack may be freely redistributed.  See license for details.
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
-$ !   $ @[-.sys.vms]vmsbuild  [compiler-option]  [link-option]  [cc-switches]
+$ !   $ @[-.sys.vms]vmsbuild  [compiler-option]  [link-option]  [cc-switches] -
+$ !			      [linker-switches]  [interface]
 $ ! options:
 $ !	compiler-option :  either "VAXC", "DECC" or "GNUC" or "" !default VAXC
 $ !	link-option	:  either "SHARE[able]" or "LIB[rary]"	!default SHARE
 $ !	cc-switches	:  optional qualifiers for CC (such as "/noOpt/Debug")
+$ !     linker-switches :  optional qualifers for LINK (/Debug or /noTraceback)
+$ !     interface	:  "TTY" or "CURSES" or "TTY+CURSES" or "CURSES+TTY"
 $ ! notes:
-$ !	If the symbol "CC" is defined, compiler-option is not used.
+$ !	If the symbol "CC" is defined, compiler-option is not used (unless it
+$ !	  is "LINK").
 $ !	The link-option refers to VAXCRTL (C Run-Time Library) handling;
 $ !	  to specify it while letting compiler-option default, use "" as
 $ !	  the compiler-option.
 $ !	To re-link without compiling, use "LINK" as special 'compiler-option';
 $ !	  to re-link with GNUC library, 'CC' must begin with "G" (or "g").
-$ !	Default wizard definition moved to include/vmsconf.h.
+$ !	All options are positional; to specify a later one without an earlier
+$ !	  one, use "" in the earlier one's position, such as
+$ !	$ @[-.sys.vms]vmsbuild "" "" "" "" "TTY+CURSES"
 $
 $	  decc_dflt = f$trnlnm("DECC$CC_DEFAULT")
 $	  j = (decc_dflt.nes."") .and. 1
@@ -178,8 +184,13 @@ $	nethacklib = "[-.src]nethack.olb"
 $	create nethack.opt
 ! nethack.opt
 nethack.olb/Include=(vmsmain)/Library
+! lib$initialize is used to call a routine (before main()) in vmsunix.c that
+! tries to check whether debugger support has been linked in, for PANICTRACE
 sys$library:starlet.olb/Include=(lib$initialize)
-psect_attr=lib$initialize, Con,Usr,noPic,Rel,Gbl,noShr,noExe,Rd,noWrt,Long
+! psect_attr=lib$initialize, Con,Usr,noPic,Rel,Gbl,noShr,noExe,Rd,noWrt,Long
+! IA64 linker doesn't support Usr or Pic and complains that Long is too small
+psect_attr=lib$initialize, Con,Rel,Gbl,noShr,noExe,Rd,noWrt
+! increase memory available to RMS (the default iosegment is probably adequate)
 iosegment=128
 $	if f$search("nethack.opt;-2").nes."" then  purge/Keep=2/noLog nethack.opt
 $	milestone = "write sys$output f$fao("" !5%T "",0),"
@@ -228,6 +239,18 @@ $ if f$search("random.c").eqs."" then  copy [-.sys.share]random.c []*.*
 $ if f$search("tclib.c") .eqs."" then  copy [-.sys.share]tclib.c  []*.*
 $ if f$search("[-.util]lev_yacc.c").eqs."" then  @[-.sys.vms]spec_lev.com
 $!
+$	p5 := 'p5'
+$	ttysrc = "[-.win.tty]getline,[-.win.tty]termcap" -
+		+ ",[-.win.tty]topl,[-.win.tty]wintty"
+$	cursessrc = "[-.win.curses]cursdial,[-.win/curses]cursmesg" -
+		+ ",[-.win.curses]cursinit,[-.win.curses]cursmisc" -
+		+ ",[-.win.curses]cursinvt,[-.win.curses]cursstat" -
+		+ ",[-.win.curses]cursmain,[-.win.curses]curswins"
+$	interface = ttysrc !default
+$	if p5.eqs."CURSES" then  interface = cursessrc
+$	if p5.eqs."TTY+CURSES" then  interface = ttysrc + "," + cursessrc
+$	if p5.eqs."CURSES+TTY" then  interface = cursessrc + "," + ttysrc
+$!
 $! create object library
 $!
 $     if c_opt.ne.o_SPCL .or. f$search(nethacklib).eqs."" then -
@@ -251,17 +274,16 @@ $ makedefs -p	!pm.h
 $ makedefs -o	!onames.h
 $ makedefs -v	!date.h
 $ milestone " (*.h)"
-$ makedefs -m	!../src/monstr.c
 $ makedefs -z	!../src/vis_tab.c, ../include/vis_tab.h
 $ milestone " (*.c)"
 $ set default [-.src]
 $! compile most of the source files:
 $ c_list = "decl,version,[-.sys.vms]vmsmain,[-.sys.vms]vmsunix" -
 	+ ",[-.sys.vms]vmstty,[-.sys.vms]vmsmail" -
+	+ ",[]isaac64" -			!already in [.src]
 	+ ",[]random,[]tclib,[]pmatchregex"	!copied from [-.sys.share]
 $ gosub compile_list
-$ c_list = "[-.win.tty]getline,[-.win.tty]termcap" -
-	+ ",[-.win.tty]topl,[-.win.tty]wintty"
+$ c_list = interface !ttysrc or cursessrc or both
 $ gosub compile_list
 $ c_list = "allmain,apply,artifact,attrib,ball,bones,botl,cmd,dbridge,detect" -
 	+ ",dig,display,do,do_name,do_wear,dog,dogmove,dokick,dothrow,drawing" -
@@ -269,7 +291,7 @@ $ c_list = "allmain,apply,artifact,attrib,ball,bones,botl,cmd,dbridge,detect" -
 $ gosub compile_list
 $ c_list = "hack,hacklib,invent,light,lock,mail,makemon,mapglyph,mcastu" -
 	+ ",mhitm,mhitu,minion,mklev,mkmap,mkmaze,mkobj,mkroom,mon,mondata" -
-	+ ",monmove,monstr,mplayer,mthrowu,muse,music,o_init,objnam,options" -
+	+ ",monmove,mplayer,mthrowu,muse,music,o_init,objnam,options" -
 	+ ",pager,pickup"
 $ gosub compile_list
 $ c_list = "pline,polyself,potion,pray,priest,quest,questpgr,read" -

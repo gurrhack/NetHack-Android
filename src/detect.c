@@ -1,4 +1,4 @@
-/* NetHack 3.6	detect.c	$NHDT-Date: 1522891623 2018/04/05 01:27:03 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.81 $ */
+/* NetHack 3.6	detect.c	$NHDT-Date: 1544437284 2018/12/10 10:21:24 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.91 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -78,10 +78,12 @@ struct monst *mtmp;
 boolean showtail;
 {
     if (def_monsyms[(int) mtmp->data->mlet].sym == ' ')
-        show_glyph(mtmp->mx, mtmp->my, detected_mon_to_glyph(mtmp));
-    else
         show_glyph(mtmp->mx, mtmp->my,
-                   mtmp->mtame ? pet_to_glyph(mtmp) : mon_to_glyph(mtmp));
+                   detected_mon_to_glyph(mtmp, newsym_rn2));
+    else
+        show_glyph(mtmp->mx, mtmp->my, mtmp->mtame
+                   ? pet_to_glyph(mtmp, newsym_rn2)
+                   : mon_to_glyph(mtmp, newsym_rn2));
 
     if (showtail && mtmp->data == &mons[PM_LONG_WORM])
         detect_wsegs(mtmp, 0);
@@ -165,8 +167,14 @@ char oclass;
 
     if (obj->oclass == oclass)
         return obj;
-
-    if (Has_contents(obj)) {
+    /*
+     * Note:  we exclude SchroedingersBox because the corpse it contains
+     * isn't necessarily a corpse yet.  Resolving the status would lead
+     * to complications if it turns out to be a live cat.  We know that
+     * that Box can't contain anything else because putting something in
+     * would resolve the cat/corpse situation and convert to ordinary box.
+     */
+    if (Has_contents(obj) && !SchroedingersBox(obj)) {
         for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
             if (otmp->oclass == oclass)
                 return otmp;
@@ -442,8 +450,7 @@ outgoldmap:
     return 0;
 }
 
-/* returns 1 if nothing was detected   */
-/* returns 0 if something was detected */
+/* returns 1 if nothing was detected, 0 if something was detected */
 int
 food_detect(sobj)
 register struct obj *sobj;
@@ -648,7 +655,7 @@ int class;            /* an object class, 0 for all */
             if (do_dknown)
                 do_dknown_of(obj);
         }
-        if ((is_cursed && mtmp->m_ap_type == M_AP_OBJECT
+        if ((is_cursed && M_AP_TYPE(mtmp) == M_AP_OBJECT
              && (!class || class == objects[mtmp->mappearance].oc_class))
             || (findgold(mtmp->minvent) && (!class || class == COIN_CLASS))) {
             ct++;
@@ -723,7 +730,7 @@ int class;            /* an object class, 0 for all */
                 break;
             }
         /* Allow a mimic to override the detected objects it is carrying. */
-        if (is_cursed && mtmp->m_ap_type == M_AP_OBJECT
+        if (is_cursed && M_AP_TYPE(mtmp) == M_AP_OBJECT
             && (!class || class == objects[mtmp->mappearance].oc_class)) {
             struct obj temp;
 
@@ -862,10 +869,10 @@ int src_cursed;
             obj.ox = x;
             obj.oy = y;
         }
-        obj.otyp = !Hallucination ? GOLD_PIECE : random_object();
+        obj.otyp = !Hallucination ? GOLD_PIECE : random_object(rn2);
         obj.quan = (long) ((obj.otyp == GOLD_PIECE) ? rnd(10)
                            : objects[obj.otyp].oc_merge ? rnd(2) : 1);
-        obj.corpsenm = random_monster(); /* if otyp == CORPSE */
+        obj.corpsenm = random_monster(rn2); /* if otyp == CORPSE */
         map_object(&obj, 1);
     } else if (trap) {
         map_trap(trap, 1);
@@ -1300,30 +1307,92 @@ struct obj *sobj; /* scroll--actually fake spellbook--object */
 {
     register int zx, zy;
     struct monst *mtmp;
-    boolean unconstrained, refresh = FALSE, mdetected = FALSE,
-            extended = (sobj && sobj->blessed);
-    int lo_y = ((u.uy - 5 < 0) ? 0 : u.uy - 5),
+    struct obj *otmp;
+    long save_EDetect_mons;
+    char save_viz_uyux;
+    boolean unconstrained, refresh = FALSE,
+            mdetected = FALSE, odetected = FALSE,
+            /* fake spellbook 'sobj' implies hero has cast the spell;
+               when book is blessed, casting is skilled or expert level;
+               if already clairvoyant, non-skilled spell acts like skilled */
+            extended = (sobj && (sobj->blessed || Clairvoyant));
+    int newglyph, oldglyph,
+        lo_y = ((u.uy - 5 < 0) ? 0 : u.uy - 5),
         hi_y = ((u.uy + 6 >= ROWNO) ? ROWNO - 1 : u.uy + 6),
         lo_x = ((u.ux - 9 < 1) ? 1 : u.ux - 9), /* avoid column 0 */
         hi_x = ((u.ux + 10 >= COLNO) ? COLNO - 1 : u.ux + 10),
         ter_typ = TER_DETECT | TER_MAP | TER_TRP | TER_OBJ;
 
+    /*
+     * 3.6.0 attempted to emphasize terrain over transient map
+     * properties (monsters and objects) but that led to problems.
+     * Notably, known trap would be displayed instead of a monster
+     * on or in it and then the display remained that way after the
+     * clairvoyant snapshot finished.  That could have been fixed by
+     * issuing --More-- and then regular vision update, but we want
+     * to avoid that when having a clairvoyant episode every N turns
+     * (from donating to a temple priest or by carrying the Amulet).
+     * Unlike when casting the spell, it is much too intrustive when
+     * in the midst of walking around or combatting monsters.
+     *
+     * For 3.6.2, show terrain, then object, then monster like regular
+     * map updating, except in this case the map locations get marked
+     * as seen from every direction rather than just from direction of
+     * hero.  Skilled spell marks revealed objects as 'seen up close'
+     * (but for piles, only the top item) and shows monsters as if
+     * detected.  Non-skilled and timed clairvoyance reveals non-visible
+     * monsters as 'remembered, unseen'.
+     */
+
+    /* if hero is engulfed, show engulfer at <u.ux,u.uy> */
+    save_viz_uyux = viz_array[u.uy][u.ux];
+    if (u.uswallow)
+        viz_array[u.uy][u.ux] |= IN_SIGHT; /* <x,y> are reversed to [y][x] */
+    save_EDetect_mons = EDetect_monsters;
+    /* for skilled spell, getpos() scanning of the map will display all
+       monsters within range; otherwise, "unseen creature" will be shown */
+    EDetect_monsters |= I_SPECIAL;
     unconstrained = unconstrain_map();
     for (zx = lo_x; zx <= hi_x; zx++)
         for (zy = lo_y; zy <= hi_y; zy++) {
+            oldglyph = glyph_at(zx, zy);
+            /* this will remove 'remembered, unseen mon' (and objects) */
             show_map_spot(zx, zy);
-
-            if (extended && (mtmp = m_at(zx, zy)) != 0
+            /* if there are any objects here, see the top one */
+            if (OBJ_AT(zx, zy)) {
+                /* not vobj_at(); this is not vision-based access;
+                   unlike object detection, we don't notice buried items */
+                otmp = level.objects[zx][zy];
+                if (extended)
+                    otmp->dknown = 1;
+                map_object(otmp, TRUE);
+                newglyph = glyph_at(zx, zy);
+                /* if otmp is underwater, we'll need to redisplay the water */
+                if (newglyph != oldglyph && covers_objects(zx, zy))
+                    odetected = TRUE;
+            }
+            /* if there is a monster here, see or detect it,
+               possibly as "remembered, unseen monster" */
+            if ((mtmp = m_at(zx, zy)) != 0
                 && mtmp->mx == zx && mtmp->my == zy) { /* skip worm tails */
-                int oldglyph = glyph_at(zx, zy);
-
-                map_monst(mtmp, FALSE);
-                if (glyph_at(zx, zy) != oldglyph)
+                /* if we're going to offer browse_map()/getpos() scanning of
+                   the map and we're not doing extended/blessed clairvoyance
+                   (hence must be swallowed or underwater), show "unseen
+                   creature" unless map already displayed a monster here */
+                if ((unconstrained || !level.flags.hero_memory)
+                    && !extended && (zx != u.ux || zy != u.uy)
+                    && !glyph_is_monster(oldglyph))
+                    map_invisible(zx, zy);
+                else
+                    map_monst(mtmp, FALSE);
+                newglyph = glyph_at(zx, zy);
+                if (extended && newglyph != oldglyph
+                    && !glyph_is_invisible(newglyph))
                     mdetected = TRUE;
             }
         }
 
-    if (!level.flags.hero_memory || unconstrained || mdetected) {
+    if (!level.flags.hero_memory || unconstrained || mdetected || odetected) {
         flush_screen(1);                 /* flush temp screen */
         /* the getpos() prompt from browse_map() is only shown when
            flags.verbose is set, but make this unconditional so that
@@ -1331,13 +1400,26 @@ struct obj *sobj; /* scroll--actually fake spellbook--object */
         You("sense your surroundings.");
         if (extended || glyph_is_monster(glyph_at(u.ux, u.uy)))
             ter_typ |= TER_MON;
-        if (extended)
-            EDetect_monsters |= I_SPECIAL;
         browse_map(ter_typ, "anything of interest");
-        EDetect_monsters &= ~I_SPECIAL;
         refresh = TRUE;
     }
     reconstrain_map();
+    EDetect_monsters = save_EDetect_mons;
+    viz_array[u.uy][u.ux] = save_viz_uyux;
+
+    /* replace monsters with remembered,unseen monster, then run
+       see_monsters() to update visible ones and warned-of ones */
+    for (zx = lo_x; zx <= hi_x; zx++)
+        for (zy = lo_y; zy <= hi_y; zy++) {
+            if (zx == u.ux && zy == u.uy)
+                continue;
+            newglyph = glyph_at(zx, zy);
+            if (glyph_is_monster(newglyph)
+                && glyph_to_mon(newglyph) != PM_LONG_WORM_TAIL)
+                map_invisible(zx, zy);
+        }
+    see_monsters();
+
     if (refresh)
         docrt();
 }
@@ -1387,7 +1469,7 @@ genericptr_t num;
             (*(int *) num)++;
         }
     } else if ((mtmp = m_at(zx, zy)) != 0) {
-        if (mtmp->m_ap_type) {
+        if (M_AP_TYPE(mtmp)) {
             seemimic(mtmp);
             (*(int *) num)++;
         }
@@ -1511,14 +1593,20 @@ void
 find_trap(trap)
 struct trap *trap;
 {
-    int tt = what_trap(trap->ttyp);
+    int tt = what_trap(trap->ttyp, rn2);
     boolean cleared = FALSE;
 
     trap->tseen = 1;
     exercise(A_WIS, TRUE);
     feel_newsym(trap->tx, trap->ty);
 
-    if (levl[trap->tx][trap->ty].glyph != trap_to_glyph(trap)) {
+    /* The "Hallucination ||" is to preserve 3.6.1 behaviour, but this
+       behaviour might need a rework in the hallucination case
+       (e.g. to not prompt if any trap glyph appears on the
+       square). */
+    if (Hallucination ||
+        levl[trap->tx][trap->ty].glyph !=
+        trap_to_glyph(trap, rn2_on_display_rng)) {
         /* There's too much clutter to see your find otherwise */
         cls();
         map_trap(trap, 1);
@@ -1539,44 +1627,43 @@ mfind0(mtmp, via_warning)
 struct monst *mtmp;
 boolean via_warning;
 {
-    xchar x = mtmp->mx,
-          y = mtmp->my;
+    int x = mtmp->mx, y = mtmp->my;
+    boolean found_something = FALSE;
 
     if (via_warning && !warning_of(mtmp))
         return -1;
 
-    if (mtmp->m_ap_type) {
+    if (M_AP_TYPE(mtmp)) {
         seemimic(mtmp);
-    find:
-        exercise(A_WIS, TRUE);
-        if (!canspotmon(mtmp)) {
-            if (glyph_is_invisible(levl[x][y].glyph)) {
-                /* Found invisible monster in a square which already has
-                 * an 'I' in it.  Logically, this should still take time
-                 * and lead to a return 1, but if we did that the player
-                 * would keep finding the same monster every turn.
-                 */
-                return -1;
-            } else {
-                You_feel("an unseen monster!");
-                map_invisible(x, y);
-            }
-        } else if (!sensemon(mtmp))
-                You("find %s.",
-                    mtmp->mtame ? y_monnam(mtmp) : a_monnam(mtmp));
-        return 1;
-    }
-    if (!canspotmon(mtmp)) {
+        found_something = TRUE;
+    } else if (!canspotmon(mtmp)) {
         if (mtmp->mundetected
-            && (is_hider(mtmp->data) || mtmp->data->mlet == S_EEL))
+            && (is_hider(mtmp->data) || mtmp->data->mlet == S_EEL)) {
             if (via_warning) {
                 Your("warning senses cause you to take a second %s.",
                      Blind ? "to check nearby" : "look close by");
                 display_nhwindow(WIN_MESSAGE, FALSE); /* flush messages */
             }
-        mtmp->mundetected = 0;
+            mtmp->mundetected = 0;
+        }
         newsym(x, y);
-        goto find;
+        found_something = TRUE;
+    }
+
+    if (found_something) {
+        if (!canspotmon(mtmp) && glyph_is_invisible(levl[x][y].glyph))
+            return -1; /* Found invisible monster in square which already has
+                        * 'I' in it.  Logically, this should still take time
+                        * and lead to `return 1', but if we did that the hero
+                        * would keep finding the same monster every turn. */
+        exercise(A_WIS, TRUE);
+        if (!canspotmon(mtmp)) {
+            map_invisible(x, y);
+            You_feel("an unseen monster!");
+        } else if (!sensemon(mtmp)) {
+            You("find %s.", mtmp->mtame ? y_monnam(mtmp) : a_monnam(mtmp));
+        }
+        return 1;
     }
     return 0;
 }
@@ -1753,7 +1840,7 @@ int default_glyph, which_subset;
            an object, replacing any object or trap at its spot) */
         glyph = !swallowed ? glyph_at(x, y) : levl_glyph;
         if (keep_mons && x == u.ux && y == u.uy && swallowed)
-            glyph = mon_to_glyph(u.ustuck);
+            glyph = mon_to_glyph(u.ustuck, rn2_on_display_rng);
         else if (((glyph_is_monster(glyph)
                    || glyph_is_warning(glyph)) && !keep_mons)
                  || glyph_is_swallow(glyph))
@@ -1762,7 +1849,7 @@ int default_glyph, which_subset;
              || glyph_is_invisible(glyph))
             && keep_traps && !covers_traps(x, y)) {
             if ((t = t_at(x, y)) != 0 && t->tseen)
-                glyph = trap_to_glyph(t);
+                glyph = trap_to_glyph(t, rn2_on_display_rng);
         }
         if ((glyph_is_object(glyph) && !keep_objs)
             || (glyph_is_trap(glyph) && !keep_traps)
@@ -1775,7 +1862,7 @@ int default_glyph, which_subset;
                 /* look for a mimic here posing as furniture;
                    if we don't find one, we'll have to fake it */
                 if ((mtmp = m_at(x, y)) != 0
-                    && mtmp->m_ap_type == M_AP_FURNITURE) {
+                    && M_AP_TYPE(mtmp) == M_AP_FURNITURE) {
                     glyph = cmap_to_glyph(mtmp->mappearance);
                 } else {
                     /* we have a topology type but we want a screen

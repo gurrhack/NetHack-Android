@@ -1,4 +1,4 @@
-/* NetHack 3.6	pickup.c	$NHDT-Date: 1516581051 2018/01/22 00:30:51 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.194 $ */
+/* NetHack 3.6	pickup.c	$NHDT-Date: 1545785547 2018/12/26 00:52:27 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.222 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -24,6 +24,7 @@ STATIC_DCL boolean FDECL(allow_cat_no_uchain, (struct obj *));
 #endif
 STATIC_DCL int FDECL(autopick, (struct obj *, int, menu_item **));
 STATIC_DCL int FDECL(count_categories, (struct obj *, int));
+STATIC_DCL int FDECL(delta_cwt, (struct obj *, struct obj *));
 STATIC_DCL long FDECL(carry_count, (struct obj *, struct obj *, long,
                                     BOOLEAN_P, int *, int *));
 STATIC_DCL int FDECL(lift_object, (struct obj *, struct obj *, long *,
@@ -34,7 +35,6 @@ STATIC_PTR int FDECL(in_container, (struct obj *));
 STATIC_PTR int FDECL(out_container, (struct obj *));
 STATIC_DCL void FDECL(removed_from_icebox, (struct obj *));
 STATIC_DCL long FDECL(mbag_item_gone, (int, struct obj *));
-STATIC_DCL void FDECL(observe_quantum_cat, (struct obj *));
 STATIC_DCL void FDECL(explain_container_prompt, (BOOLEAN_P));
 STATIC_DCL int FDECL(traditional_loot, (BOOLEAN_P));
 STATIC_DCL int FDECL(menu_loot, (int, BOOLEAN_P));
@@ -50,15 +50,6 @@ STATIC_DCL void FDECL(tipcontainer, (struct obj *));
 #define FOLLOW(curr, flags) \
     (((flags) & BY_NEXTHERE) ? (curr)->nexthere : (curr)->nobj)
 
-/*
- *  How much the weight of the given container will change when the given
- *  object is removed from it.  This calculation must match the one used
- *  by weight() in mkobj.c.
- */
-#define DELTA_CWT(cont, obj)                                      \
-    ((cont)->cursed ? (obj)->owt * 2 : (cont)->blessed            \
-                                           ? ((obj)->owt + 3) / 4 \
-                                           : ((obj)->owt + 1) / 2)
 #define GOLD_WT(n) (((n) + 50L) / 100L)
 /* if you can figure this out, give yourself a hearty pat on the back... */
 #define GOLD_CAPACITY(w, n) (((w) * -100L) - ((n) + 50L) - 1L)
@@ -577,7 +568,8 @@ int what; /* should be a long */
 
     if (flags.menu_style != MENU_TRADITIONAL || iflags.menu_requested) {
         /* use menus exclusively */
-        traverse_how |= AUTOSELECT_SINGLE | INVORDER_SORT;
+        traverse_how |= AUTOSELECT_SINGLE
+                        | (flags.sortpack ? INVORDER_SORT : 0);
         if (count) { /* looking for N of something */
             char qbuf[QBUFSZ];
 
@@ -849,6 +841,8 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
     boolean printed_type_name, first,
             sorted = (qflags & INVORDER_SORT) != 0,
             engulfer = (qflags & INCLUDE_HERO) != 0;
+    unsigned sortflags;
+    Loot *sortedolist, *srtoli;
 
     *pick_list = (menu_item *) 0;
     if (!olist && !engulfer)
@@ -876,16 +870,14 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
         return 1;
     }
 
-    if (sorted || flags.sortloot != 'n') {
-        sortloot(&olist,
-                 (((flags.sortloot == 'f'
-                    || (flags.sortloot == 'l' && !(qflags & USE_INVLET)))
-                   ? SORTLOOT_LOOT
-                   : (qflags & USE_INVLET) ? SORTLOOT_INVLET : 0)
-                  | (flags.sortpack ? SORTLOOT_PACK : 0)),
-                 (qflags & BY_NEXTHERE) ? TRUE : FALSE);
-        *olist_p = olist;
-    }
+    sortflags = (((flags.sortloot == 'f'
+                   || (flags.sortloot == 'l' && !(qflags & USE_INVLET)))
+                  ? SORTLOOT_LOOT
+                  : ((qflags & USE_INVLET) ? SORTLOOT_INVLET : 0))
+                 | (flags.sortpack ? SORTLOOT_PACK : 0)
+                 | ((qflags & FEEL_COCKATRICE) ? SORTLOOT_PETRIFY : 0));
+    sortedolist = sortloot(&olist, sortflags,
+                           (qflags & BY_NEXTHERE) ? TRUE : FALSE, allow);
 
     win = create_nhwindow(NHW_MENU);
     start_menu(win);
@@ -893,14 +885,14 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
     /*
      * Run through the list and add the objects to the menu.  If
      * INVORDER_SORT is set, we'll run through the list once for
-     * each type so we can group them.  The allow function will only
-     * be called once per object in the list.
+     * each type so we can group them.  The allow function was
+     * called by sortloot() and will be called once per item here.
      */
     pack = flags.inv_order;
     first = TRUE;
     do {
         printed_type_name = FALSE;
-        for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
+        for (srtoli = sortedolist; ((curr = srtoli->obj) != 0); ++srtoli) {
             if (sorted && curr->oclass != *pack)
                 continue;
             if ((qflags & FEEL_COCKATRICE) && curr->otyp == CORPSE
@@ -922,7 +914,7 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
                 }
 
                 any.a_obj = curr;
-                add_menu(win, obj_to_glyph(curr), &any,
+                add_menu(win, obj_to_glyph(curr, rn2_on_display_rng), &any,
                          (qflags & USE_INVLET) ? curr->invlet
                            : (first && curr->oclass == COIN_CLASS) ? '$' : 0,
                          def_oc_syms[(int) objects[curr->otyp].oc_class].sym,
@@ -932,6 +924,7 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
         }
         pack++;
     } while (sorted && *pack);
+    unsortloot(&sortedolist);
 
     if (engulfer) {
         char buf[BUFSZ];
@@ -946,7 +939,7 @@ boolean FDECL((*allow), (OBJ_P)); /* allow function */
         fake_hero_object = zeroobj;
         fake_hero_object.quan = 1L; /* not strictly necessary... */
         any.a_obj = &fake_hero_object;
-        add_menu(win, mon_to_glyph(&youmonst), &any,
+        add_menu(win, mon_to_glyph(&youmonst, rn2_on_display_rng), &any,
                  /* fake inventory letter, no group accelerator */
                  CONTAINED_SYM, 0, ATR_NONE, an(self_lookat(buf)),
                  MENU_UNSELECTED);
@@ -1204,6 +1197,37 @@ int qflags;
     return ccount;
 }
 
+/*
+ *  How much the weight of the given container will change when the given
+ *  object is removed from it.  Use before and after weight amounts rather
+ *  than trying to match the calculation used by weight() in mkobj.c.
+ */
+STATIC_OVL int
+delta_cwt(container, obj)
+struct obj *container, *obj;
+{
+    struct obj **prev;
+    int owt, nwt;
+
+    if (container->otyp != BAG_OF_HOLDING)
+        return obj->owt;
+
+    owt = nwt = container->owt;
+    /* find the object so that we can remove it */
+    for (prev = &container->cobj; *prev; prev = &(*prev)->nobj)
+        if (*prev == obj)
+            break;
+    if (!*prev) {
+        panic("delta_cwt: obj not inside container?");
+    } else {
+        /* temporarily remove the object and calculate resulting weight */
+        *prev = obj->nobj;
+        nwt = weight(container);
+        *prev = obj; /* put the object back; obj->nobj is still valid */
+    }
+    return owt - nwt;
+}
+
 /* could we carry `obj'? if not, could we carry some of it/them? */
 STATIC_OVL long
 carry_count(obj, container, count, telekinesis, wt_before, wt_after)
@@ -1231,9 +1255,7 @@ int *wt_before, *wt_after;
     }
     wt = iw + (int) obj->owt;
     if (adjust_wt)
-        wt -= (container->otyp == BAG_OF_HOLDING)
-                  ? (int) DELTA_CWT(container, obj)
-                  : (int) obj->owt;
+        wt -= delta_cwt(container, obj);
     /* This will go with silver+copper & new gold weight */
     if (is_gold) /* merged gold might affect cumulative weight */
         wt -= (GOLD_WT(umoney) + GOLD_WT(count) - GOLD_WT(umoney + count));
@@ -1261,9 +1283,7 @@ int *wt_before, *wt_after;
                 obj->quan = qq;
                 obj->owt = (unsigned) GOLD_WT(qq);
                 ow = (int) GOLD_WT(umoney + qq);
-                ow -= (container->otyp == BAG_OF_HOLDING)
-                          ? (int) DELTA_CWT(container, obj)
-                          : (int) obj->owt;
+                ow -= delta_cwt(container, obj);
                 if (iw + ow >= 0)
                     break;
                 oow = ow;
@@ -1288,9 +1308,7 @@ int *wt_before, *wt_after;
             obj->quan = qq;
             obj->owt = (unsigned) (ow = weight(obj));
             if (adjust_wt)
-                ow -= (container->otyp == BAG_OF_HOLDING)
-                          ? (int) DELTA_CWT(container, obj)
-                          : (int) obj->owt;
+                ow -= delta_cwt(container, obj);
             if (iw + ow >= 0)
                 break;
             wt = iw + ow;
@@ -1683,10 +1701,6 @@ int cindex, ccount; /* index of this container (1..N), number of them (N) */
         else
             pline("Hmmm, %s turns out to be locked.", the(xname(cobj)));
         cobj->lknown = 1;
-#ifdef ANDROID
-		if (flags.autokick && can_try_force())
-			doforce();
-#endif
         return 0;
     }
     cobj->lknown = 1;
@@ -2009,6 +2023,7 @@ boolean *prev_loot;
             }
             otmp = hold_another_object(otmp, "You drop %s!", doname(otmp),
                                        (const char *) 0);
+            nhUse(otmp);
             timepassed = rnd(3);
             if (prev_loot)
                 *prev_loot = TRUE;
@@ -2186,6 +2201,19 @@ register struct obj *obj;
         if (was_unpaid)
             addtobill(obj, FALSE, FALSE, TRUE);
         obfree(obj, (struct obj *) 0);
+        /* if carried, shop goods will be flagged 'unpaid' and obfree() will
+           handle bill issues, but if on floor, we need to put them on bill
+           before deleting them (non-shop items will be flagged 'no_charge') */
+        if (floor_container
+            && costly_spot(current_container->ox, current_container->oy)) {
+            struct obj save_no_charge;
+
+            save_no_charge.no_charge = current_container->no_charge;
+            addtobill(current_container, FALSE, FALSE, FALSE);
+            /* addtobill() clears no charge; we need to set it back
+               so that useupf() doesn't double bill */
+            current_container->no_charge = save_no_charge.no_charge;
+        }
         delete_contents(current_container);
         if (!floor_container)
             useup(current_container);
@@ -2323,45 +2351,66 @@ struct obj *item;
     return loss;
 }
 
-STATIC_OVL void
-observe_quantum_cat(box)
+/* used for #loot/apply, #tip, and final disclosure */
+void
+observe_quantum_cat(box, makecat, givemsg)
 struct obj *box;
+boolean makecat, givemsg;
 {
     static NEARDATA const char sc[] = "Schroedinger's Cat";
     struct obj *deadcat;
-    struct monst *livecat;
+    struct monst *livecat = 0;
     xchar ox, oy;
+    boolean itsalive = !rn2(2);
 
-    box->spe = 0; /* box->owt will be updated below */
     if (get_obj_location(box, &ox, &oy, 0))
         box->ox = ox, box->oy = oy; /* in case it's being carried */
 
     /* this isn't really right, since any form of observation
        (telepathic or monster/object/food detection) ought to
-       force the determination of alive vs dead state; but basing
-       it just on opening the box is much simpler to cope with */
-    livecat = rn2(2)
-                  ? makemon(&mons[PM_HOUSECAT], box->ox, box->oy, NO_MINVENT)
-                  : 0;
-    if (livecat) {
-        livecat->mpeaceful = 1;
-        set_malign(livecat);
-        if (!canspotmon(livecat))
-            You("think %s brushed your %s.", something, body_part(FOOT));
-        else
-            pline("%s inside the box is still alive!", Monnam(livecat));
-        (void) christen_monst(livecat, sc);
-    } else {
-        deadcat = mk_named_object(CORPSE, &mons[PM_HOUSECAT],
-                                  box->ox, box->oy, sc);
-        if (deadcat) {
-            obj_extract_self(deadcat);
-            (void) add_to_container(box, deadcat);
+       force the determination of alive vs dead state; but basing it
+       just on opening or disclosing the box is much simpler to cope with */
+
+    /* SchroedingersBox already has a cat corpse in it */
+    deadcat = box->cobj;
+    if (itsalive) {
+        if (makecat)
+            livecat = makemon(&mons[PM_HOUSECAT], box->ox, box->oy,
+                              NO_MINVENT | MM_ADJACENTOK);
+        if (livecat) {
+            livecat->mpeaceful = 1;
+            set_malign(livecat);
+            if (givemsg) {
+                if (!canspotmon(livecat))
+                    You("think %s brushed your %s.", something,
+                        body_part(FOOT));
+                else
+                    pline("%s inside the box is still alive!",
+                          Monnam(livecat));
+            }
+            (void) christen_monst(livecat, sc);
+            if (deadcat) {
+                obj_extract_self(deadcat);
+                obfree(deadcat, (struct obj *) 0), deadcat = 0;
+            }
+            box->owt = weight(box);
+            box->spe = 0;
         }
-        pline_The("%s inside the box is dead!",
-                  Hallucination ? rndmonnam((char *) 0) : "housecat");
+    } else {
+        box->spe = 0; /* now an ordinary box (with a cat corpse inside) */
+        if (deadcat) {
+            /* set_corpsenm() will start the rot timer that was removed
+               when makemon() created SchroedingersBox; start it from
+               now rather than from when this special corpse got created */
+            deadcat->age = monstermoves;
+            set_corpsenm(deadcat, PM_HOUSECAT);
+            deadcat = oname(deadcat, sc);
+        }
+        if (givemsg)
+            pline_The("%s inside the box is dead!",
+                      Hallucination ? rndmonnam((char *) 0) : "housecat");
     }
-    box->owt = weight(box);
+    nhUse(deadcat);
     return;
 }
 
@@ -2474,7 +2523,7 @@ boolean more_containers; /* True iff #loot multiple and this isn't last one */
     /* check for Schroedinger's Cat */
     quantum_cat = SchroedingersBox(current_container);
     if (quantum_cat) {
-        observe_quantum_cat(current_container);
+        observe_quantum_cat(current_container, TRUE, TRUE);
         used = 1;
     }
 
@@ -2722,9 +2771,7 @@ boolean put_in;
     } else if (flags.menu_style == MENU_FULL) {
         all_categories = FALSE;
         Sprintf(buf, "%s what type of objects?", action);
-        mflags = (ALL_TYPES | UNPAID_TYPES | BUCX_TYPES);
-        if (put_in)
-            mflags |= CHOOSE_ALL;
+        mflags = (ALL_TYPES | UNPAID_TYPES | BUCX_TYPES | CHOOSE_ALL);
         n = query_category(buf, put_in ? invent : current_container->cobj,
                            mflags, &pick_list, PICK_ANY);
         if (!n)
@@ -2741,12 +2788,23 @@ boolean put_in;
     }
 
     if (loot_everything) {
-        current_container->cknown = 1;
-        for (otmp = current_container->cobj; otmp; otmp = otmp2) {
-            otmp2 = otmp->nobj;
-            res = out_container(otmp);
-            if (res < 0)
-                break;
+        if (!put_in) {
+            current_container->cknown = 1;
+            for (otmp = current_container->cobj; otmp; otmp = otmp2) {
+                otmp2 = otmp->nobj;
+                res = out_container(otmp);
+                if (res < 0)
+                    break;
+                n_looted += res;
+            }
+        } else {
+            for (otmp = invent; otmp && current_container; otmp = otmp2) {
+                otmp2 = otmp->nobj;
+                res = in_container(otmp);
+                if (res < 0)
+                    break;
+                n_looted += res;
+            }
         }
     } else {
         mflags = INVORDER_SORT;
@@ -3089,7 +3147,7 @@ struct obj *box; /* or bag */
     } else if (SchroedingersBox(box)) {
         char yourbuf[BUFSZ];
 
-        observe_quantum_cat(box);
+        observe_quantum_cat(box, TRUE, TRUE);
         if (!Has_contents(box)) /* evidently a live cat came out */
             /* container type of "large box" is inferred */
             pline("%sbox is now empty.", Shk_Your(yourbuf, box));
@@ -3144,7 +3202,7 @@ struct obj *box; /* or bag */
 
             if (highdrop) {
                 /* might break or fall down stairs; handles altars itself */
-                hitfloor(otmp);
+                hitfloor(otmp, TRUE);
             } else {
                 if (altarizing) {
                     doaltarobj(otmp);
