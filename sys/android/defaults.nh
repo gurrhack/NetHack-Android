@@ -119,12 +119,12 @@ OPTIONS=hilite_status:characteristics/up/green/down/red
 OPTIONS=hilite_status:experience-level/up/green/down/red
 
 ## HP
-OPTIONS=hilite_status:hitpoints/<100%/green/<70%/yellow
+OPTIONS=hilite_status:hitpoints/100%/green/<100%/green/<70%/yellow
 OPTIONS=hilite_status:hitpoints/<50%/orange/<30%/red&bold
 OPTIONS=hilite_status:hitpoints/<15%/red&inverse
 
 ## Power
-OPTIONS=hilite_status:power/<100%/green/<70%/yellow
+OPTIONS=hilite_status:power/100%/green/<100%/green/<70%/yellow
 OPTIONS=hilite_status:power/<50%/orange/<30%/red&bold
 
 ## Conditions
