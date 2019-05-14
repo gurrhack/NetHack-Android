@@ -1701,6 +1701,10 @@ int cindex, ccount; /* index of this container (1..N), number of them (N) */
         else
             pline("Hmmm, %s turns out to be locked.", the(xname(cobj)));
         cobj->lknown = 1;
+#ifdef ANDROID
+		if (flags.autokick && can_try_force())
+			doforce();
+#endif
         return 0;
     }
     cobj->lknown = 1;

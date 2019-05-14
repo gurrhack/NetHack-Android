@@ -1537,6 +1537,7 @@ doterrain(VOID_ARGS)
     start_menu(men);
     any = zeroany;
     any.a_int = 1;
+    start_menu(men);
     add_menu(men, NO_GLYPH, &any, 0, 0, ATR_NONE,
              "known map without monsters, objects, and traps",
              MENU_SELECTED);
@@ -3535,7 +3536,7 @@ commands_init()
     (void) bind_key(M('2'), "twoweapon");
 
     /* wait_on_space */
-    (void) bind_key(' ',    "wait");
+    (void) bind_key('.',    "wait");
 }
 
 int

@@ -1212,7 +1212,7 @@ time_t now;
 #else
     fname = dump_fmtstr(DUMPLOG_FILE, buf);
 #endif
-    dumplog_file = fopen(fname, "w");
+    dumplog_file = fname ? fopen(fname, "w") : 0;
     dumplog_windowprocs_backup = windowprocs;
 
 #else /*!DUMPLOG*/

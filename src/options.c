@@ -713,6 +713,9 @@ initoptions_init()
 
     /* set up the command parsing */
     reset_commands(TRUE); /* init */
+    /* A bug in reset_commands init uses incorrect default for the number_pad option.
+       This additional call will correct that. */
+    reset_commands(FALSE);
 
     /* initialize the random number generator(s) */
     init_random(rn2);
