@@ -40,7 +40,7 @@ SHELL=/bin/sh
 # SHELL=E:/GEMINI2/MUPFEL.TTP
 
 # Usually, the C compiler driver is used for linking:
-LINK=$(CC)
+# LINK=$(CC)
 
 # Pick the SYSSRC and SYSOBJ lines corresponding to your desired operating
 # system.
@@ -87,61 +87,37 @@ SYSOBJ = ioctl.o androidmain.o unixtty.o androidunix.o
 # CC = arm-linux-gcc
 #
 # For cross-compiling with Android NDK
-NDK = /path/to/android-ndk-r9d
-SYSROOT=$(NDK)/platforms/android-9/arch-arm
-CC = $(NDK)/toolchains/arm-linux-androideabi-4.6/prebuilt/linux-x86_64/bin/arm-linux-androideabi-gcc --sysroot=$(SYSROOT)
+NDK = /path/to/android-ndk-r19c
 
-# arm-none-linux-gnueabi-gcc
+NDK_TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
 
-#
-# if you're debugging and want gcc to check as much as possible, use:
-# CC = gcc -W -Wimplicit -Wreturn-type -Wunused -Wformat -Wswitch -Wshadow -Wcast-qual -Wwrite-strings -DGCC_WARN
+# Choose an ABI
+ABI = armeabi
+#ABI = armeabi-v7a
+#ABI = arm64-v8a
+#ABI = x86
+#ABI = x86_64
 
-# flags may have to be changed as required
-# flags for 286 Xenix:
-# CFLAGS = -Ml2t16 -O -LARGE -I../include
-# LFLAGS = -Ml -F 4000 -SEG 512
+CC_armeabi     = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi16-clang
+LD_armeabi     = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
+CC_armeabi-v7a = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi16-clang
+LD_armeabi-v7a = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
+CC_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android21-clang
+LD_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android-ld
+CC_x86         = $(NDK_TOOLCHAIN)/i686-linux-android16-clang
+LD_x86         = $(NDK_TOOLCHAIN)/i686-linux-android-ld
+CC_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android21-clang
+LD_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android-ld
 
-# flags for 286 Microport SysV-AT
-# CFLAGS = -DDUMB -Ml -I../include
-# LFLAGS = -Ml
+CC_VAR = CC_$(ABI)
+LD_VAR = LD_$(ABI)
 
-# flags for Atari gcc (3.2.1)
-# CFLAGS = -O -I../include
-# LFLAGS = -s
-# flags for Atari gcc (3.3)
-# CFLAGS = -mshort -O2 -fomit-frame-pointer -I../include
-# LFLAGS = -mshort -s
+CC   := $($(CC_VAR))
+LINK := $(CC)
 
-# flags for AIX 3.1 cc on IBM RS/6000 to define
-# a suitable subset of standard libraries
-# (note that there is more info regarding the "-qchars=signed"
-# switch in file Install.unx note 8)
-# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -O -I../include -qchars=signed
-#
-# Some of our subroutines are complex enough that this is required for full
-# optimization under AIX 3.2 (I don't know about 3.1).
-#
-# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -D_ALL_SOURCE -O -I../include -qchars=signed -qmaxmem=5000
-
-# flags for A/UX 2.01 using native cc or c89
-# gcc predefines AUX so that's not needed there
-# Remember to use -lcurses for WINLIB below !
-# CFLAGS = -ZS -D_POSIX_SOURCE -O -I../include -DAUX
-
-# flags for IRIX 4.0.x using native cc
-# The include files are __STDC__, but have bugs involving const
-# CFLAGS = -O -I../include -D__STDC__ -Dconst= -woff 100,293
-# LFLAGS = -s
-
-# flags for BSD/OS 2.0
-# CFLAGS = -O -I../include -I/usr/X11/include
-# LFLAGS = -L/usr/X11/lib
-
-# flags for Linux
-#   compile normally
-# CFLAGS = -O2 -fomit-frame-pointer -I../include
-CFLAGS = -DANDROID -DDEBUG -g -Wno-format -fsigned-char -I../include
+# Compile normally
+CFLAGS = -DANDROID -O2 -g -Wno-format -fsigned-char -fPIC -I../include
+#CFLAGS = -DANDROID -DDEBUG -g -Wno-format -fsigned-char -fPIC -I../include
 LFLAGS = -shared -Wl,--fix-cortex-a8
 
 # LFLAGS = -L/usr/X11R6/lib
@@ -344,8 +320,8 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   botl.c cmd.c dbridge.c decl.c detect.c dig.c display.c dlb.c do.c \
 	   do_name.c do_wear.c dog.c dogmove.c dokick.c dothrow.c drawing.c \
 	   dungeon.c eat.c end.c engrave.c exper.c explode.c extralev.c \
-	   files.c fountain.c hack.c hacklib.c invent.c light.c lock.c \
-	   mail.c makemon.c mapglyph.c mcastu.c mhitm.c mhitu.c minion.c \
+	   files.c fountain.c hack.c hacklib.c invent.c isaac64.c light.c \
+	   lock.c mail.c makemon.c mapglyph.c mcastu.c mhitm.c mhitu.c minion.c \
 	   mklev.c mkmap.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
@@ -407,8 +383,8 @@ HOBJ = $(FIRSTOBJ) allmain.o alloc.o apply.o artifact.o attrib.o ball.o \
 	bones.o botl.o cmd.o dbridge.o decl.o detect.o dig.o display.o dlb.o \
 	do.o do_name.o do_wear.o dog.o dogmove.o dokick.o dothrow.o \
 	drawing.o dungeon.o eat.o end.o engrave.o exper.o explode.o \
-	extralev.o files.o fountain.o hack.o hacklib.o invent.o light.o \
-	lock.o mail.o makemon.o mapglyph.o mcastu.o mhitm.o mhitu.o \
+	extralev.o files.o fountain.o hack.o hacklib.o invent.o isaac64.o \
+	light.o lock.o mail.o makemon.o mapglyph.o mcastu.o mhitm.o mhitu.o \
 	minion.o mklev.o mkmap.o \
 	mkmaze.o mkobj.o mkroom.o mon.o mondata.o monmove.o monstr.o \
 	mplayer.o mthrowu.o muse.o music.o o_init.o objnam.o options.o \
@@ -432,8 +408,8 @@ Sysunix:	$(HOBJ) Makefile
 
 Sysandroid:	$(HOBJ) Makefile
 	@echo "Loading ..."
-	mkdir -p ../sys/android/libs/armeabi
-	$(LINK) $(LFLAGS) -o ../sys/android/libs/armeabi/lib$(GAME).so $(HOBJ) $(LIBS)
+	mkdir -p ../sys/android/libs/$(ABI)
+	$(LINK) $(LFLAGS) -o ../sys/android/libs/$(ABI)/lib$(GAME).so $(HOBJ) $(LIBS)
 	@touch Sysandroid
 
 Sys3B2:	$(HOBJ) Makefile
@@ -792,6 +768,7 @@ fountain.o: fountain.c $(HACK_H)
 hack.o: hack.c $(HACK_H)
 hacklib.o: hacklib.c $(HACK_H)
 invent.o: invent.c $(HACK_H)
+isaac64.o: isaac64.c $(CONFIG_H) ../include/isaac64.h ../include/integer.h
 light.o: light.c $(HACK_H) ../include/lev.h
 lock.o: lock.c $(HACK_H)
 mail.o: mail.c $(HACK_H) ../include/mail.h
