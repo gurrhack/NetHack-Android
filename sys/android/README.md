@@ -14,6 +14,7 @@ work. If you're running Windows you're on your own.
  - Install `bison` and `flex`. Used by the native nethack build.
  - Check out NetHack-Android: `git clone https://github.com/gurrhack/NetHack-Android.git`
  - Check out ForkFront-Android: `git clone https://github.com/gurrhack/ForkFront-Android.git`
+ - Create a file called `local.properties` in both NetHack-Android and ForkFront-Android, containing: `sdk.dir=/path/to/android-sdk`. Used by Gradle.
 
 ### Install Android build tools
  1. Make sure JAVA_HOME points to JDK 8.
