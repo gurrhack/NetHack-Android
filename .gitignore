@@ -70,13 +70,3 @@ out
 
 # /win/
 /win/*/*.o
-
-
-/sys/android/bin
-/sys/android/libs/*
-!ForkFront-Android.aar
-/sys/android/assets/nethackdir
-/sys/android/gen
-/sys/android/.gradle
-/sys/android/build
-/sys/android/local.properties
