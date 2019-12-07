@@ -69,6 +69,7 @@ struct window_procs and_procs = {
 	"and",
 	WC_COLOR | WC_HILITE_PET | WC_INVERSE,	/* window port capability options supported */
 	WC2_HILITE_STATUS | WC2_FLUSH_STATUS,	/* additional window port capability options supported */
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},   /* color availability */
 	and_init_nhwindows,
 	and_player_selection,
 	and_askname,
@@ -124,7 +125,7 @@ struct window_procs and_procs = {
 	genl_status_finish,
 	genl_status_enablefield,
 	and_status_update,
-	genl_can_suspend_no,
+	genl_can_suspend_no
 };
 
 static void and_n_getline(const char* question, char* buf, int nMax, int showLog);
@@ -1401,7 +1402,7 @@ void and_print_glyph(winid wid, XCHAR_P x, XCHAR_P y, int glyph, int bkglyph)
 	int ch;
 	int col;
 	unsigned int special;
-	mapglyph(glyph, &ch, &col, &special, x, y);
+	mapglyph(glyph, &ch, &col, &special, x, y, 0);
 
 	special &= ~(MG_CORPSE|MG_INVIS|MG_RIDDEN|MG_STATUE); // TODO support
 	if(!iflags.hilite_pet)
