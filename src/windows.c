@@ -1,4 +1,4 @@
-/* NetHack 3.6	windows.c	$NHDT-Date: 1526933747 2018/05/21 20:15:47 $  $NHDT-Branch: NetHack-3.6.2 $:$NHDT-Revision: 1.48 $ */
+/* NetHack 3.6	windows.c	$NHDT-Date: 1575245096 2019/12/02 00:04:56 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.60 $ */
 /* Copyright (c) D. Cohrs, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -531,7 +531,9 @@ static void FDECL(hup_void_fdecl_winid, (winid));
 static void FDECL(hup_void_fdecl_constchar_p, (const char *));
 
 static struct window_procs hup_procs = {
-    "hup", 0L, 0L, hup_init_nhwindows,
+    "hup", 0L, 0L,
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    hup_init_nhwindows,
     hup_void_ndecl,                                    /* player_selection */
     hup_void_ndecl,                                    /* askname */
     hup_void_ndecl,                                    /* get_nh_event */
@@ -1097,12 +1099,13 @@ STATIC_VAR FILE *dumplog_file;
 #ifdef DUMPLOG
 STATIC_VAR time_t dumplog_now;
 
-STATIC_DCL char *FDECL(dump_fmtstr, (const char *, char *));
-
-STATIC_OVL char *
-dump_fmtstr(fmt, buf)
+char *
+dump_fmtstr(fmt, buf, fullsubs)
 const char *fmt;
 char *buf;
+boolean fullsubs; /* True -> full substitution for file name, False ->
+                   * partial substitution for '--showpaths' feedback
+                   * where there's no game in progress when executed */
 {
     const char *fp = fmt;
     char *bp = buf;
@@ -1125,7 +1128,7 @@ char *buf;
      * may or may not interfere with that usage.]
      */
 
-    while (fp && *fp && len < BUFSZ-1) {
+    while (fp && *fp && len < BUFSZ - 1) {
         if (*fp == '%') {
             fp++;
             switch (*fp) {
@@ -1136,38 +1139,68 @@ char *buf;
                 Sprintf(tmpbuf, "%%");
                 break;
             case 't': /* game start, timestamp */
-                Sprintf(tmpbuf, "%lu", (unsigned long) ubirthday);
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%lu", (unsigned long) ubirthday);
+                else
+                    Strcpy(tmpbuf, "{game start cookie}");
                 break;
             case 'T': /* current time, timestamp */
-                Sprintf(tmpbuf, "%lu", (unsigned long) now);
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%lu", (unsigned long) now);
+                else
+                    Strcpy(tmpbuf, "{current time cookie}");
                 break;
             case 'd': /* game start, YYYYMMDDhhmmss */
-                Sprintf(tmpbuf, "%08ld%06ld",
-                        yyyymmdd(ubirthday), hhmmss(ubirthday));
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%08ld%06ld",
+                            yyyymmdd(ubirthday), hhmmss(ubirthday));
+                else
+                    Strcpy(tmpbuf, "{game start date+time}");
                 break;
             case 'D': /* current time, YYYYMMDDhhmmss */
-                Sprintf(tmpbuf, "%08ld%06ld", yyyymmdd(now), hhmmss(now));
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%08ld%06ld", yyyymmdd(now), hhmmss(now));
+                else
+                    Strcpy(tmpbuf, "{current date+time}");
                 break;
-            case 'v': /* version, eg. "3.6.2-0" */
+            case 'v': /* version, eg. "3.6.3-0" */
                 Sprintf(tmpbuf, "%s", version_string(verbuf));
                 break;
             case 'u': /* UID */
                 Sprintf(tmpbuf, "%ld", uid);
                 break;
             case 'n': /* player name */
-                Sprintf(tmpbuf, "%s", *plname ? plname : "unknown");
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%s", *plname ? plname : "unknown");
+                else
+                    Strcpy(tmpbuf, "{hero name}");
                 break;
             case 'N': /* first character of player name */
-                Sprintf(tmpbuf, "%c", *plname ? *plname : 'u');
+                if (fullsubs)
+                    Sprintf(tmpbuf, "%c", *plname ? *plname : 'u');
+                else
+                    Strcpy(tmpbuf, "{hero initial}");
                 break;
             }
+            if (fullsubs) {
+                /* replace potentially troublesome characters (including
+                   <space> even though it might be an acceptable file name
+                   character); user shouldn't be able to get ' ' or '/'
+                   or '\\' into plname[] but play things safe */
+                (void) strNsubst(tmpbuf, " ", "_", 0);
+                (void) strNsubst(tmpbuf, "/", "_", 0);
+                (void) strNsubst(tmpbuf, "\\", "_", 0);
+                /* note: replacements are only done on field substitutions,
+                   not on the template (from sysconf or DUMPLOG_FILE) */
+            }
 
-            slen = strlen(tmpbuf);
-            if (len + slen < BUFSZ-1) {
+            slen = (int) strlen(tmpbuf);
+            if (len + slen < BUFSZ - 1) {
                 len += slen;
                 Sprintf(bp, "%s", tmpbuf);
                 bp += slen;
-                if (*fp) fp++;
+                if (*fp)
+                    fp++;
             } else
                 break;
         } else {
@@ -1195,7 +1228,7 @@ time_t now;
 #ifdef SYSCF
     if (!sysopt.dumplogfile)
         return;
-    fname = dump_fmtstr(sysopt.dumplogfile, buf);
+    fname = dump_fmtstr(sysopt.dumplogfile, buf, TRUE);
 #elif defined(ANDROID)
 	if(iflags.dumplog)
     {
@@ -1210,7 +1243,7 @@ time_t now;
     else
 	    fname = 0;
 #else
-    fname = dump_fmtstr(DUMPLOG_FILE, buf);
+    fname = dump_fmtstr(DUMPLOG_FILE, buf, TRUE);
 #endif
     dumplog_file = fname ? fopen(fname, "w") : 0;
     dumplog_windowprocs_backup = windowprocs;
@@ -1359,6 +1392,30 @@ boolean onoff_flag;
     } else {
         iflags.in_dumplog = FALSE;
     }
+}
+
+#ifdef TTY_GRAPHICS
+#ifdef TEXTCOLOR
+#ifdef TOS
+extern const char *hilites[CLR_MAX];
+#else
+extern NEARDATA char *hilites[CLR_MAX];
+#endif
+#endif
+#endif
+
+int
+has_color(color)
+int color;
+{
+    return (iflags.use_color && windowprocs.name
+            && (windowprocs.wincap & WC_COLOR) && windowprocs.has_color[color]
+#ifdef TTY_GRAPHICS
+#if defined(TEXTCOLOR) && defined(TERMLIB) && !defined(NO_TERMS)
+             && (hilites[color] != 0)
+#endif
+#endif
+    );
 }
 
 /*windows.c*/

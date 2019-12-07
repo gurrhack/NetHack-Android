@@ -1,4 +1,4 @@
-/* NetHack 3.6	do_name.c	$NHDT-Date: 1555627306 2019/04/18 22:41:46 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.145 $ */
+/* NetHack 3.6	do_name.c	$NHDT-Date: 1574419578 2019/11/22 10:46:18 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.152 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Pasi Kallinen, 2018. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -1120,7 +1120,7 @@ char *monnambuf, *usrbuf;
 STATIC_OVL void
 do_mname()
 {
-    char buf[BUFSZ] = DUMMY, monnambuf[BUFSZ], qbuf[QBUFSZ];
+    char buf[BUFSZ], monnambuf[BUFSZ], qbuf[QBUFSZ];
     coord cc;
     int cx, cy;
     struct monst *mtmp = 0;
@@ -1132,9 +1132,9 @@ do_mname()
     cc.x = u.ux;
     cc.y = u.uy;
     if (getpos(&cc, FALSE, "the monster you want to name") < 0
-        || (cx = cc.x) < 0)
+        || !isok(cc.x, cc.y))
         return;
-    cy = cc.y;
+    cx = cc.x, cy = cc.y;
 
     if (cx == u.ux && cy == u.uy) {
         if (u.usteed && canspotmon(u.usteed)) {
@@ -1159,6 +1159,12 @@ do_mname()
     /* special case similar to the one in lookat() */
     Sprintf(qbuf, "What do you want to call %s?",
             distant_monnam(mtmp, ARTICLE_THE, monnambuf));
+    buf[0] = '\0';
+#ifdef EDIT_GETLIN
+    /* if there's an existing name, make it be the default answer */
+    if (has_mname(mtmp))
+        Strcpy(buf, MNAME(mtmp));
+#endif
     getlin(qbuf, buf);
     if (!*buf || *buf == '\033')
         return;
@@ -1171,6 +1177,9 @@ do_mname()
      *
      * Don't say the name is being rejected if it happens to match
      * the existing name.
+     *
+     * TODO: should have an alternate message when the attempt is to
+     * remove existing name without assigning a new one.
      */
     if ((mtmp->data->geno & G_UNIQ) && !mtmp->ispriest) {
         if (!alreadynamed(mtmp, monnambuf, buf))
@@ -1199,7 +1208,7 @@ void
 do_oname(obj)
 register struct obj *obj;
 {
-    char *bufp, buf[BUFSZ] = DUMMY, bufcpy[BUFSZ], qbuf[QBUFSZ];
+    char *bufp, buf[BUFSZ], bufcpy[BUFSZ], qbuf[QBUFSZ];
     const char *aname;
     short objtyp;
 
@@ -1212,6 +1221,12 @@ register struct obj *obj;
     Sprintf(qbuf, "What do you want to name %s ",
             is_plural(obj) ? "these" : "this");
     (void) safe_qbuf(qbuf, qbuf, "?", obj, xname, simpleonames, "item");
+    buf[0] = '\0';
+#ifdef EDIT_GETLIN
+    /* if there's an existing name, make it be the default answer */
+    if (has_oname(obj))
+        Strcpy(buf, ONAME(obj));
+#endif
     getlin(qbuf, buf);
     if (!*buf || *buf == '\033')
         return;
@@ -1467,6 +1482,7 @@ boolean showlog;
 
     if (!obj->dknown)
         return; /* probably blind */
+    flush_screen(1); /* buffered updates might matter to player's response */
 
     if (obj->oclass == POTION_CLASS && obj->fromsink)
         /* kludge, meaning it's sink water */
@@ -1475,6 +1491,14 @@ boolean showlog;
     else
         (void) safe_qbuf(qbuf, "Call ", ":", obj,
                          docall_xname, simpleonames, "thing");
+    /* pointer to old name */
+    str1 = &(objects[obj->otyp].oc_uname);
+    buf[0] = '\0';
+#ifdef EDIT_GETLIN
+    /* if there's an existing name, make it be the default answer */
+    if (*str1)
+        Strcpy(buf, *str1);
+#endif
 #ifdef ANDROID
     if( showlog )
         and_getlin_log(qbuf, buf);
@@ -1485,7 +1509,6 @@ boolean showlog;
         return;
 
     /* clear old name */
-    str1 = &(objects[obj->otyp].oc_uname);
     if (*str1)
         free((genericptr_t) *str1);
 
@@ -1730,8 +1753,8 @@ boolean called;
         Strcat(buf, "saddled ");
     has_adjectives = (buf[0] != '\0');
 
-    /* Put the actual monster name or type into the buffer now */
-    /* Be sure to remember whether the buffer starts with a name */
+    /* Put the actual monster name or type into the buffer now.
+       Remember whether the buffer starts with a personal name. */
     if (do_hallu) {
         char rnamecode;
         char *rname = rndmonnam(&rnamecode);
@@ -1943,16 +1966,80 @@ char *outbuf;
     return outbuf;
 }
 
+/* returns mon_nam(mon) relative to other_mon; normal name unless they're
+   the same, in which case the reference is to {him|her|it} self */
+char *
+mon_nam_too(mon, other_mon)
+struct monst *mon, *other_mon;
+{
+    char *outbuf;
+
+    if (mon != other_mon) {
+        outbuf = mon_nam(mon);
+    } else {
+        outbuf = nextmbuf();
+        switch (pronoun_gender(mon, FALSE)) {
+        case 0:
+            Strcpy(outbuf, "himself");
+            break;
+        case 1:
+            Strcpy(outbuf, "herself");
+            break;
+        default:
+            Strcpy(outbuf, "itself");
+            break;
+        }
+    }
+    return outbuf;
+}
+
+/* for debugging messages, where data might be suspect and we aren't
+   taking what the hero does or doesn't know into consideration */
+char *
+minimal_monnam(mon, ckloc)
+struct monst *mon;
+boolean ckloc;
+{
+    struct permonst *ptr;
+    char *outbuf = nextmbuf();
+
+    if (!mon) {
+        Strcpy(outbuf, "[Null monster]");
+    } else if ((ptr = mon->data) == 0) {
+        Strcpy(outbuf, "[Null mon->data]");
+    } else if (ptr < &mons[0]) {
+        Sprintf(outbuf, "[Invalid mon->data %s < %s]",
+                fmt_ptr((genericptr_t) mon->data),
+                fmt_ptr((genericptr_t) &mons[0]));
+    } else if (ptr >= &mons[NUMMONS]) {
+        Sprintf(outbuf, "[Invalid mon->data %s >= %s]",
+                fmt_ptr((genericptr_t) mon->data),
+                fmt_ptr((genericptr_t) &mons[NUMMONS]));
+    } else if (ckloc && ptr == &mons[PM_LONG_WORM]
+               && level.monsters[mon->mx][mon->my] != mon) {
+        Sprintf(outbuf, "%s <%d,%d>",
+                mons[PM_LONG_WORM_TAIL].mname, mon->mx, mon->my);
+    } else {
+        Sprintf(outbuf, "%s%s <%d,%d>",
+                mon->mtame ? "tame " : mon->mpeaceful ? "peaceful " : "",
+                mon->data->mname, mon->mx, mon->my);
+        if (mon->cham != NON_PM)
+            Sprintf(eos(outbuf), "{%s}", mons[mon->cham].mname);
+    }
+    return outbuf;
+}
+
 /* fake monsters used to be in a hard-coded array, now in a data file */
 STATIC_OVL char *
 bogusmon(buf, code)
 char *buf, *code;
 {
+    static const char bogon_codes[] = "-_+|="; /* see dat/bonusmon.txt */
     char *mname = buf;
 
     get_rnd_text(BOGUSMONFILE, buf, rn2_on_display_rng);
     /* strip prefix if present */
-    if (!letter(*mname)) {
+    if (index(bogon_codes, *mname)) {
         if (code)
             *code = *mname;
         ++mname;

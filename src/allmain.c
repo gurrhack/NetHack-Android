@@ -767,6 +767,7 @@ const char *msg;
 static struct early_opt earlyopts[] = {
     {ARG_DEBUG, "debug", 5, TRUE},
     {ARG_VERSION, "version", 4, TRUE},
+    {ARG_SHOWPATHS, "showpaths", 9, FALSE},
 #ifdef WIN32
     {ARG_WINDOWS, "windows", 4, TRUE},
 #endif
@@ -845,6 +846,9 @@ enum earlyarg e_arg;
             early_version_info(insert_into_pastebuf);
             return 2;
         }
+        case ARG_SHOWPATHS: {
+            return 2;
+        }
 #ifdef WIN32
         case ARG_WINDOWS: {
             if (extended_opt) {
@@ -872,7 +876,7 @@ enum earlyarg e_arg;
  *                    optimization so that display output
  *                    can be debugged without buffering.
  */
-void
+STATIC_OVL void
 debug_fields(opts)
 const char *opts;
 {

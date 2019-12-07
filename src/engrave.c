@@ -1,4 +1,4 @@
-/* NetHack 3.6	engrave.c	$NHDT-Date: 1456304550 2016/02/24 09:02:30 $  $NHDT-Branch: NetHack-3.6.0 $:$NHDT-Revision: 1.61 $ */
+/* NetHack 3.6	engrave.c	$NHDT-Date: 1570318925 2019/10/05 23:42:05 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.75 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2012. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -154,7 +154,8 @@ boolean check_pit;
     if (u.usteed && P_SKILL(P_RIDING) < P_BASIC)
         return FALSE;
     if (check_pit && !Flying
-        && (t = t_at(u.ux, u.uy)) != 0 && uteetering_at_seen_pit(t))
+        && (t = t_at(u.ux, u.uy)) != 0
+        && (uteetering_at_seen_pit(t) || uescaped_shaft(t)))
         return FALSE;
 
     return (boolean) ((!Levitation || Is_airlevel(&u.uz)
@@ -287,7 +288,8 @@ int cnt;
 
 void
 wipe_engr_at(x, y, cnt, magical)
-xchar x, y, cnt, magical;
+xchar x, y, cnt;
+boolean magical;
 {
     register struct engr *ep = engr_at(x, y);
 
@@ -314,7 +316,6 @@ int x, y;
 {
     register struct engr *ep = engr_at(x, y);
     int sensed = 0;
-    char buf[BUFSZ];
 
     /* Sensing an engraving does not require sight,
      * nor does it necessarily imply comprehension (literacy).
@@ -363,17 +364,22 @@ int x, y;
             impossible("%s is written in a very strange way.", Something);
             sensed = 1;
         }
+
         if (sensed) {
-            char *et;
-            unsigned maxelen = BUFSZ - sizeof("You feel the words: \"\". ");
-            if (strlen(ep->engr_txt) > maxelen) {
-                (void) strncpy(buf, ep->engr_txt, (int) maxelen);
+            char *et, buf[BUFSZ];
+            int maxelen = (int) (sizeof buf
+                                 /* sizeof "literal" counts terminating \0 */
+                                 - sizeof "You feel the words: \"\".");
+
+            if ((int) strlen(ep->engr_txt) > maxelen) {
+                (void) strncpy(buf, ep->engr_txt, maxelen);
                 buf[maxelen] = '\0';
                 et = buf;
-            } else
+            } else {
                 et = ep->engr_txt;
+            }
             You("%s: \"%s\".", (Blind) ? "feel the words" : "read", et);
-            if (context.run > 1)
+            if (context.run > 0)
                 nomul(0);
         }
     }
@@ -750,7 +756,7 @@ doengrave()
                 }
                 Strcpy(post_engr_text,
                        (Blind && !Deaf)
-                          ? "You hear drilling!"
+                          ? "You hear drilling!"    /* Deaf-aware */
                           : Blind
                              ? "You feel tremors."
                              : IS_GRAVE(levl[u.ux][u.uy].typ)
@@ -787,7 +793,7 @@ doengrave()
                     doblind = TRUE;
                 } else
                     Strcpy(post_engr_text, !Deaf
-                                ? "You hear crackling!"
+                                ? "You hear crackling!"  /* Deaf-aware */
                                 : "Your hair stands up!");
                 break;
 

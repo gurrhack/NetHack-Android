@@ -1,4 +1,4 @@
-/* NetHack 3.6	mhitm.c	$NHDT-Date: 1555720096 2019/04/20 00:28:16 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.113 $ */
+/* NetHack 3.6	mhitm.c	$NHDT-Date: 1573773926 2019/11/14 23:25:26 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.118 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Robert Patrick Rankin, 2011. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,7 +15,6 @@ static NEARDATA struct obj *otmp;
 static const char brief_feeling[] =
     "have a %s feeling for a moment, then it passes.";
 
-STATIC_DCL char *FDECL(mon_nam_too, (char *, struct monst *, struct monst *));
 STATIC_DCL int FDECL(hitmm, (struct monst *, struct monst *,
                              struct attack *));
 STATIC_DCL int FDECL(gazemm, (struct monst *, struct monst *,
@@ -40,30 +39,6 @@ STATIC_DCL int FDECL(passivemm, (struct monst *, struct monst *,
  */
 static int dieroll;
 
-/* returns mon_nam(mon) relative to other_mon; normal name unless they're
-   the same, in which case the reference is to {him|her|it} self */
-STATIC_OVL char *
-mon_nam_too(outbuf, mon, other_mon)
-char *outbuf;
-struct monst *mon, *other_mon;
-{
-    if (mon != other_mon)
-        Strcpy(outbuf, mon_nam(mon));
-    else
-        switch (pronoun_gender(mon, FALSE)) {
-        case 0:
-            Strcpy(outbuf, "himself");
-            break;
-        case 1:
-            Strcpy(outbuf, "herself");
-            break;
-        default:
-            Strcpy(outbuf, "itself");
-            break;
-        }
-    return outbuf;
-}
-
 STATIC_OVL void
 noises(magr, mattk)
 register struct monst *magr;
@@ -87,22 +62,41 @@ register struct monst *magr, *mdef;
 struct attack *mattk;
 {
     const char *fmt;
-    char buf[BUFSZ], mdef_name[BUFSZ];
+    char buf[BUFSZ];
+    boolean showit = FALSE;
+
+    /* unhiding or unmimicking happens even if hero can't see it
+       because the formerly concealed monster is now in action */
+    if (M_AP_TYPE(mdef)) {
+        seemimic(mdef);
+        showit |= vis;
+    } else if (mdef->mundetected) {
+        mdef->mundetected = 0;
+        showit |= vis;
+    }
+    if (M_AP_TYPE(magr)) {
+        seemimic(magr);
+        showit |= vis;
+    } else if (magr->mundetected) {
+        magr->mundetected = 0;
+        showit |= vis;
+    }
 
     if (vis) {
         if (!canspotmon(magr))
             map_invisible(magr->mx, magr->my);
+        else if (showit)
+            newsym(magr->mx, magr->my);
         if (!canspotmon(mdef))
             map_invisible(mdef->mx, mdef->my);
-        if (M_AP_TYPE(mdef))
-            seemimic(mdef);
-        if (M_AP_TYPE(magr))
-            seemimic(magr);
+        else if (showit)
+            newsym(mdef->mx, mdef->my);
+
         fmt = (could_seduce(magr, mdef, mattk) && !magr->mcan)
                   ? "%s pretends to be friendly to"
                   : "%s misses";
         Sprintf(buf, fmt, Monnam(magr));
-        pline("%s %s.", buf, mon_nam_too(mdef_name, mdef, magr));
+        pline("%s %s.", buf, mon_nam_too(mdef, magr));
     } else
         noises(magr, mattk);
 }
@@ -417,9 +411,9 @@ register struct monst *magr, *mdef;
                      || mdef->data == &mons[PM_BROWN_PUDDING])
                     && (otmp && (objects[otmp->otyp].oc_material == IRON
                                  || objects[otmp->otyp].oc_material == METAL))
-                    && mdef->mhp > 1
-                    && !mdef->mcan) {
+                    && mdef->mhp > 1 && !mdef->mcan) {
                     struct monst *mclone;
+
                     if ((mclone = clone_mon(mdef, 0, 0)) != 0) {
                         if (vis && canspotmon(mdef)) {
                             char buf[BUFSZ];
@@ -461,6 +455,13 @@ register struct monst *magr, *mdef;
             break;
 
         case AT_ENGL:
+            if (mdef->data == &mons[PM_SHADE]) { /* no silver teeth... */
+                if (vis)
+                    pline("%s attempt to engulf %s is futile.",
+                          s_suffix(Monnam(magr)), mon_nam(mdef));
+                strike = 0;
+                break;
+            }
             if (u.usteed && mdef == u.usteed) {
                 strike = 0;
                 break;
@@ -537,23 +538,49 @@ hitmm(magr, mdef, mattk)
 register struct monst *magr, *mdef;
 struct attack *mattk;
 {
+    boolean weaponhit = ((mattk->aatyp == AT_WEAP
+                          || (mattk->aatyp == AT_CLAW && otmp))),
+            silverhit = (weaponhit && otmp
+                         && objects[otmp->otyp].oc_material == SILVER),
+            showit = FALSE;
+
+    /* unhiding or unmimicking happens even if hero can't see it
+       because the formerly concealed monster is now in action */
+    if (M_AP_TYPE(mdef)) {
+        seemimic(mdef);
+        showit |= vis;
+    } else if (mdef->mundetected) {
+        mdef->mundetected = 0;
+        showit |= vis;
+    }
+    if (M_AP_TYPE(magr)) {
+        seemimic(magr);
+        showit |= vis;
+    } else if (magr->mundetected) {
+        magr->mundetected = 0;
+        showit |= vis;
+    }
+
     if (vis) {
         int compat;
-        char buf[BUFSZ], mdef_name[BUFSZ];
+        char buf[BUFSZ];
 
         if (!canspotmon(magr))
             map_invisible(magr->mx, magr->my);
+        else if (showit)
+            newsym(magr->mx, magr->my);
         if (!canspotmon(mdef))
             map_invisible(mdef->mx, mdef->my);
-        if (M_AP_TYPE(mdef))
-            seemimic(mdef);
-        if (M_AP_TYPE(magr))
-            seemimic(magr);
+        else if (showit)
+            newsym(mdef->mx, mdef->my);
+
         if ((compat = could_seduce(magr, mdef, mattk)) && !magr->mcan) {
             Sprintf(buf, "%s %s", Monnam(magr),
                     mdef->mcansee ? "smiles at" : "talks to");
             pline("%s %s %s.", buf, mon_nam(mdef),
                   compat == 2 ? "engagingly" : "seductively");
+        } else if (shade_miss(magr, mdef, otmp, FALSE, TRUE)) {
+            return MM_MISS; /* bypass mdamagem() */
         } else {
             char magr_name[BUFSZ];
 
@@ -583,7 +610,29 @@ struct attack *mattk;
             default:
                 Sprintf(buf, "%s hits", magr_name);
             }
-            pline("%s %s.", buf, mon_nam_too(mdef_name, mdef, magr));
+            pline("%s %s.", buf, mon_nam_too(mdef, magr));
+
+            if (mon_hates_silver(mdef) && silverhit) {
+                char *mdef_name = mon_nam_too(mdef, magr);
+
+                /* note: mon_nam_too returns a modifiable buffer; so
+                   does s_suffix, but it returns a single static buffer
+                   and we might be calling it twice for this message */
+                Strcpy(magr_name, s_suffix(magr_name));
+                if (!noncorporeal(mdef->data) && !amorphous(mdef->data)) {
+                    if (mdef != magr) {
+                        mdef_name = s_suffix(mdef_name);
+                    } else {
+                        (void) strsubst(mdef_name, "himself", "his own");
+                        (void) strsubst(mdef_name, "herself", "her own");
+                        (void) strsubst(mdef_name, "itself", "its own");
+                    }
+                    Strcat(mdef_name, " flesh");
+                }
+
+                pline("%s %s sears %s!", magr_name, /*s_suffix(magr_name), */
+                      simpleonames(otmp), mdef_name);
+            }
         }
     } else
         noises(magr, mattk);
@@ -811,11 +860,12 @@ mdamagem(magr, mdef, mattk)
 register struct monst *magr, *mdef;
 register struct attack *mattk;
 {
-    struct obj *obj;
+    struct obj *obj, dmgwep;
     char buf[BUFSZ];
     struct permonst *pa = magr->data, *pd = mdef->data;
-    int armpro, num, tmp = d((int) mattk->damn, (int) mattk->damd),
-                     res = MM_MISS;
+    int armpro, num,
+        tmp = d((int) mattk->damn, (int) mattk->damd),
+        res = MM_MISS;
     boolean cancelled;
 
     if ((touch_petrifies(pd) /* or flesh_petrifies() */
@@ -918,15 +968,26 @@ register struct attack *mattk;
     case AD_HEAL:
     case AD_PHYS:
  physical:
-        if (mattk->aatyp == AT_KICK && thick_skinned(pd)) {
+        /* this shade check is necessary in case any attacks which
+           dish out physical damage bypass hitmm() to get here */
+        if ((mattk->aatyp == AT_WEAP || mattk->aatyp == AT_CLAW) && otmp)
+            dmgwep = *otmp;
+        else
+            dmgwep = zeroobj;
+
+        if (shade_miss(magr, mdef, &dmgwep, FALSE, TRUE)) {
             tmp = 0;
-        } else if (mattk->aatyp == AT_WEAP) {
+        } else if (mattk->aatyp == AT_KICK && thick_skinned(pd)) {
+            tmp = 0;
+        } else if (mattk->aatyp == AT_WEAP
+                   || (mattk->aatyp == AT_CLAW && otmp)) {
             if (otmp) {
                 struct obj *marmg;
 
                 if (otmp->otyp == CORPSE
                     && touch_petrifies(&mons[otmp->corpsenm]))
                     goto do_stone;
+
                 tmp += dmgval(otmp, mdef);
                 if ((marmg = which_armor(magr, W_ARMG)) != 0
                     && marmg->otyp == GAUNTLETS_OF_POWER)

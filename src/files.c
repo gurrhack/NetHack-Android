@@ -1,4 +1,4 @@
-/* NetHack 3.6	files.c	$NHDT-Date: 1546144856 2018/12/30 04:40:56 $  $NHDT-Branch: NetHack-3.6.2-beta01 $:$NHDT-Revision: 1.249 $ */
+/* NetHack 3.6	files.c	$NHDT-Date: 1574116097 2019/11/18 22:28:17 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.272 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Derek S. Ray, 2015. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -52,7 +52,7 @@ const
 #endif
 
 #if defined(MSDOS) || defined(OS2) || defined(TOS) || defined(WIN32)
-#ifndef GNUDOS
+#ifndef __DJGPP__
 #include <sys\stat.h>
 #else
 #include <sys/stat.h>
@@ -150,6 +150,10 @@ static int lockptr;
 #define Close close
 #ifndef WIN_CE
 #define DeleteFile unlink
+#endif
+#ifdef WIN32
+/*from windmain.c */
+extern char *FDECL(translate_path_variables, (const char *, char *));
 #endif
 #endif
 
@@ -350,6 +354,13 @@ const char *basenam;
 int whichprefix UNUSED_if_not_PREFIXES_IN_USE;
 int buffnum UNUSED_if_not_PREFIXES_IN_USE;
 {
+#ifdef PREFIXES_IN_USE
+    char *bufptr;
+#endif
+#ifdef WIN32
+    char tmpbuf[BUFSZ];
+#endif
+
 #ifndef PREFIXES_IN_USE
     return basenam;
 #else
@@ -361,15 +372,19 @@ int buffnum UNUSED_if_not_PREFIXES_IN_USE;
         impossible("Invalid fqn_filename_buffer specified: %d", buffnum);
         buffnum = 0;
     }
-    if (strlen(fqn_prefix[whichprefix]) + strlen(basenam)
-        >= FQN_MAX_FILENAME) {
-        impossible("fqname too long: %s + %s", fqn_prefix[whichprefix],
-                   basenam);
+    bufptr = fqn_prefix[whichprefix];
+#ifdef WIN32
+    if (strchr(fqn_prefix[whichprefix], '%')
+        || strchr(fqn_prefix[whichprefix], '~'))
+        bufptr = translate_path_variables(fqn_prefix[whichprefix], tmpbuf);
+#endif
+    if (strlen(bufptr) + strlen(basenam) >= FQN_MAX_FILENAME) {
+        impossible("fqname too long: %s + %s", bufptr, basenam);
         return basenam; /* XXX */
     }
-    Strcpy(fqn_filename_buffer[buffnum], fqn_prefix[whichprefix]);
+    Strcpy(fqn_filename_buffer[buffnum], bufptr);
     return strcat(fqn_filename_buffer[buffnum], basenam);
-#endif
+#endif /* !PREFIXES_IN_USE */
 }
 
 int
@@ -946,7 +961,7 @@ boolean regularize_it;
 
         /* Obtain the name of the logged on user and incorporate
          * it into the name. */
-        Sprintf(fnamebuf, "%s-%s", get_username(0), plname);
+        Sprintf(fnamebuf, "%s", plname);
         if (regularize_it)
             ++legal; /* skip '*' wildcard character */
         (void) fname_encode(legal, '%', fnamebuf, encodedfnamebuf, BUFSZ);
@@ -1183,6 +1198,10 @@ get_saved_games()
     {
         char *foundfile;
         const char *fq_save;
+        const char *fq_new_save;
+        const char *fq_old_save;
+        char **files = 0;
+        int i;
 
         Strcpy(plname, "*");
         set_savefile_name(FALSE);
@@ -1198,20 +1217,44 @@ get_saved_games()
                 ++n;
             } while (findnext());
         }
+
         if (n > 0) {
-            result = (char **) alloc((n + 1) * sizeof(char *)); /* at most */
-            (void) memset((genericptr_t) result, 0, (n + 1) * sizeof(char *));
+            files = (char **) alloc((n + 1) * sizeof(char *)); /* at most */
+            (void) memset((genericptr_t) files, 0, (n + 1) * sizeof(char *));
             if (findfirst((char *) fq_save)) {
-                j = n = 0;
+                i = 0;
                 do {
-                    char *r;
-                    r = plname_from_file(foundfile);
-                    if (r)
-                        result[j++] = r;
-                    ++n;
+                    files[i++] = strdup(foundfile);
                 } while (findnext());
             }
         }
+
+        if (n > 0) {
+            result = (char **) alloc((n + 1) * sizeof(char *)); /* at most */
+            (void) memset((genericptr_t) result, 0, (n + 1) * sizeof(char *));
+            for(i = 0; i < n; i++) {
+                char *r;
+                r = plname_from_file(files[i]);
+
+                if (r) {
+
+                    /* rename file if it is not named as expected */
+                    Strcpy(plname, r);
+                    set_savefile_name(FALSE);
+                    fq_new_save = fqname(SAVEF, SAVEPREFIX, 0);
+                    fq_old_save = fqname(files[i], SAVEPREFIX, 1);
+
+                    if(strcmp(fq_old_save, fq_new_save) != 0 &&
+                        !file_exists(fq_new_save))
+                        rename(fq_old_save, fq_new_save);
+
+                    result[j++] = r;
+                }
+            }
+        }
+
+        free_saved_games(files);
+
     }
 #endif
 #if defined(UNIX) && defined(QT_GRAPHICS)
@@ -1698,7 +1741,7 @@ boolean uncomp;
 static int nesting = 0;
 
 #if defined(NO_FILE_LINKS) || defined(USE_FCNTL) /* implies UNIX */
-static int lockfd; /* for lock_file() to pass to unlock_file() */
+static int lockfd = -1; /* for lock_file() to pass to unlock_file() */
 #endif
 #ifdef USE_FCNTL
 struct flock sflock; /* for unlocking, same as above */
@@ -1810,7 +1853,7 @@ int retryct;
             return FALSE;
         }
 #else
-        register int errnosv = errno;
+        int errnosv = errno;
 
         switch (errnosv) { /* George Barbanis */
         case EEXIST:
@@ -1921,9 +1964,10 @@ const char *filename;
     if (nesting == 1) {
 #ifdef USE_FCNTL
         sflock.l_type = F_UNLCK;
-        if (fcntl(lockfd, F_SETLK, &sflock) == -1) {
-            HUP raw_printf("Can't remove fcntl lock on %s.", filename);
-            (void) close(lockfd);
+        if (lockfd >= 0) {
+            if (fcntl(lockfd, F_SETLK, &sflock) == -1)
+                HUP raw_printf("Can't remove fcntl lock on %s.", filename);
+            (void) close(lockfd), lockfd = -1;
         }
 #else
         lockname = make_lockname(filename, locknambuf);
@@ -1935,7 +1979,7 @@ const char *filename;
         if (unlink(lockname) < 0)
             HUP raw_printf("Can't unlink %s.", lockname);
 #ifdef NO_FILE_LINKS
-        (void) nhclose(lockfd);
+        (void) nhclose(lockfd), lockfd = -1;
 #endif
 
 #endif /* UNIX || VMS */
@@ -1964,7 +2008,7 @@ const char *default_configfile =
     "NetHack Defaults";
 #else
 #if defined(MSDOS) || defined(WIN32) || defined(ANDROID)
-    "defaults.nh";
+    CONFIG_FILE;
 #else
     "NetHack.cnf";
 #endif
@@ -2074,7 +2118,7 @@ int src;
 /* constructed full path names don't need fqname() */
 #ifdef VMS
     /* no punctuation, so might be a logical name */
-    set_configfile_name(fqname("nethackini", CONFIGPREFIX, 0));
+    set_configfile_name("nethackini");
     if ((fp = fopenp(configfile, "r")) != (FILE *) 0)
         return fp;
     set_configfile_name("sys$login:nethack.ini");
@@ -2110,7 +2154,7 @@ int src;
         set_configfile_name(tmp_config);
         if ((fp = fopenp(configfile, "r")) != (FILE *) 0)
             return fp;
-        /* may be easier for user to edit if filename as '.txt' suffix */
+        /* may be easier for user to edit if filename has '.txt' suffix */
         Sprintf(tmp_config, "%s/%s", envp,
                 "Library/Preferences/NetHack Defaults.txt");
         set_configfile_name(tmp_config);
@@ -2193,7 +2237,7 @@ const char *name; /* name of option for error message */
             break;
 
         default:
-        gi_error:
+ gi_error:
             raw_printf("Syntax error in %s", name);
             wait_synch();
             return count;
@@ -2212,6 +2256,10 @@ int prefixid;
 
     if (!bufp)
         return;
+#ifdef WIN32
+    if (fqn_prefix_locked[prefixid])
+        return;
+#endif
     /* Backward compatibility, ignore trailing ;n */
     if ((ptr = index(bufp, ';')) != 0)
         *ptr = '\0';
@@ -2336,13 +2384,12 @@ char *origbuf;
     static boolean ramdisk_specified = FALSE;
 #endif
 #ifdef SYSCF
-    int n;
+    int n, src = iflags.parse_config_file_src;
 #endif
     char *bufp, buf[4 * BUFSZ];
     uchar translate[MAXPCHARS];
     int len;
     boolean retval = TRUE;
-    int src = iflags.parse_config_file_src;
 
     /* convert any tab to space, condense consecutive spaces into one,
        remove leading and trailing spaces (exception: if there is nothing
@@ -2622,11 +2669,19 @@ char *origbuf;
         if (sysopt.greppath)
             free((genericptr_t) sysopt.greppath);
         sysopt.greppath = dupstr(bufp);
+    } else if (src == SET_IN_SYS
+               && match_varname(buf, "ACCESSIBILITY", 13)) {
+        n = atoi(bufp);
+        if (n < 0 || n > 1) {
+            config_error_add("Illegal value in ACCESSIBILITY (not 0,1).");
+            return FALSE;
+        }
+        sysopt.accessibility = n;
 #endif /* SYSCF */
 
     } else if (match_varname(buf, "BOULDER", 3)) {
-        (void) get_uchars(bufp, &iflags.bouldersym, TRUE, 1,
-                          "BOULDER");
+        (void) get_uchars(bufp, &ov_primary_syms[SYM_BOULDER + SYM_OFF_X],
+                          TRUE, 1, "BOULDER");
     } else if (match_varname(buf, "MENUCOLOR", 9)) {
         if (!add_menu_coloring(bufp))
             retval = FALSE;
@@ -2639,8 +2694,14 @@ char *origbuf;
         (void) get_uchars(bufp, translate, FALSE, WARNCOUNT,
                           "WARNINGS");
         assign_warnings(translate);
+    } else if (match_varname(buf, "ROGUESYMBOLS", 4)) {
+        if (!parsesymbols(bufp, ROGUESET)) {
+            config_error_add("Error in ROGUESYMBOLS definition '%s'", bufp);
+            retval = FALSE;
+        }
+        switch_symbols(TRUE);
     } else if (match_varname(buf, "SYMBOLS", 4)) {
-        if (!parsesymbols(bufp)) {
+        if (!parsesymbols(bufp, PRIMARY)) {
             config_error_add("Error in SYMBOLS definition '%s'", bufp);
             retval = FALSE;
         }
@@ -3028,7 +3089,7 @@ struct obj *obj;
     /* subset of starting inventory pre-ID */
     obj->dknown = 1;
     if (Role_if(PM_PRIEST))
-        obj->bknown = 1;
+        obj->bknown = 1; /* ok to bypass set_bknown() */
     /* same criteria as lift_object()'s check for available inventory slot */
     if (obj->oclass != COIN_CLASS && inv_cnt(FALSE) >= 52
         && !merge_choice(invent, obj)) {
@@ -3133,9 +3194,9 @@ boolean FDECL((*proc), (char *));
                     *ep = '\0';
 
                 /* trim off spaces at end of line */
-                while (--ep >= inbuf
+                while (ep >= inbuf
                        && (*ep == ' ' || *ep == '\t' || *ep == '\r'))
-                    *ep = '\0';
+                    *ep-- = '\0';
 
                 if (!config_error_nextline(inbuf)) {
                     rv = FALSE;
@@ -3145,9 +3206,10 @@ boolean FDECL((*proc), (char *));
                 }
 
                 ep = inbuf;
-                while (*ep == ' ' || *ep == '\t') ep++;
+                while (*ep == ' ' || *ep == '\t')
+                    ++ep;
 
-                /* lines beginning with '#' are comments. ignore empty lines. */
+                /* ignore empty lines and full-line comment lines */
                 if (!*ep || *ep == '#')
                     ignoreline = TRUE;
 
@@ -3156,9 +3218,9 @@ boolean FDECL((*proc), (char *));
 
                 /* merge now read line with previous ones, if necessary */
                 if (!ignoreline) {
-                    len = strlen(inbuf) + 1;
+                    len = (int) strlen(inbuf) + 1;
                     if (buf)
-                        len += strlen(buf);
+                        len += (int) strlen(buf);
                     tmpbuf = (char *) alloc(len);
                     if (buf) {
                         Sprintf(tmpbuf, "%s %s", buf, inbuf);
@@ -3182,6 +3244,7 @@ boolean FDECL((*proc), (char *));
                 if (match_varname(buf, "CHOOSE", 6)) {
                     char *section;
                     char *bufp = find_optparam(buf);
+
                     if (!bufp) {
                         config_error_add(
                                     "Format is CHOOSE=section1,section2,...");
@@ -3222,7 +3285,6 @@ boolean FDECL((*proc), (char *));
 }
 
 extern struct symsetentry *symset_list;  /* options.c */
-extern struct symparse loadsyms[];       /* drawing.c */
 extern const char *known_handling[];     /* drawing.c */
 extern const char *known_restrictions[]; /* drawing.c */
 static int symset_count = 0;             /* for pick-list building only */
@@ -3235,7 +3297,14 @@ fopen_sym_file()
 {
     FILE *fp;
 
-    fp = fopen_datafile(SYMBOLS, "r", HACKPREFIX);
+    fp = fopen_datafile(SYMBOLS, "r",
+#ifdef WIN32
+                            SYSCONFPREFIX
+#else
+                            HACKPREFIX
+#endif
+                       );
+
     return fp;
 }
 
@@ -3249,9 +3318,11 @@ int which_set;
 {
     FILE *fp;
 
+    symset[which_set].explicitly = FALSE;
     if (!(fp = fopen_sym_file()))
         return 0;
 
+    symset[which_set].explicitly = TRUE;
     symset_count = 0;
     chosen_symset_start = chosen_symset_end = FALSE;
     symset_which_set = which_set;
@@ -3271,7 +3342,14 @@ int which_set;
                 || !strcmpi(symset[which_set].name, "default")))
             clear_symsetentry(which_set, TRUE);
         config_error_done();
-        return (symset[which_set].name == 0) ? 1 : 0;
+
+        /* If name was defined, it was invalid... Then we're loading fallback */
+        if (symset[which_set].name) {
+            symset[which_set].explicitly = FALSE;
+            return 0;
+        }
+
+        return 1;
     }
     if (!chosen_symset_end)
         config_error_add("Missing finish for symset \"%s\"",
@@ -3295,7 +3373,7 @@ char *buf;
 int which_set;
 {
     int val, i;
-    struct symparse *symp = (struct symparse *) 0;
+    struct symparse *symp;
     char *bufp, *commentp, *altp;
 
     /* convert each instance of whitespace (tabs, consecutive spaces)
@@ -3342,13 +3420,19 @@ int which_set;
            building a pick-list of possible symset
            values from the file, so only do that */
         if (symp->range == SYM_CONTROL) {
-            struct symsetentry *tmpsp;
+            struct symsetentry *tmpsp, *lastsp;
 
+            for (lastsp = symset_list; lastsp; lastsp = lastsp->next)
+                if (!lastsp->next)
+                    break;
             switch (symp->idx) {
             case 0:
                 tmpsp = (struct symsetentry *) alloc(sizeof *tmpsp);
-                tmpsp->next = symset_list;
-                symset_list = tmpsp;
+                tmpsp->next = (struct symsetentry *) 0;
+                if (!lastsp)
+                    symset_list = tmpsp;
+                else
+                    lastsp->next = tmpsp;
                 tmpsp->idx = symset_count++;
                 tmpsp->name = dupstr(bufp);
                 tmpsp->desc = (char *) 0;
@@ -3360,21 +3444,22 @@ int which_set;
                 break;
             case 2:
                 /* handler type identified */
-                tmpsp = symset_list; /* most recent symset */
+                tmpsp = lastsp; /* most recent symset */
                 for (i = 0; known_handling[i]; ++i)
                     if (!strcmpi(known_handling[i], bufp)) {
                         tmpsp->handling = i;
                         break; /* for loop */
                     }
                 break;
-            case 3:                  /* description:something */
-                tmpsp = symset_list; /* most recent symset */
+            case 3:
+                /* description:something */
+                tmpsp = lastsp; /* most recent symset */
                 if (tmpsp && !tmpsp->desc)
                     tmpsp->desc = dupstr(bufp);
                 break;
             case 5:
                 /* restrictions: xxxx*/
-                tmpsp = symset_list; /* most recent symset */
+                tmpsp = lastsp; /* most recent symset */
                 for (i = 0; known_restrictions[i]; ++i) {
                     if (!strcmpi(known_restrictions[i], bufp)) {
                         switch (i) {
@@ -3403,9 +3488,9 @@ int which_set;
                     chosen_symset_start = TRUE;
                     /* these init_*() functions clear symset fields too */
                     if (which_set == ROGUESET)
-                        init_r_symbols();
+                        init_rogue_symbols();
                     else if (which_set == PRIMARY)
-                        init_l_symbols();
+                        init_primary_symbols();
                 }
                 break;
             case 1:
@@ -3458,9 +3543,9 @@ int which_set;
             val = sym_val(bufp);
             if (chosen_symset_start) {
                 if (which_set == PRIMARY) {
-                    update_l_symset(symp, val);
+                    update_primary_symset(symp, val);
                 } else if (which_set == ROGUESET) {
-                    update_r_symset(symp, val);
+                    update_rogue_symset(symp, val);
                 }
             }
         }
@@ -3892,6 +3977,10 @@ assure_syscf_file()
 {
     int fd;
 
+#ifdef WIN32
+    /* We are checking that the sysconf exists ... lock the path */
+    fqn_prefix_locked[SYSCONFPREFIX] = TRUE;
+#endif
     /*
      * All we really care about is the end result - can we read the file?
      * So just check that directly.
@@ -3995,6 +4084,208 @@ boolean wildcards;
 }
 
 #endif /*DEBUG*/
+
+#ifdef UNIX
+#ifndef PATH_MAX
+#include <limits.h>
+#endif
+#endif
+
+void
+reveal_paths(VOID_ARGS)
+{
+    const char *fqn, *nodumpreason;
+    char buf[BUFSZ];
+#if defined(SYSCF) || !defined(UNIX) || defined(DLB)
+    const char *filep;
+#ifdef SYSCF
+    const char *gamename = (hname && *hname) ? hname : "NetHack";
+#endif
+#endif
+#ifdef UNIX
+    char *endp, *envp, cwdbuf[PATH_MAX];
+#endif
+#ifdef PREFIXES_IN_USE
+    const char *strp;
+    int i, maxlen = 0;
+
+    raw_print("Variable playground locations:");
+    for (i = 0; i < PREFIX_COUNT; i++)
+        raw_printf("    [%-10s]=\"%s\"", fqn_prefix_names[i],
+                   fqn_prefix[i] ? fqn_prefix[i] : "not set");
+#endif
+
+    /* sysconf file */
+
+#ifdef SYSCF
+#ifdef PREFIXES_IN_USE
+    strp = fqn_prefix_names[SYSCONFPREFIX];
+    maxlen = BUFSZ - sizeof " (in )";
+    if (strp && (int) strlen(strp) < maxlen)
+        Sprintf(buf, " (in %s)", strp);
+#else
+    buf[0] = '\0';
+#endif
+    raw_printf("%s system configuration file%s:", s_suffix(gamename), buf);
+#ifdef SYSCF_FILE
+    filep = SYSCF_FILE;
+#else
+    filep = "sysconf";
+#endif
+    fqn = fqname(filep, SYSCONFPREFIX, 0);
+    if (fqn) {
+        set_configfile_name(fqn);
+        filep = configfile;
+    }
+    raw_printf("    \"%s\"", filep);
+#else /* !SYSCF */
+    raw_printf("No system configuration file.");
+#endif /* ?SYSCF */
+
+    /* symbols file */
+
+    buf[0] = '\0';
+#ifndef UNIX
+#ifdef PREFIXES_IN_USE
+#ifdef WIN32
+    strp = fqn_prefix_names[SYSCONFPREFIX];
+#else
+    strp = fqn_prefix_names[HACKPREFIX];
+#endif /* WIN32 */
+    maxlen = BUFSZ - sizeof " (in )";
+    if (strp && (int) strlen(strp) < maxlen)
+        Sprintf(buf, " (in %s)", strp);
+#endif /* PREFIXES_IN_USE */
+    raw_printf("The loadable symbols file%s:", buf);
+#endif /* UNIX */
+
+#ifdef UNIX
+    envp = getcwd(cwdbuf, PATH_MAX);
+    if (envp) {
+        raw_print("The loadable symbols file:");
+        raw_printf("    \"%s/%s\"", envp, SYMBOLS);
+    }
+#else /* UNIX */
+    filep = SYMBOLS;
+#ifdef PREFIXES_IN_USE
+#ifdef WIN32
+    fqn = fqname(filep, SYSCONFPREFIX, 1);
+#else
+    fqn = fqname(filep, HACKPREFIX, 1);
+#endif /* WIN32 */
+    if (fqn)
+        filep = fqn;
+#endif /* PREFIXES_IN_USE */
+    raw_printf("    \"%s\"", filep);
+#endif /* UNIX */
+
+    /* dlb vs non-dlb */
+
+    buf[0] = '\0';
+#ifdef PREFIXES_IN_USE
+    strp = fqn_prefix_names[DATAPREFIX];
+    maxlen = BUFSZ - sizeof " (in )";
+    if (strp && (int) strlen(strp) < maxlen)
+        Sprintf(buf, " (in %s)", strp);
+#endif
+#ifdef DLB
+    raw_printf("Basic data files%s are collected inside:", buf);
+    filep = DLBFILE;
+#ifdef VERSION_IN_DLB_FILENAME
+    Strcpy(buf, build_dlb_filename((const char *) 0));
+#ifdef PREFIXES_IN_USE
+    fqn = fqname(buf, DATAPREFIX, 1);
+    if (fqn)
+        filep = fqn;
+#endif /* PREFIXES_IN_USE */
+#endif
+    raw_printf("    \"%s\"", filep);
+#ifdef DLBFILE2
+    filep = DLBFILE2;
+    raw_printf("    \"%s\"", filep);
+#endif
+#else /* !DLB */
+    raw_printf("Basic data files%s are in many separate files.", buf);
+#endif /* ?DLB */
+
+    /* dumplog */
+
+#ifndef DUMPLOG
+    nodumpreason = "not supported";
+#else
+    nodumpreason = "disabled";
+#ifdef SYSCF
+    fqn = sysopt.dumplogfile;
+#else  /* !SYSCF */
+#ifdef DUMPLOG_FILE
+    fqn = DUMPLOG_FILE;
+#else
+    fqn = (char *) 0;
+#endif
+#endif /* ?SYSCF */
+    if (fqn && *fqn) {
+        raw_print("Your end-of-game disclosure file:");
+        (void) dump_fmtstr(fqn, buf, FALSE);
+        buf[sizeof buf - sizeof "    \"\""] = '\0';
+        raw_printf("    \"%s\"", buf);
+    } else
+#endif /* ?DUMPLOG */
+        raw_printf("No end-of-game disclosure file (%s).", nodumpreason);
+
+    /* personal configuration file */
+
+    buf[0] = '\0';
+#ifdef PREFIXES_IN_USE
+    strp = fqn_prefix_names[CONFIGPREFIX];
+    maxlen = BUFSZ - sizeof " (in )";
+    if (strp && (int) strlen(strp) < maxlen)
+        Sprintf(buf, " (in %s)", strp);
+#endif /* PREFIXES_IN_USE */
+    raw_printf("Your personal configuration file%s:", buf);
+
+#ifdef UNIX
+    buf[0] = '\0';
+    if ((envp = nh_getenv("HOME")) != 0) {
+        copynchars(buf, envp, (int) sizeof buf - 1 - 1);
+        Strcat(buf, "/");
+    }
+    endp = eos(buf);
+    copynchars(endp, default_configfile,
+               (int) (sizeof buf - 1 - strlen(buf)));
+#if defined(__APPLE__) /* UNIX+__APPLE__ => MacOSX aka OSX aka macOS */
+    if (envp) {
+        if (access(buf, 4) == -1) { /* 4: R_OK, -1: failure */
+            /* read access to default failed; might be protected excessively
+               but more likely it doesn't exist; try first alternate:
+               "$HOME/Library/Pref..."; 'endp' points past '/' */
+            copynchars(endp, "Library/Preferences/NetHack Defaults",
+                       (int) (sizeof buf - 1 - strlen(buf)));
+            if (access(buf, 4) == -1) {
+                /* first alternate failed, try second:
+                   ".../NetHack Defaults.txt"; no 'endp', just append */
+                copynchars(eos(buf), ".txt",
+                           (int) (sizeof buf - 1 - strlen(buf)));
+                if (access(buf, 4) == -1) {
+                    /* second alternate failed too, so revert to the
+                       original default ("$HOME/.nethackrc") for message */
+                    copynchars(endp, default_configfile,
+                               (int) (sizeof buf - 1 - strlen(buf)));
+                }
+            }
+        }
+    }
+#endif /* __APPLE__ */
+    raw_printf("    \"%s\"", buf);
+#else /* !UNIX */
+    fqn = (const char *) 0;
+#ifdef PREFIXES_IN_USE
+    fqn = fqname(default_configfile, CONFIGPREFIX, 2);
+#endif
+    raw_printf("    \"%s\"", fqn ? fqn : default_configfile);
+#endif  /* ?UNIX */
+
+    raw_print("");
+}
 
 /* ----------  BEGIN TRIBUTE ----------- */
 
@@ -4195,7 +4486,7 @@ unsigned oid; /* book identifier */
         }
     }
 
-cleanup:
+ cleanup:
     (void) dlb_fclose(fp);
     if (nowin_buf) {
         /* one-line buffer */
