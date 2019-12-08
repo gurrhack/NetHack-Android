@@ -502,7 +502,11 @@ struct obj *corpse;
     /* format name+role,&c, death reason, and date+time;
        gender and alignment reflect final values rather than what the
        character started out as, same as topten and logfile entries */
+#ifdef ANDROID
+    Sprintf(newbones->who, "%s-%.3s-%.3s-%.3s-%.3s", wizard ? "wizard" : plname, urole.filecode,
+#else
     Sprintf(newbones->who, "%s-%.3s-%.3s-%.3s-%.3s", plname, urole.filecode,
+#endif
             urace.filecode, genders[flags.female].filecode,
             aligns[1 - u.ualign.type].filecode);
     formatkiller(newbones->how, sizeof newbones->how, how, TRUE);
