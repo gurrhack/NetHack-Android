@@ -2,8 +2,8 @@
 <manifest
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	package="com.tbd.NetHack"
-	android:versionCode="3650"
-	android:versionName="3.6.5"
+	android:versionCode="3660"
+	android:versionName="3.6.6"
 	android:installLocation="auto">
 	<uses-sdk android:minSdkVersion="7"
 	          android:targetSdkVersion="28"/>
