@@ -1,4 +1,4 @@
-/* NetHack 3.6	do.c	$NHDT-Date: 1575245055 2019/12/02 00:04:15 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.196 $ */
+/* NetHack 3.6	do.c	$NHDT-Date: 1576638499 2019/12/18 03:08:19 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.198 $ */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /*-Copyright (c) Derek S. Ray, 2015. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -338,7 +338,7 @@ polymorph_sink()
         sym = S_altar;
         levl[u.ux][u.uy].typ = ALTAR;
         /* 3.6.3: this used to pass 'rn2(A_LAWFUL + 2) - 1' to
-           Align2mask() but it evaluates its argument more than once */
+           Align2amask() but that evaluates its argument more than once */
         algn = rn2(3) - 1; /* -1 (A_Cha) or 0 (A_Neu) or +1 (A_Law) */
         levl[u.ux][u.uy].altarmask = ((Inhell && rn2(3)) ? AM_NONE
                                       : Align2amask(algn));
@@ -1000,6 +1000,24 @@ dodown()
                                                     : surface(u.ux, u.uy));
         return 0; /* didn't move */
     }
+
+    if (Upolyd && ceiling_hider(&mons[u.umonnum]) && u.uundetected) {
+        u.uundetected = 0;
+        if (Flying) { /* lurker above */
+            You("fly out of hiding.");
+        } else { /* piercer */
+            You("drop to the %s.", surface(u.ux, u.uy));
+            if (is_pool_or_lava(u.ux, u.uy)) {
+                pooleffects(FALSE);
+            } else {
+                (void) pickup(1);
+                if ((trap = t_at(u.ux, u.uy)) != 0)
+                    dotrap(trap, TOOKPLUNGE);
+            }
+        }
+        return 1; /* came out of hiding; might need '>' again to go down */
+    }
+
     if (!stairs_down && !ladder_down) {
         trap = t_at(u.ux, u.uy);
         if (trap && (uteetering_at_seen_pit(trap) || uescaped_shaft(trap))) {

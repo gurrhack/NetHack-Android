@@ -1849,6 +1849,7 @@ E boolean NDECL(authorize_wizard_mode);
 #endif /* MICRO || WIN32 */
 #if defined(WIN32)
 E int NDECL(getlock);
+E const char *NDECL(get_portable_device);
 #endif
 
 /* ### pcsys.c ### */
@@ -2523,7 +2524,7 @@ E boolean FDECL(burnarmor, (struct monst *));
 E int FDECL(erode_obj, (struct obj *, const char *, int, int));
 E boolean FDECL(grease_protect, (struct obj *, const char *, struct monst *));
 E struct trap *FDECL(maketrap, (int, int, int));
-E void FDECL(fall_through, (BOOLEAN_P));
+E void FDECL(fall_through, (BOOLEAN_P, unsigned));
 E struct monst *FDECL(animate_statue,
                       (struct obj *, XCHAR_P, XCHAR_P, int, int *));
 E struct monst *FDECL(activate_statue_trap,
