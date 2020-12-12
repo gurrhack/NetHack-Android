@@ -10,8 +10,8 @@ android {
   defaultConfig {
     minSdkVersion 7
     targetSdkVersion 30
-    versionCode 3662
     versionName '3.6.6-2'
+    versionCode 3662
   }
 
   compileOptions {
@@ -34,5 +34,5 @@ android {
 }
 
 dependencies {
-  implementation 'com.tbd.forkfront:ForkFront-Android:1.1'
+  implementation 'com.tbd.forkfront:lib:1.1'
 }

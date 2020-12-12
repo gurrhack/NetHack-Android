@@ -1,7 +1,7 @@
 include ':app'
 rootProject.name = 'NetHack-Android'
-includeBuild("..\\..\\..\\android-nethack-forkfront") {
-    dependencySubstitution {
-        substitute module('com.tbd.forkfront:ForkFront-Android:1.1') with project(':lib')
+sourceControl {
+    gitRepository("https://github.com/gurrhack/ForkFront-Android.git") {
+        producesModule("com.tbd.forkfront:lib")
     }
 }
