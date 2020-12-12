@@ -13,34 +13,32 @@ work. If you're running Windows you're on your own.
  - Install JDK 8. Required by Android SDK manager.
  - Install `bison` and `flex`. Used by the native nethack build.
  - Check out NetHack-Android: `git clone https://github.com/gurrhack/NetHack-Android.git`
- - Check out ForkFront-Android: `git clone https://github.com/gurrhack/ForkFront-Android.git`
- - Create a file called `local.properties` in both NetHack-Android and ForkFront-Android, containing: `sdk.dir=/path/to/android-sdk`. Used by Gradle.
+ - Create an env variable called `ANDROID_SDK_ROOT` and point it to the android-sdk installation directory. Used by Gradle.
 
 ### Install Android build tools
- 1. Make sure JAVA_HOME points to JDK 8.
- 2. `cd /path/to/android-sdk/tools/bin`
- 3. Update the sdk manager: `./sdkmanager --update`. If you get "NoClassDefFoundError" it's because you're not running JDK 8.
- 4. Install the platform tools: `./sdkmanager --install "platforms;android-30"`
+
+ 1. `cd /path/to/android-sdk/tools/bin`
+ 2. Update the sdk manager: `./sdkmanager --update`. If you get "NoClassDefFoundError" it's because you're not running JDK 8. Make sure the env variable `JAVA_HOME` points to JDK 8.
+ 3. Install the platform tools: `./sdkmanager --install "platforms;android-30"`
 
 
 ## Build
 
 ### Build the native nethack library
 
-1. `cd /path/to/NetHack-Android/sys/android`
-2. Open `Makefile.src` and change NDK to the appropriate path.
-3. `sh ./setup.sh`
-4. `cd ../..`
-5. `make install`
+ 1. `cd /path/to/NetHack-Android/sys/android`
+ 2. Open `Makefile.src` and change NDK to the appropriate path.
+ 3. `sh ./setup.sh`
+ 4. `cd ../..`
+ 5. `make install`
 
 ### Build the Android application
 
-1. `cd /path/to/NetHack-Android/sys/android`
-2. Open `settings.gradle` and edit the path to ForkFront-Android if needed.
-3. `./gradlew build`
-4. `cd ./build/outputs/apk/debug`
-5. Copy the APK file from this directory to your device.
-6. On your device: locate the APK file, install it and run!
+ 1. `cd /path/to/NetHack-Android/sys/android`
+ 2. `./gradlew build`
+ 3. `cd ./app/build/outputs/apk/debug`
+ 4. Copy the APK file from this directory to your device.
+ 5. On your device: locate the APK file, install it and run!
 
 ---
 Happy hacking!
