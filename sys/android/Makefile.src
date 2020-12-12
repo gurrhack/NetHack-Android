@@ -408,8 +408,8 @@ Sysunix:	$(HOBJ) Makefile
 
 Sysandroid:	$(HOBJ) Makefile
 	@echo "Loading ..."
-	mkdir -p ../sys/android/libs/$(ABI)
-	$(LINK) $(LFLAGS) -o ../sys/android/libs/$(ABI)/lib$(GAME).so $(HOBJ) $(LIBS)
+	mkdir -p ../sys/android/app/libs/$(ABI)
+	$(LINK) $(LFLAGS) -o ../sys/android/app/libs/$(ABI)/lib$(GAME).so $(HOBJ) $(LIBS)
 	@touch Sysandroid
 
 Sys3B2:	$(HOBJ) Makefile

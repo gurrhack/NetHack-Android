@@ -20,7 +20,7 @@ work. If you're running Windows you're on your own.
  1. Make sure JAVA_HOME points to JDK 8.
  2. `cd /path/to/android-sdk/tools/bin`
  3. Update the sdk manager: `./sdkmanager --update`. If you get "NoClassDefFoundError" it's because you're not running JDK 8.
- 4. Install the platform tools: `./sdkmanager --install "platforms;android-28"`
+ 4. Install the platform tools: `./sdkmanager --install "platforms;android-30"`
 
 
 ## Build
@@ -36,10 +36,11 @@ work. If you're running Windows you're on your own.
 ### Build the Android application
 
 1. `cd /path/to/NetHack-Android/sys/android`
-2. `./gradlew build --include-build /path/to/ForkFront-Android`
-3. `cd ./build/outputs/apk/debug`
-3. Copy the APK file from this directory to your device.
-5. On your device: locate the APK file, install it and run!
+2. Open `settings.gradle` and edit the path to ForkFront-Android if needed.
+3. `./gradlew build`
+4. `cd ./build/outputs/apk/debug`
+5. Copy the APK file from this directory to your device.
+6. On your device: locate the APK file, install it and run!
 
 ---
 Happy hacking!

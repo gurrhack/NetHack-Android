@@ -39,7 +39,7 @@ DIRPERM  = 0755
 # therefore there should not be anything in HACKDIR that you want to keep
 # (if there is, you'll have to do the installation by hand or modify the
 # instructions)
-HACKDIR  = $(PWD)/sys/android/assets/$(GAME)dir
+HACKDIR  = $(PWD)/sys/android/app/assets/$(GAME)dir
 VARDIR  = $(HACKDIR)
 INSTDIR = $(HACKDIR)
 # Where nethack.sh in installed.  If this is not defined, the wrapper is not used.
