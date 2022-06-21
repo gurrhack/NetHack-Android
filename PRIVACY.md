@@ -20,7 +20,7 @@ When Hearse is enabled the following data is transferred from your device to the
 - A user token associated with the email address and the nickname.
 - Bones files
 
-## Crash log
+## Crash logs
 If the application becomes unresponsive or unexpectedly shuts down you can optionally send a crash report to the developer. These reports are not
 controlled by NetHack-Android and is outside the scope of this policy.
 
