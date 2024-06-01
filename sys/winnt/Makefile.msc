@@ -1,5 +1,5 @@
 # NetHack 3.6	Makefile.msc	$NHDT-Date: 1572748386 2019/11/03 02:33:06 $  $NHDT-Branch: NetHack-3.6 $:$NHDT-Revision: 1.167 $ */
-#       Copyright (c) NetHack PC Development Team 1993-2019
+#       Copyright (c) NetHack PC Development Team 1993-2023
 #
 #==============================================================================
 # Build Tools Environment
@@ -93,7 +93,7 @@ DEBUGINFO = Y
 #==============================================================================
 #
 #  The version of the game this Makefile was designed for
-NETHACK_VERSION="3.6.6"
+NETHACK_VERSION="3.6.7"
 
 # A brief version for use in macros
 NHV=$(NETHACK_VERSION:.=)
@@ -274,8 +274,6 @@ GUIHDR	= $(MSWIN)\mhaskyn.h $(MSWIN)\mhdlg.h $(MSWIN)\mhfont.h \
 
 COMCTRL = comctl32.lib
 
-KEYDLLS	= $(GAMEDIR)\nhdefkey.dll $(GAMEDIR)\nh340key.dll $(GAMEDIR)\nhraykey.dll
-
 TILEUTIL16  = $(UTIL)\tile2bmp.exe
 TILEBMP16   = $(SRC)\tiles.bmp
 
@@ -373,7 +371,27 @@ rc=Rc
 # Visual Studio we are using.  We set VSVER to 0000 to flag any version that 
 # is too old or untested.
 #
-#NMAKE version 1421277022 is distributed with latest VS 2019
+#NMAKE version 1421277022 is distributed with latest VS 2019 at time of 3.6.6
+#NMAKE version 1434319370 is distributed with latest VS 2019 at time of 3.6.7
+
+# Before we get started, this section is used to determine the version of
+# Visual Studio we are using.  We set VSVER to 0000 to flag any version that
+# is too old or untested.
+#
+# Recently tested versions:
+TESTEDVS2017 = 14.16.27048.0
+TESTEDVS2019 = 14.29.30147.0
+TESTEDVS2022 = 14.34.31937.0
+
+VS2017CUR = $(TESTEDVS2017:.=)
+VS2019CUR = $(TESTEDVS2019:.=)
+VS2022CUR = $(TESTEDVS2022:.=)
+VS2017UP1 = $(VS2017CUR) + 1
+VS2019UP1 = $(VS2019CUR) + 1
+VS2022UP1 = $(VS2022CUR) + 1
+VS20171ST = 1411000000
+VS20191ST = $(VS2017UP1)
+VS20221ST = $(VS2019UP1)
 
 #!MESSAGE $(MAKEFLAGS)
 #!MESSAGE $(MAKEDIR)
@@ -384,7 +402,8 @@ MAKEVERSION=$(MAKEVERSION: =)
 #!MESSAGE $(_NMAKE_VER)
 #!MESSAGE $(MAKEVERSION)
 
-VSNEWEST=2019
+VSSPECIAL=
+VSNEWEST=2022
 !IF ($(MAKEVERSION) < 1000000000)
 VSVER=0000		#untested ancient version
 !ELSEIF ($(MAKEVERSION) > 1000000000) && ($(MAKEVERSION) < 1100000000)
@@ -395,21 +414,26 @@ VSVER=2012
 VSVER=2013
 !ELSEIF ($(MAKEVERSION) > 1400000000) && ($(MAKEVERSION) < 1411000000)
 VSVER=2015
-!ELSEIF ($(MAKEVERSION) > 1411000000) && ($(MAKEVERSION) < 1416270312)
+!ELSEIF ($(MAKEVERSION) > $(VS20171ST)) && ($(MAKEVERSION) < $(VS2017UP1))
 VSVER=2017
-!ELSEIF ($(MAKEVERSION) > 1416270311) && ($(MAKEVERSION) < 1421277023)
-VSVER=$(VSNEWEST)
-!ELSEIF ($(MAKEVERSION) > 1421277022)
+!ELSEIF ($(MAKEVERSION) > $(VS20191ST)) && ($(MAKEVERSION) < $(VS2019UP1))
+VSVER=2019
+!ELSEIF ($(MAKEVERSION) > $(VS20221ST)) && ($(MAKEVERSION) < $(VS2022UP1))
+VSVER=2022
+!ELSEIF ($(MAKEVERSION) > $(VS2022CUR))
 VSVER=2999              #untested future version
 !ENDIF
 
 !IF ($(VSVER) >= 2012)
-!MESSAGE Autodetected Visual Studio $(VSVER)
-!ELSEIF ($(VSVER) == 2999
-!MESSAGE The version of Visual Studio is newer than the most recent at
-!MESSAGE the time this Makefile was crafted (Visual Studio $(VSNEWEST)).
-!MESSAGE Because it is newer we'll proceed expecting that the 
-!MESSAGE VS$(VSNEWEST) processing will still work.
+!IF ($(VSVER) <= $(VSNEWEST))
+!MESSAGE Autodetected Visual Studio $(VSVER) $(VSSPECIAL)
+!ENDIF
+!ENDIF
+!IF ($(VSVER) == 2999)
+!MESSAGE The NMAKE version of this Visual Studio $(_NMAKE_VER) is newer than the
+!MESSAGE most recent at the time this Makefile was crafted (Visual Studio $(VSNEWEST)).
+!MESSAGE Because it is newer we'll proceed expecting that the VS$(VSNEWEST) processing
+!MESSAGE will still work.
 !ELSEIF ($(VSVER) == 0000)
 !MESSAGE The version of Visual Studio appears to be quite old, older
 !MESSAGE than VS2010 which is the oldest supported version by this
@@ -845,63 +869,6 @@ $(O)gamedir.tag:
 	@if not exist $(GAMEDIR)\*.* mkdir $(GAMEDIR)
 	@echo directory created > $@
 
-$(O)nhdefkey.def:
-	@echo LIBRARY $(@B) >$@
-! IF "$(TARGET_CPU)"=="x64" || "$(PROCESSOR_ARCHITECTURE)"=="x64"
-! ELSE
-	@echo EXPORTS >>$@
-	@echo    ProcessKeystroke >>$@
-	@echo    NHkbhit >>$@
-	@echo    CheckInput >>$@
-	@echo    SourceWhere >>$@
-	@echo    SourceAuthor >>$@
-	@echo    KeyHandlerName >>$@
-! ENDIF
-
-$(GAMEDIR)\nhdefkey.dll : $(O)$(@B).o $(O)gamedir.tag $(O)$(@B).def
-	@echo Linking $(@:\=/)
-	@$(link) $(ldebug) /RELEASE /DLL user32.lib \
-		/PDB:"$(O)$(@B).PDB" /MAP:"$(O)$(@B).map" /DEF:$(O)$(@B).def \
-		/IMPLIB:$(O)$(@B).lib -out:$@ $(O)$(@B).o
-
-$(O)nh340key.def:
-	@echo LIBRARY $(@B) >$@
-! IF "$(TARGET_CPU)"=="x64" || "$(PROCESSOR_ARCHITECTURE)"=="x64"
-! ELSE
-	@echo EXPORTS >>$@
-	@echo    ProcessKeystroke >>$@
-	@echo    NHkbhit >>$@
-	@echo    CheckInput >>$@
-	@echo    SourceWhere >>$@
-	@echo    SourceAuthor >>$@
-	@echo    KeyHandlerName >>$@
-! ENDIF
-
-$(GAMEDIR)\nh340key.dll : $(O)$(@B).o $(O)gamedir.tag $(O)$(@B).def
-	@echo Linking $(@:\=/)
-	@$(link) $(ldebug) /RELEASE /NOLOGO /DLL user32.lib \
-		/PDB:"$(O)$(@B).PDB" /MAP:"$(O)$(@B).map" /DEF:$(O)$(@B).def \
-		/IMPLIB:$(O)$(@B).lib -out:$@ $(O)$(@B).o
-
-$(O)nhraykey.def:
-	@echo LIBRARY $(@B) >$@
-! IF "$(TARGET_CPU)"=="x64" || "$(PROCESSOR_ARCHITECTURE)"=="x64"
-! ELSE
-	@echo EXPORTS >>$@
-	@echo    ProcessKeystroke >>$@
-	@echo    NHkbhit >>$@
-	@echo    CheckInput >>$@
-	@echo    SourceWhere >>$@
-	@echo    SourceAuthor >>$@
-	@echo    KeyHandlerName >>$@
-! ENDIF
-
-$(GAMEDIR)\nhraykey.dll : $(O)$(@B).o $(O)gamedir.tag $(O)$(@B).def
-	@echo Linking $(@:\=/)
-	@$(link) $(ldebug) /RELEASE /NOLOGO /DLL user32.lib \
-		/PDB:"$(O)$(@B).PDB" /MAP:"$(O)$(@B).map" /DEF:$(O)$(@B).def \
-		/IMPLIB:$(O)$(@B).lib -out:$@ $(O)$(@B).o
-
 #
 #  Secondary Targets.
 #
@@ -1281,9 +1248,6 @@ $(O)pdcscrn.o : $(PDCURSES_HEADERS) $(PDCWINCON)\pdcscrn.c $(MSWSYS)\stub-pdcscr
 spotless: clean
 ! IF ("$(OBJ)"!="")
 	if exist $(OBJ)\* rmdir $(OBJ) /s /Q
-	if exist $(GAMEDIR)\nhdefkey.dll del $(GAMEDIR)\nhdefkey.dll
-	if exist $(GAMEDIR)\nh340key.dll del $(GAMEDIR)\nh340key.dll
-	if exist $(GAMEDIR)\nhraykey.dll del $(GAMEDIR)\nhraykey.dll
 	if exist $(GAMEDIR)\NetHack.exe  del $(GAMEDIR)\NetHack.exe
 	if exist $(GAMEDIR)\NetHack.pdb  del $(GAMEDIR)\NetHack.pdb
 	if exist $(GAMEDIR)\nhdat$(NHV)  del $(GAMEDIR)\nhdat$(NHV)
@@ -1381,26 +1345,15 @@ clean:
 	if exist $(O)makedefs.MAP del $(O)makedefs.MAP
 	if exist $(O)makedefs.PDB del $(O)makedefs.PDB
 	if exist $(O)NetHack.MAP  del $(O)NetHack.MAP
-	if exist $(O)nh340key.def del $(O)nh340key.def
-	if exist $(O)nh340key.exp del $(O)nh340key.exp
-	if exist $(O)nh340key.lib del $(O)nh340key.lib
-	if exist $(O)nh340key.map del $(O)nh340key.map
-	if exist $(O)nh340key.PDB del $(O)nh340key.PDB
-	if exist $(O)nhdefkey.def del $(O)nhdefkey.def
-	if exist $(O)nhdefkey.exp del $(O)nhdefkey.exp
-	if exist $(O)nhdefkey.lib del $(O)nhdefkey.lib
-	if exist $(O)nhdefkey.map del $(O)nhdefkey.map
-	if exist $(O)nhdefkey.PDB del $(O)nhdefkey.PDB
-	if exist $(O)nhraykey.def del $(O)nhraykey.def
-	if exist $(O)nhraykey.exp del $(O)nhraykey.exp
-	if exist $(O)nhraykey.lib del $(O)nhraykey.lib
-	if exist $(O)nhraykey.map del $(O)nhraykey.map
-	if exist $(O)nhraykey.PDB del $(O)nhraykey.PDB
 	if exist $(O)envchk.tag   del $(O)envchk.tag
 	if exist $(O)obj.tag      del $(O)obj.tag
 	if exist $(O)sp_lev.tag   del $(O)sp_lev.tag
 	if exist $(O)uudecode.MAP del $(O)uudecode.MAP
 	if exist $(O)uudecode.PDB del $(O)uudecode.PDB
+	if exist $(SRC)\tiles.bmp del $(SRC)\tiles.bmp
+	if exist $(O)console.res  del $(O)console.res
+	if exist $(O)NetHack.res  del $(O)NetHack.res
+	if exist $(O)NetHackW.res del $(O)NetHackW.res
 	rem
 	rem defer to the steps in ..\win\win32\levstuff.mak
 	rem 
