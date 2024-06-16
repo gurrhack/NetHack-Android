@@ -2842,7 +2842,7 @@ boolean tinitial, tfrom_file;
             return FALSE;
         } else if ((op = string_for_opt(opts, negated)) != empty_optstr) {
 #if defined(WIN32) && defined(TTY_GRAPHICS)
-            set_altkeyhandler(op);
+            set_altkeyhandling(op);
 #endif
         } else
             return FALSE;
@@ -5599,7 +5599,11 @@ boolean setinitial, setfromfile;
             assign_graphics(PRIMARY);
         preference_update("symset");
         need_redraw = TRUE;
-
+#ifdef WIN32
+    } else if (!strcmp("altkeyhandler", optname)
+               || !strcmp("altkeyhandling", optname)) {
+        return set_keyhandling_via_option();
+#endif
     } else {
         /* didn't match any of the special options */
         return FALSE;
@@ -5639,7 +5643,11 @@ char *buf;
 #ifdef WIN32
     else if (!strcmp(optname, "altkeyhandler"))
         Sprintf(buf, "%s",
-                iflags.altkeyhandler[0] ? iflags.altkeyhandler : "default");
+                (iflags.key_handling == ray_keyhandling)
+                    ? "ray"
+                    : (iflags.key_handling == nh340_keyhandling)
+                        ? "340"
+                        : "default");
 #endif
 #ifdef BACKWARD_COMPAT
     else if (!strcmp(optname, "boulder"))

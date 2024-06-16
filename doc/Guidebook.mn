@@ -24,7 +24,7 @@
 .ds vr "NetHack 3.6
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "March 8, 2020
+.ds f2 "February 3, 2023
 .
 .\" A note on some special characters:
 .\" \(lq = left double quote
@@ -2460,7 +2460,7 @@ Persistence of Objects
 .pg
 Normally, if you have seen an object at a particular map location and
 move to another location where you can't directly see that object any
-more, if will continue to be displayed on your map.
+more, it will continue to be displayed on your map.
 That remains the case even if it is not actually there any more \(em
 perhaps a monster has picked it up or it has rotted away \(em
 until you can see or feel that location again.
@@ -2636,12 +2636,12 @@ The file may not exist, but it is a normal ASCII text file and
 can be created with any text editor.
 .pg
 On Windows, it is \(lq.nethackrc\(rq in the folder
-\(lq\\%USERPROFILE%\\NetHack\\3.6\(rq.  The file may not exist,
+\(lq\\%USERPROFILE%\\NetHack\\(rq.  The file may not exist,
 but it is a normal ASCII text file can can be created with any
 text editor.
 After running NetHack for the first time, you should find a default
 template for the configuration file named \(lq.nethackrc.template\(rq
-in \(lq\\%USERPROFILE%\\NetHack\\3.6\(rq.
+in \(lq\\%USERPROFILE%\\NetHack\\(rq.
 If you had not created the configuration file, NetHack will create
 the configuration file for you using the default template file.
 .pg
@@ -3787,11 +3787,10 @@ Platform-specific Customization options
 .pg
 Here are explanations of options that are used by specific platforms or ports
 to customize and change the port behavior.
-.lp altkeyhandler
-Select an alternate keystroke handler dll to load (Win32 tty NetHack only).
-The name of the handler is specified without the .dll extension and without
-any path information.
-Cannot be set with the \(oqO\(cq command.
+.lp altkeyhandling
+Select an alternate way to handle keystrokes (Win32 tty NetHack only).
+The name of the handling type is one of \(lqdefault\(rq, \(lqray\(rq,
+\(lq340\(rq.
 .lp altmeta
 On Amiga, this option controls whether typing \(lqAlt\(rq plus another key
 functions as a meta-shift for that key (default on).
@@ -5165,6 +5164,9 @@ NetHack 3.6.5 was released on January 27, 2020 containing some security fixes
 and a small number of bug fixes.
 .pg
 NetHack 3.6.6 was released on March 8, 2020 containing a security fix and
+some bug fixes.
+.pg
+NetHack 3.6.7 was released in February 2023 containing a security fix and
 some bug fixes.
 .pg
 The official NetHack web site is maintained by \fBKen Lorber\fP
