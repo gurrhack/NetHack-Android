@@ -87,7 +87,7 @@ SYSOBJ = ioctl.o androidmain.o unixtty.o androidunix.o
 # CC = arm-linux-gcc
 #
 # For cross-compiling with Android NDK
-NDK = /path/to/android-ndk-r19c
+NDK = /path/to/android-ndk-r21e
 
 NDK_TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
 
@@ -98,15 +98,15 @@ ABI = armeabi
 #ABI = x86
 #ABI = x86_64
 
-CC_armeabi     = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi16-clang
+CC_armeabi     = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi30-clang
 LD_armeabi     = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
-CC_armeabi-v7a = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi16-clang
+CC_armeabi-v7a = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi30-clang
 LD_armeabi-v7a = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
-CC_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android21-clang
+CC_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android30-clang
 LD_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android-ld
-CC_x86         = $(NDK_TOOLCHAIN)/i686-linux-android16-clang
+CC_x86         = $(NDK_TOOLCHAIN)/i686-linux-android30-clang
 LD_x86         = $(NDK_TOOLCHAIN)/i686-linux-android-ld
-CC_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android21-clang
+CC_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android30-clang
 LD_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android-ld
 
 CC_VAR = CC_$(ABI)
