@@ -8,9 +8,8 @@ work. If you're running Windows you're on your own.
 
 ## Preparations
 
- - Download and extract the Android SDK tools: [https://developer.android.com/studio/index.html#command-tools]()
- - Download and extract the Android NDK (r19c or later): [https://developer.android.com/ndk/downloads]()
- - Install JDK 8. Required by Android SDK manager.
+ - Download and extract Android SDK Command-line Tools [https://developer.android.com/studio/index.html#command-tools]()
+ - Install JDK 8. Required by Android SDK manager (e.g. [https://adoptium.net/temurin/releases?version=8&os=any&arch=any](Temurin))
  - Install `bison` and `flex`. Used by the native nethack build.
  - Check out NetHack-Android: `git clone https://github.com/gurrhack/NetHack-Android.git`
  - Create an env variable called `ANDROID_SDK_ROOT` and point it to the android-sdk installation directory. Used by Gradle.
@@ -20,6 +19,7 @@ work. If you're running Windows you're on your own.
  1. `cd /path/to/android-sdk/tools/bin`
  2. Update the sdk manager: `./sdkmanager --update`. If you get "NoClassDefFoundError" it's because you're not running JDK 8. Make sure the env variable `JAVA_HOME` points to JDK 8.
  3. Install the platform tools: `./sdkmanager --install "platforms;android-30"`
+ 4. Install the NDK: `./sdkmanager --install "ndk;21.4.7075529"`
 
 
 ## Build
