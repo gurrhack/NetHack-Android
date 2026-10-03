@@ -173,6 +173,16 @@ static char* msghistory[32];
 static int msghistory_idx;
 static int msghistory_idx0;
 
+// Menu identifiers are often pointers, which don't fit in the int passed to
+// Java on 64-bit devices. Keep them here and pass Java a 1-based index.
+struct menu_idents {
+	winid wid;
+	anything *ids;
+	int n, size;
+	struct menu_idents *next;
+};
+static struct menu_idents *menu_idents;
+
 extern const char *status_fieldfmt[MAXBLSTATS];
 // Need to separate conditions in order to color them properly
 enum bl_conditions {
@@ -632,6 +642,17 @@ void and_display_nhwindow(winid wid, BOOLEAN_P blocking)
 //		   already been dismissed.
 void and_destroy_nhwindow(winid wid)
 {
+	struct menu_idents **pm, *m;
+	for(pm = &menu_idents; (m = *pm) != 0; pm = &m->next)
+	{
+		if(m->wid == wid)
+		{
+			*pm = m->next;
+			free(m->ids);
+			free(m);
+			break;
+		}
+	}
 	JNICallV(jDestroyWindow, wid);
 }
 
@@ -1145,8 +1166,24 @@ void and_display_file(const char *name, BOOLEAN_P complain)
 //		   before add_menu().  After calling start_menu() you may not
 //		   putstr() to the window.  Only windows of type NHW_MENU may
 //		   be used for menus.
+static struct menu_idents *get_menu_idents(winid wid)
+{
+	struct menu_idents *m;
+	for(m = menu_idents; m; m = m->next)
+		if(m->wid == wid)
+			return m;
+	m = (struct menu_idents*)alloc(sizeof(struct menu_idents));
+	m->wid = wid;
+	m->ids = 0;
+	m->n = m->size = 0;
+	m->next = menu_idents;
+	menu_idents = m;
+	return m;
+}
+
 void and_start_menu(winid wid)
 {
+	get_menu_idents(wid)->n = 0;
 	JNICallV(jStartMenu, wid);
 }
 
@@ -1185,6 +1222,24 @@ void and_start_menu(winid wid)
 void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, CHAR_P groupacc, int attr, const char *str, BOOLEAN_P preselected)
 {
 	int tile, color;
+	int id = 0; // 0 means not selectable
+	if(ident->a_void)
+	{
+		struct menu_idents *m = get_menu_idents(wid);
+		if(m->n == m->size)
+		{
+			anything *ids;
+			m->size = m->size ? m->size * 2 : 32;
+			ids = (anything*)alloc(sizeof(anything) * m->size);
+			if(m->n)
+				memcpy(ids, m->ids, sizeof(anything) * m->n);
+			free(m->ids);
+			m->ids = ids;
+		}
+		m->ids[m->n++] = *ident;
+		id = m->n;
+	}
+
 	if(glyph == NO_GLYPH)
 		tile = -1;
 	else
@@ -1202,7 +1257,7 @@ void and_add_menu(winid wid, int glyph, const ANY_P *ident, CHAR_P accelerator, 
 		attr = 1<<attr;
 
 	jbyteArray jstr = create_bytearray(str);
-	JNICallV(jAddMenu, wid, tile, ident->a_int, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected, color);
+	JNICallV(jAddMenu, wid, tile, id, (int)accelerator, (int)groupacc, attr, jstr, (int)preselected, color);
 	destroy_jobject(jstr);
 }
 
@@ -1272,11 +1327,16 @@ int and_select_menu_r(winid wid, int how, MENU_ITEM_P **selected, int reentry)
 	{
 		n >>= 1;
 
+		struct menu_idents *m = get_menu_idents(wid);
 		q = p = (*jEnv)->GetIntArrayElements(jEnv, a, 0);
 		*selected = (MENU_ITEM_P*)malloc(sizeof(MENU_ITEM_P) * n);
 		for(i = 0; i < n; i++)
 		{
-			(*selected)[i].item.a_int = *p++;
+			int id = *p++;
+			if(id > 0 && id <= m->n)
+				(*selected)[i].item = m->ids[id - 1];
+			else
+				(*selected)[i].item = zeroany;
 			(*selected)[i].count = *p++;
 		}
 		(*jEnv)->ReleaseIntArrayElements(jEnv, a, q, 0);
@@ -1575,9 +1635,9 @@ char and_yn_function(const char *question, const char *choices, CHAR_P def)
 	if(choices)
 	{
 		nChoices = strlen(choices);
-		esc = (int)index(choices, '\033');
-		if(esc)
-			esc -= (int)choices;
+		const char *pesc = index(choices, '\033');
+		if(pesc)
+			esc = (int)(pesc - choices);
 		else
 			esc = -1;
 	}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="namespace"></string>
+	<string name="oldActivityName"></string>
+	<string name="nativeDataDir"></string>
+	<string name="libraryName"></string>
+	<string name="defaultsFile"></string>
+	<string name="defaultCmdPanel"></string>
+	<bool name="useCP437Decoder">false</bool>
+	<bool name="hearseAvailable">false</bool>
+	<string name="hearseClientName"></string>
+	<string name="hearseNethackVersion"></string>
+	<string name="hearseRoles"></string>
+	<bool name="hearseLittleEndian">false</bool>
+	<bool name="oldStatusMode">false</bool>
+</resources>

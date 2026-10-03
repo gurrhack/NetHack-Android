@@ -1,0 +1,29 @@
+plugins {
+  id 'com.android.library'
+}
+
+android {
+  namespace 'com.tbd.forkfront'
+  compileSdk 36
+
+  defaultConfig {
+    minSdk 21
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+
+  sourceSets {
+    main {
+      manifest.srcFile 'AndroidManifest.xml'
+      java.srcDirs = ['src']
+      res.srcDirs = ['res']
+    }
+  }
+}
+
+dependencies {
+  implementation 'cz.msebera.android:httpclient:4.4.1.2'
+}

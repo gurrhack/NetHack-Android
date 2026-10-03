@@ -83,3 +83,8 @@ Makefile.gcc-orig
 
 # /win/
 /win/*/*.o
+
+# Release signing secrets
+keystore.properties
+*.jks
+*.keystore

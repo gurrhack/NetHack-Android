@@ -92,8 +92,18 @@ NHSROOT=..
 # flags for debugging:
 # CFLAGS = -g -I../include
 
-CFLAGS = -DANDROID -m32 -Wno-format -fsigned-char -I../include
-LFLAGS = -m32
+# The compiled data files must match the target's word size, so build the
+# host utilities as 32-bit for 32-bit ABIs (needs gcc-multilib) and 64-bit
+# otherwise.
+ABI ?= arm64-v8a
+HOSTBITS_armeabi     = -m32
+HOSTBITS_armeabi-v7a = -m32
+HOSTBITS_x86         = -m32
+HOSTBITS_VAR = HOSTBITS_$(ABI)
+HOSTBITS = $($(HOSTBITS_VAR))
+
+CFLAGS = -DANDROID $(HOSTBITS) -Wno-format -fsigned-char -I../include
+LFLAGS = $(HOSTBITS)
 
 LIBS =
  

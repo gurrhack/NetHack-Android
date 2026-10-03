@@ -1,6 +1,6 @@
 bin
-libs/*
-assets/nethackdir
+app/libs/
+app/assets/nethackdir/
 gen
 .gradle
 build

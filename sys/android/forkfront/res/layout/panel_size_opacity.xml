@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:clickable="true"
+	android:orientation="vertical"
+	android:focusableInTouchMode="true"
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
+
+	<LinearLayout
+		style="@style/NH_Dialog"
+		android:orientation="vertical"
+		android:layout_marginLeft="24dip"
+		android:layout_marginRight="24dip"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:layout_centerInParent="true">
+
+		<TextView
+			android:id="@+id/value"
+			android:layout_gravity="center_horizontal"
+			android:textSize="32sp"
+			android:layout_marginTop="5dip"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"/>
+
+		<SeekBar
+			android:id="@+id/amount_slider"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="12dip"
+			android:layout_marginRight="12dip"
+			android:layout_marginTop="5dip"
+			android:layout_marginBottom="10dip"/>
+
+		<CheckBox
+			android:id="@+id/resize_mode"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="12dip"
+			android:layout_marginBottom="10dip"
+			android:text="Apply to all panels"/>
+
+		<LinearLayout
+			style="@android:style/ButtonBar"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content">
+			<Button
+			    style="@style/ButtonText"
+				android:id="@+id/btn_0"
+				android:text="Ok"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+			<Button
+			    style="@style/ButtonText"
+				android:id="@+id/btn_1"
+				android:text="Cancel"
+				android:layout_weight="1"
+				android:layout_width="0dip"
+				android:layout_height="wrap_content"/>
+		</LinearLayout>
+	</LinearLayout>
+</RelativeLayout>

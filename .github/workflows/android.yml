@@ -6,31 +6,34 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        abi: [arm64-v8a, armeabi]
     steps:
       - uses: actions/checkout@v6
       - name: Install required packages
         run: sudo apt-get install -y gcc-multilib
-      - name: Set up JDK 8
+      - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
-           java-version: '8'
+           java-version: '17'
            distribution: 'temurin'
       - name: Setup Android SDK           
         uses: android-actions/setup-android@v3        
         with:
           cmdline-tools-version: 9123335
-          packages: 'platforms;android-30 ndk;21.4.7075529'
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.3.13750724'
       - name: Configure path to NDK
-        run: sed -i -e 's,NDK = .*,NDK = /usr/local/lib/android/sdk/ndk/21.4.7075529,g' sys/android/Makefile.src
+        run: sed -i -e 's,NDK = .*,NDK = /usr/local/lib/android/sdk/ndk/27.3.13750724,g' sys/android/Makefile.src
       - name: Build native Android application
-        run: cd sys/android && sh ./setup.sh && cd ../.. &&  make install
+        run: cd sys/android && sh ./setup.sh && cd ../.. &&  make install ABI=${{ matrix.abi }}
       - name: Build NetHack
         run: cd sys/android && sh gradlew build
       - uses: actions/upload-artifact@v5
         with:
-          name: nethack-release-unsigned
+          name: nethack-release-unsigned-${{ matrix.abi }}
           path: sys/android/app/build/outputs/apk/release/app-release-unsigned.apk
       - uses: actions/upload-artifact@v5
         with:
-          name: nethack-debug
+          name: nethack-debug-${{ matrix.abi }}
           path: sys/android/app/build/outputs/apk/debug/app-debug.apk 

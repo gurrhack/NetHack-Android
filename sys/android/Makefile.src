@@ -87,30 +87,20 @@ SYSOBJ = ioctl.o androidmain.o unixtty.o androidunix.o
 # CC = arm-linux-gcc
 #
 # For cross-compiling with Android NDK
-NDK = /path/to/android-ndk-r21e
+NDK = /path/to/android-ndk-r27d
 
 NDK_TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
 
-# Choose an ABI
-ABI = armeabi
-#ABI = armeabi-v7a
-#ABI = arm64-v8a
-#ABI = x86
-#ABI = x86_64
+# Choose an ABI (normally set in the top-level Makefile)
+ABI ?= arm64-v8a
 
 CC_armeabi     = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi30-clang
-LD_armeabi     = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
 CC_armeabi-v7a = $(NDK_TOOLCHAIN)/armv7a-linux-androideabi30-clang
-LD_armeabi-v7a = $(NDK_TOOLCHAIN)/arm-linux-androideabi-ld
 CC_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android30-clang
-LD_arm64-v8a   = $(NDK_TOOLCHAIN)/aarch64-linux-android-ld
 CC_x86         = $(NDK_TOOLCHAIN)/i686-linux-android30-clang
-LD_x86         = $(NDK_TOOLCHAIN)/i686-linux-android-ld
 CC_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android30-clang
-LD_x86_64      = $(NDK_TOOLCHAIN)/x86_64-linux-android-ld
 
 CC_VAR = CC_$(ABI)
-LD_VAR = LD_$(ABI)
 
 CC   := $($(CC_VAR))
 LINK := $(CC)
@@ -118,7 +108,13 @@ LINK := $(CC)
 # Compile normally
 CFLAGS = -DANDROID -O2 -g -Wno-format -fsigned-char -fPIC -I../include
 #CFLAGS = -DANDROID -DDEBUG -g -Wno-format -fsigned-char -fPIC -I../include
-LFLAGS = -shared -Wl,--fix-cortex-a8
+LFLAGS_armeabi     = -Wl,--fix-cortex-a8
+LFLAGS_armeabi-v7a = -Wl,--fix-cortex-a8
+# 16 KB page alignment, required by newer 64-bit Android devices
+LFLAGS_arm64-v8a   = -Wl,-z,max-page-size=16384
+LFLAGS_x86_64      = -Wl,-z,max-page-size=16384
+LFLAGS_VAR = LFLAGS_$(ABI)
+LFLAGS = -shared $($(LFLAGS_VAR))
 
 # LFLAGS = -L/usr/X11R6/lib
 #   OR compile backwards compatible a.out format
@@ -408,6 +404,7 @@ Sysunix:	$(HOBJ) Makefile
 
 Sysandroid:	$(HOBJ) Makefile
 	@echo "Loading ..."
+	rm -rf ../sys/android/app/libs
 	mkdir -p ../sys/android/app/libs/$(ABI)
 	$(LINK) $(LFLAGS) -o ../sys/android/app/libs/$(ABI)/lib$(GAME).so $(HOBJ) $(LIBS)
 	@touch Sysandroid
